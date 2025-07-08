@@ -37,7 +37,7 @@ export class ClientAddressInputComponent implements OnChanges {
 
   loading = false;
 
-  constructor(private addressFacade: ClientAddressFacadeService) {}
+  constructor(private addressFacade: ClientAddressFacadeService) { }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['addressToEdit'] && this.addressToEdit) {
@@ -96,18 +96,44 @@ export class ClientAddressInputComponent implements OnChanges {
   }
 
   extractLatLngFromMapLink() {
-  if (!this.model.map_link) return;
+    if (!this.model.map_link) return;
 
-  // Buscar el patrón @lat,lng
-  const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-  const match = this.model.map_link.match(regex);
+    let lat: number | undefined;
+    let lng: number | undefined;
 
-  if (match) {
-    this.model.latitude = parseFloat(match[1]);
-    this.model.longitude = parseFloat(match[2]);
+    const regexAt = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const matchAt = this.model.map_link.match(regexAt);
+
+    if (matchAt) {
+      lat = parseFloat(matchAt[1]);
+      lng = parseFloat(matchAt[2]);
+    }
+
+    if (!lat || !lng) {
+      const regexWaze = /ll=([-?\d\.]+)%2C([-?\d\.]+)/;
+      const matchWaze = this.model.map_link.match(regexWaze);
+      if (matchWaze) {
+        lat = parseFloat(matchWaze[1]);
+        lng = parseFloat(matchWaze[2]);
+      }
+    }
+
+    if (!lat || !lng) {
+      const regexQ = /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const matchQ = this.model.map_link.match(regexQ);
+      if (matchQ) {
+        lat = parseFloat(matchQ[1]);
+        lng = parseFloat(matchQ[2]);
+      }
+    }
+
+    if (lat && lng) {
+      this.model.latitude = lat;
+      this.model.longitude = lng;
+    } else {
+      this.model.latitude = 13.71024;
+      this.model.longitude = -89.13989;
+    }
   }
-}
-
-
 
 }

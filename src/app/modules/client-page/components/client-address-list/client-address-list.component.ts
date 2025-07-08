@@ -18,4 +18,13 @@ export class ClientAddressListComponent {
 
   @Output() edit = new EventEmitter<ClientAddress>();
   @Output() delete = new EventEmitter<number>();
+
+
+  generateNavigationLinks(lat: number, lng: number) {
+    return {
+      googleMaps: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+      appleMaps: `https://maps.apple.com/?q=${lat},${lng}`
+    };
+  }
 }

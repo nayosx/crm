@@ -10,21 +10,26 @@
   <!-- TELÉFONOS -->
   <h3>Teléfonos</h3>
 
-  <app-client-phone-input
-    [clientId]="clientIdCreated"
-    [phoneToEdit]="selectedPhone"
-    (phoneSaved)="onPhoneSaved()"
-  ></app-client-phone-input>
+  <button
+    pButton
+    label="Agregar Teléfono"
+    icon="pi pi-plus"
+    (click)="phoneDialogVisible = true"
+  ></button>
 
-  <div *ngIf="selectedPhone" class="mt-2">
-    <button
-      pButton
-      label="Cancelar edición"
-      icon="pi pi-times"
-      class="p-button-secondary"
-      (click)="onCancelEditPhone()"
-    ></button>
-  </div>
+  <p-dialog
+    [(visible)]="phoneDialogVisible"
+    [modal]="true"
+    [style]="{ width: '40rem' }"
+    header="Teléfono"
+    (onHide)="onCancelEditPhone()"
+  >
+    <app-client-phone-input
+      [clientId]="clientIdCreated"
+      [phoneToEdit]="selectedPhone"
+      (phoneSaved)="onPhoneSaved()"
+    ></app-client-phone-input>
+  </p-dialog>
 
   <ng-container *ngIf="phones$ | async as phones">
     <app-client-phone-list
@@ -38,21 +43,26 @@
   <!-- DIRECCIONES -->
   <h3 class="mt-4">Direcciones</h3>
 
-  <app-client-address-input
-    [clientId]="clientIdCreated"
-    [addressToEdit]="selectedAddress"
-    (addressSaved)="onAddressSaved()"
-  ></app-client-address-input>
+  <button
+    pButton
+    label="Agregar Dirección"
+    icon="pi pi-plus"
+    (click)="addressDialogVisible = true"
+  ></button>
 
-  <div *ngIf="selectedAddress" class="mt-2">
-    <button
-      pButton
-      label="Cancelar edición"
-      icon="pi pi-times"
-      class="p-button-secondary"
-      (click)="onCancelEditAddress()"
-    ></button>
-  </div>
+  <p-dialog
+    [(visible)]="addressDialogVisible"
+    [modal]="true"
+    [style]="{ width: '40rem' }"
+    header="Dirección"
+    (onHide)="onCancelEditAddress()"
+  >
+    <app-client-address-input
+      [clientId]="clientIdCreated"
+      [addressToEdit]="selectedAddress"
+      (addressSaved)="onAddressSaved()"
+    ></app-client-address-input>
+  </p-dialog>
 
   <ng-container *ngIf="addresses$ | async as addresses">
     <app-client-address-list

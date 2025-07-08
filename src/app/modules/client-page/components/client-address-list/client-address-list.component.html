@@ -7,6 +7,38 @@
     *ngFor="let address of addresses"
     class="flex justify-content-between align-items-center border-bottom-1 surface-border py-2"
   >
+  <div>
+    <div *ngIf="address.latitude && address.longitude" class="flex gap-2 mt-2">
+  <a
+    pButton
+    type="button"
+    [href]="generateNavigationLinks(address.latitude, address.longitude).googleMaps"
+    target="_blank"
+    label="Ver en Google Maps"
+    icon="pi pi-map-marker"
+    class="p-button-success"
+  ></a>
+  <a
+    pButton
+    type="button"
+    [href]="generateNavigationLinks(address.latitude, address.longitude).waze"
+    target="_blank"
+    label="Ver en Waze"
+    icon="pi pi-map"
+    class="p-button-info"
+  ></a>
+  <a
+    pButton
+    type="button"
+    [href]="generateNavigationLinks(address.latitude, address.longitude).appleMaps"
+    target="_blank"
+    label="Ver en Apple Maps"
+    icon="pi pi-compass"
+    class="p-button-warning"
+  ></a>
+</div>
+
+  </div>
     <div>
       <span class="font-medium">{{ address.address_text }}</span>
       <span *ngIf="address.is_primary" class="ml-2 text-green-500">(Principal)</span>

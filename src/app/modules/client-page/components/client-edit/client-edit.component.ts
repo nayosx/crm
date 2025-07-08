@@ -12,7 +12,7 @@ import { ClientAddressListComponent } from '../client-address-list/client-addres
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-
+import { DialogModule } from 'primeng/dialog';
 
 @Component({
   selector: 'app-client-edit',
@@ -20,12 +20,13 @@ import { CardModule } from 'primeng/card';
   imports: [
     CommonModule,
     ButtonModule,
+    CardModule,
+    DialogModule,
     ClientFormComponent,
     ClientPhoneInputComponent,
     ClientPhoneListComponent,
     ClientAddressInputComponent,
-    ClientAddressListComponent,
-    CardModule,
+    ClientAddressListComponent
   ],
   templateUrl: './client-edit.component.html',
   encapsulation: ViewEncapsulation.None
@@ -34,14 +35,21 @@ export class ClientEditComponent {
   client?: Client;
   loading = false;
 
+  // Observables de teléfonos
   phones$;
   loadingPhones$;
 
+  // Observables de direcciones
   addresses$;
   loadingAddresses$;
 
+  // Estados de selección
   selectedPhone?: ClientPhone;
   selectedAddress?: ClientAddress;
+
+  // Estados de visibilidad de diálogos
+  phoneDialogVisible = false;
+  addressDialogVisible = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -50,8 +58,10 @@ export class ClientEditComponent {
     private addressFacade: ClientAddressFacadeService,
     private router: Router
   ) {
+    // Inicializar observables en constructor
     this.phones$ = this.phoneFacade.phones$;
     this.loadingPhones$ = this.phoneFacade.loading$;
+
     this.addresses$ = this.addressFacade.addresses$;
     this.loadingAddresses$ = this.addressFacade.loading$;
   }
@@ -91,14 +101,17 @@ export class ClientEditComponent {
   // TELÉFONOS
   onEditPhone(phone: ClientPhone) {
     this.selectedPhone = phone;
+    this.phoneDialogVisible = true;
   }
 
   onCancelEditPhone() {
     this.selectedPhone = undefined;
+    this.phoneDialogVisible = false;
   }
 
   onPhoneSaved() {
     this.selectedPhone = undefined;
+    this.phoneDialogVisible = false;
     this.phoneFacade.loadPhones();
   }
 
@@ -116,14 +129,17 @@ export class ClientEditComponent {
   // DIRECCIONES
   onEditAddress(address: ClientAddress) {
     this.selectedAddress = address;
+    this.addressDialogVisible = true;
   }
 
   onCancelEditAddress() {
     this.selectedAddress = undefined;
+    this.addressDialogVisible = false;
   }
 
   onAddressSaved() {
     this.selectedAddress = undefined;
+    this.addressDialogVisible = false;
     this.addressFacade.loadAddresses();
   }
 
