@@ -1,0 +1,32 @@
+<div *ngIf="loading" class="mt-2">
+  Cargando teléfonos...
+</div>
+
+<ul class="list-none p-0 mt-3">
+  <li
+    *ngFor="let phone of phones"
+    class="flex justify-content-between align-items-center border-bottom-1 surface-border py-2"
+  >
+    <div>
+      <span class="font-medium">{{ phone.phone_number }}</span>
+      <span *ngIf="phone.description" class="ml-2 text-color-secondary">{{ phone.description }}</span>
+      <span *ngIf="phone.is_primary" class="ml-2 text-green-500">(Favorito)</span>
+    </div>
+    <div class="flex gap-2">
+      <!-- <button
+        pButton
+        icon="pi pi-pencil"
+        class="p-button-sm p-button-secondary"
+        label="Editar"
+        (click)="edit.emit(phone)"
+      ></button> -->
+      <button
+        pButton
+        icon="pi pi-trash"
+        class="p-button-sm p-button-danger"
+        label="Eliminar"
+        (click)="delete.emit(phone.id)"
+      ></button>
+    </div>
+  </li>
+</ul>

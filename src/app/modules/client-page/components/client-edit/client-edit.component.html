@@ -1,0 +1,79 @@
+<h2>Editar Cliente</h2>
+
+<div *ngIf="client" class="grid">
+  <!-- Fila 1: Formulario Cliente -->
+  <div class="col-12 md:col-6 mb-4">
+    <p-card header="Información del Cliente" class="border-round shadow-2">
+      <app-client-form
+        [client]="client"
+        [loading]="loading"
+        (submitForm)="onSubmit($event)"
+      ></app-client-form>
+    </p-card>
+  </div>
+  <div class="col-12 md:col-6"></div>
+
+  <!-- Fila 2: Teléfonos -->
+  <div class="col-12 md:col-6 mb-4">
+      <app-client-phone-input
+        [clientId]="client.id"
+        [phoneToEdit]="selectedPhone"
+        (phoneSaved)="onPhoneSaved()"
+      ></app-client-phone-input>
+
+      <div *ngIf="selectedPhone" class="mt-2">
+        <button
+          pButton
+          label="Cancelar edición de teléfono"
+          icon="pi pi-times"
+          class="p-button-secondary"
+          (click)="onCancelEditPhone()"
+        ></button>
+      </div>
+  </div>
+
+  <div class="col-12 md:col-6 mb-4">
+    <p-card header="Lista de Teléfonos" class="border-round shadow-2">
+      <ng-container *ngIf="phones$ | async as phones">
+        <app-client-phone-list
+          [phones]="getClientPhones(phones)"
+          [loading]="(loadingPhones$ | async) ?? false"
+          (edit)="onEditPhone($event)"
+          (delete)="onDeletePhone($event)"
+        ></app-client-phone-list>
+      </ng-container>
+    </p-card>
+  </div>
+
+  <!-- Fila 3: Direcciones -->
+  <div class="col-12 md:col-6 mb-4">
+      <app-client-address-input
+        [clientId]="client.id"
+        [addressToEdit]="selectedAddress"
+        (addressSaved)="onAddressSaved()"
+      ></app-client-address-input>
+
+      <div *ngIf="selectedAddress" class="mt-2">
+        <button
+          pButton
+          label="Cancelar edición de dirección"
+          icon="pi pi-times"
+          class="p-button-secondary"
+          (click)="onCancelEditAddress()"
+        ></button>
+      </div>
+  </div>
+
+  <div class="col-12 md:col-6 mb-4">
+    <p-card header="Lista de Direcciones" class="border-round shadow-2">
+      <ng-container *ngIf="addresses$ | async as addresses">
+        <app-client-address-list
+          [addresses]="getClientAddresses(addresses)"
+          [loading]="(loadingAddresses$ | async) ?? false"
+          (edit)="onEditAddress($event)"
+          (delete)="onDeleteAddress($event)"
+        ></app-client-address-list>
+      </ng-container>
+    </p-card>
+  </div>
+</div>

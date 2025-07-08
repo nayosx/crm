@@ -1,0 +1,29 @@
+<form #phoneForm="ngForm" (ngSubmit)="onSubmit()" class="flex flex-column gap-3">
+  <input
+    pInputText
+    type="tel"
+    placeholder="Número de teléfono"
+    [(ngModel)]="model.phone_number"
+    name="phone_number"
+    [disabled]="!clientId || loading"
+    required
+    pattern="^[0-9+ ]+$"
+  />
+
+  <div class="flex align-items-center gap-2">
+    <label>Es favorito</label>
+    <p-inputSwitch
+      [(ngModel)]="model.is_primary"
+      name="is_primary"
+      [disabled]="!clientId || loading"
+    ></p-inputSwitch>
+  </div>
+
+  <button
+    pButton
+    type="submit"
+    label="Guardar Teléfono"
+    icon="pi pi-plus"
+    [disabled]="!clientId || loading"
+  ></button>
+</form>

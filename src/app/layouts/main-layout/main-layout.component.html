@@ -1,0 +1,23 @@
+<div class="layout-container flex min-h-screen">
+  <aside class="sidebar surface-200 p-3 shadow-2 hidden md:block">
+    <p-panelMenu [model]="menuItems"></p-panelMenu>
+  </aside>
+
+  <div class="content flex flex-column flex-1">
+    <header class="topbar p-3 flex justify-content-between align-items-center surface-100 shadow-1">
+      <div class="flex align-items-center gap-2">
+        <button pButton type="button" icon="pi pi-bars" class="p-button-sm md:hidden" (click)="toggleSidebar()"></button>
+        <span class="text-xl font-bold">DrClin System</span>
+      </div>
+      <button pButton type="button" icon="pi pi-sign-out" label="Cerrar sesión" class="p-button-sm" (click)="logout()"></button>
+    </header>
+
+    <main class="p-4 flex-1">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <p-sidebar [(visible)]="sidebarVisible" modal position="left" class="md:hidden">
+    <p-panelMenu [model]="menuItems"></p-panelMenu>
+  </p-sidebar>
+</div>

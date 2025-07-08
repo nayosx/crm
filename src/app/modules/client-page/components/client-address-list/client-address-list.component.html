@@ -1,0 +1,31 @@
+<div *ngIf="loading" class="mt-2">
+  Cargando direcciones...
+</div>
+
+<ul class="list-none p-0 mt-3">
+  <li
+    *ngFor="let address of addresses"
+    class="flex justify-content-between align-items-center border-bottom-1 surface-border py-2"
+  >
+    <div>
+      <span class="font-medium">{{ address.address_text }}</span>
+      <span *ngIf="address.is_primary" class="ml-2 text-green-500">(Principal)</span>
+    </div>
+    <div class="flex gap-2">
+      <button
+        pButton
+        icon="pi pi-pencil"
+        label="Editar"
+        class="p-button-sm p-button-secondary"
+        (click)="edit.emit(address)"
+      ></button>
+      <button
+        pButton
+        icon="pi pi-trash"
+        label="Eliminar"
+        class="p-button-sm p-button-danger"
+        (click)="delete.emit(address.id)"
+      ></button>
+    </div>
+  </li>
+</ul>

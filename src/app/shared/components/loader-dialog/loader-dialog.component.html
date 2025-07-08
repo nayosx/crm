@@ -1,0 +1,12 @@
+<p-dialog 
+  [(visible)]="display"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [showHeader]="false"
+  [baseZIndex]="10000"
+  contentStyleClass="flex justify-content-center align-items-center"
+  [style]="{width: '300px'}"
+>
+  <app-loader-text [text]="textToShow"></app-loader-text>
+</p-dialog>

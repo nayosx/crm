@@ -1,0 +1,46 @@
+<div class="flex justify-content-center align-items-center min-h-screen">
+  <div class="surface-card p-4 shadow-2 border-round w-full sm:w-22rem">
+    <h2 class="text-center mb-4">Iniciar Sesión</h2>
+
+    <form #loginForm="ngForm" (ngSubmit)="submitLogin(loginForm)" autocomplete="off">
+      <div class="mb-3">
+        <label for="email" class="block mb-2">Correo electrónico</label>
+        <input
+          id="email"
+          type="email"
+          class="w-full"
+          pInputText
+          [(ngModel)]="email"
+          name="email"
+          required
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="mb-4">
+        <label for="password" class="block mb-2">Contraseña</label>
+        <input
+          id="password"
+          type="password"
+          class="w-full"
+          pInputText
+          [(ngModel)]="password"
+          name="password"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+
+      <button
+        pButton
+        type="submit"
+        label="Entrar"
+        icon="pi pi-sign-in"
+        class="w-full"
+        [disabled]="!email || !password"
+      ></button>
+    </form>
+  </div>
+</div>
+
+<app-loader-dialog #loaderDialog></app-loader-dialog>
