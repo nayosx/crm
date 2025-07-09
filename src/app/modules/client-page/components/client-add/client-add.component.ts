@@ -12,6 +12,7 @@ import { ClientAddressFacadeService } from '@shared/services/client-address-faca
 import { ClientAddressInputComponent } from '../client-address-input/client-address-input.component';
 import { ClientAddressListComponent } from '../client-address-list/client-address-list.component';
 import { DialogModule } from 'primeng/dialog';
+import { CardModule } from "primeng/card";
 
 @Component({
   selector: 'app-client-add',
@@ -24,8 +25,10 @@ import { DialogModule } from 'primeng/dialog';
     ClientPhoneInputComponent,
     ClientPhoneListComponent,
     ClientAddressInputComponent,
-    ClientAddressListComponent
-  ],
+    ClientAddressListComponent,
+    DialogModule,
+    CardModule
+],
   templateUrl: './client-add.component.html',
   encapsulation: ViewEncapsulation.None
 })

@@ -13,18 +13,16 @@
       <span *ngIf="phone.is_primary" class="ml-2 text-green-500">(Favorito)</span>
     </div>
     <div class="flex gap-2">
-      <!-- <button
+      <button
         pButton
         icon="pi pi-pencil"
         class="p-button-sm p-button-secondary"
-        label="Editar"
         (click)="edit.emit(phone)"
-      ></button> -->
+      ></button>
       <button
         pButton
         icon="pi pi-trash"
         class="p-button-sm p-button-danger"
-        label="Eliminar"
         (click)="delete.emit(phone.id)"
       ></button>
     </div>

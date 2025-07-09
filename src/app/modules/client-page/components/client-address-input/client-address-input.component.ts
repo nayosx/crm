@@ -101,23 +101,26 @@ export class ClientAddressInputComponent implements OnChanges {
     let lat: number | undefined;
     let lng: number | undefined;
 
-    const regexAt = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-    const matchAt = this.model.map_link.match(regexAt);
+    // 1. Google Maps !3d...!4d...
+    const regex3d4d = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
+    const match3d4d = this.model.map_link.match(regex3d4d);
 
-    if (matchAt) {
-      lat = parseFloat(matchAt[1]);
-      lng = parseFloat(matchAt[2]);
+    if (match3d4d) {
+      lat = parseFloat(match3d4d[1]);
+      lng = parseFloat(match3d4d[2]);
     }
 
+    // 2. Google Maps @lat,lng
     if (!lat || !lng) {
-      const regexWaze = /ll=([-?\d\.]+)%2C([-?\d\.]+)/;
-      const matchWaze = this.model.map_link.match(regexWaze);
-      if (matchWaze) {
-        lat = parseFloat(matchWaze[1]);
-        lng = parseFloat(matchWaze[2]);
+      const regexAt = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const matchAt = this.model.map_link.match(regexAt);
+      if (matchAt) {
+        lat = parseFloat(matchAt[1]);
+        lng = parseFloat(matchAt[2]);
       }
     }
 
+    // 3. Google Maps q=lat,lng
     if (!lat || !lng) {
       const regexQ = /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/;
       const matchQ = this.model.map_link.match(regexQ);
@@ -127,13 +130,22 @@ export class ClientAddressInputComponent implements OnChanges {
       }
     }
 
-    if (lat && lng) {
+    // 4. Waze ll=lat,lng
+    if (!lat || !lng) {
+      const regexWaze = /ll=([-?\d\.]+)%2C([-?\d\.]+)/;
+      const matchWaze = this.model.map_link.match(regexWaze);
+      if (matchWaze) {
+        lat = parseFloat(matchWaze[1]);
+        lng = parseFloat(matchWaze[2]);
+      }
+    }
+
+    // Si encontró coordenadas, asignarlas
+    if (lat !== undefined && lng !== undefined) {
       this.model.latitude = lat;
       this.model.longitude = lng;
-    } else {
-      this.model.latitude = 13.71024;
-      this.model.longitude = -89.13989;
     }
   }
+
 
 }
