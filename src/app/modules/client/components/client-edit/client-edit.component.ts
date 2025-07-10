@@ -1,60 +1,65 @@
 import { Component, ViewEncapsulation } from '@angular/core';
-import { ClientFormComponent } from "../client-form/client-form.component";
-import { ClientFacade } from '@shared/services/client.facade';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Client, ClientAddress, ClientPhone } from '@shared/interfaces/client.interface';
-import { ClientPhoneInputComponent } from '../client-phone-input/client-phone-input.component';
-import { CommonModule } from '@angular/common';
+import { ClientFacade } from '@shared/services/client.facade';
 import { ClientPhoneFacade } from '@shared/services/client-phone-facade.service';
-import { ButtonModule } from 'primeng/button';
-import { ClientPhoneListComponent } from '../client-phone-list/client-phone-list.component';
 import { ClientAddressFacadeService } from '@shared/services/client-address-facade.service';
+import { ClientFormComponent } from '../client-form/client-form.component';
+import { ClientPhoneInputComponent } from '../client-phone-input/client-phone-input.component';
+import { ClientPhoneListComponent } from '../client-phone-list/client-phone-list.component';
 import { ClientAddressInputComponent } from '../client-address-input/client-address-input.component';
 import { ClientAddressListComponent } from '../client-address-list/client-address-list.component';
+import { CommonModule } from '@angular/common';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 import { DialogModule } from 'primeng/dialog';
-import { CardModule } from "primeng/card";
+import { BackButtonComponent } from "@shared/components/back/back-button.component";
 
 @Component({
-  selector: 'app-client-add',
-  standalone: true,
+  selector: 'app-client-edit',
   imports: [
     CommonModule,
     ButtonModule,
+    CardModule,
     DialogModule,
     ClientFormComponent,
     ClientPhoneInputComponent,
     ClientPhoneListComponent,
     ClientAddressInputComponent,
     ClientAddressListComponent,
-    DialogModule,
-    CardModule
+    BackButtonComponent
 ],
-  templateUrl: './client-add.component.html',
+  templateUrl: './client-edit.component.html',
   encapsulation: ViewEncapsulation.None
 })
-export class ClientAddComponent {
+export class ClientEditComponent {
+  client?: Client;
   loading = false;
-  clientIdCreated?: number;
 
-  // Observables
+  // Observables de teléfonos
   phones$;
   loadingPhones$;
+
+  // Observables de direcciones
   addresses$;
   loadingAddresses$;
 
-  // Estados
+  // Estados de selección
   selectedPhone?: ClientPhone;
   selectedAddress?: ClientAddress;
 
+  // Estados de visibilidad de diálogos
   phoneDialogVisible = false;
   addressDialogVisible = false;
 
   constructor(
+    private route: ActivatedRoute,
     private clientFacade: ClientFacade,
     private phoneFacade: ClientPhoneFacade,
     private addressFacade: ClientAddressFacadeService,
     private router: Router
   ) {
+    // Inicializar observables en constructor
     this.phones$ = this.phoneFacade.phones$;
     this.loadingPhones$ = this.phoneFacade.loading$;
 
@@ -62,16 +67,30 @@ export class ClientAddComponent {
     this.loadingAddresses$ = this.addressFacade.loading$;
   }
 
-  onSubmit(data: Partial<Client>) {
-    this.loading = true;
-    data.email = 'none@mail.com';
-    data.document_id = '00000000-0';
-    this.clientFacade.createClient(data).subscribe({
+  ngOnInit() {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+
+    this.clientFacade.getClient(id).subscribe({
       next: (client) => {
-        this.clientIdCreated = client.id;
-        this.loading = false;
+        this.client = client;
         this.phoneFacade.loadPhones();
         this.addressFacade.loadAddresses();
+      },
+      error: (err) => {
+        console.error(err);
+        this.router.navigate(['/clients']);
+      }
+    });
+  }
+
+  onSubmit(data: Partial<Client>) {
+    if (!this.client) return;
+
+    this.loading = true;
+    this.clientFacade.updateClient(this.client.id, data).subscribe({
+      next: () => {
+        this.clientFacade.reload();
+        this.loading = false;
       },
       error: (err) => {
         console.error(err);
@@ -81,12 +100,6 @@ export class ClientAddComponent {
   }
 
   // TELÉFONOS
-  onDeletePhone(id: number) {
-    this.phoneFacade.deletePhone(id).subscribe({
-      next: () => this.phoneFacade.loadPhones()
-    });
-  }
-
   onEditPhone(phone: ClientPhone) {
     this.selectedPhone = phone;
     this.phoneDialogVisible = true;
@@ -103,18 +116,18 @@ export class ClientAddComponent {
     this.phoneFacade.loadPhones();
   }
 
-  getClientPhones(phones: ClientPhone[]): ClientPhone[] {
-    if (!this.clientIdCreated) return [];
-    return phones.filter(p => p.client_id === this.clientIdCreated);
-  }
-
-  // DIRECCIONES
-  onDeleteAddress(id: number) {
-    this.addressFacade.deleteAddress(id).subscribe({
-      next: () => this.addressFacade.loadAddresses()
+  onDeletePhone(id: number) {
+    this.phoneFacade.deletePhone(id).subscribe({
+      next: () => this.phoneFacade.loadPhones()
     });
   }
 
+  getClientPhones(phones: ClientPhone[]): ClientPhone[] {
+    if (!this.client) return [];
+    return phones.filter(p => p.client_id === this.client?.id);
+  }
+
+  // DIRECCIONES
   onEditAddress(address: ClientAddress) {
     this.selectedAddress = address;
     this.addressDialogVisible = true;
@@ -131,8 +144,14 @@ export class ClientAddComponent {
     this.addressFacade.loadAddresses();
   }
 
+  onDeleteAddress(id: number) {
+    this.addressFacade.deleteAddress(id).subscribe({
+      next: () => this.addressFacade.loadAddresses()
+    });
+  }
+
   getClientAddresses(addresses: ClientAddress[]): ClientAddress[] {
-    if (!this.clientIdCreated) return [];
-    return addresses.filter(a => a.client_id === this.clientIdCreated);
+    if (!this.client) return [];
+    return addresses.filter(a => a.client_id === this.client?.id);
   }
 }

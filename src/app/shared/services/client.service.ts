@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Client, ClientPageResponse } from '@shared/interfaces/client.interface';
+import { Client, ClientFullResponse, ClientPageResponse } from '@shared/interfaces/client.interface';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -29,8 +29,8 @@ export class ClientService {
     return this.http.get<ClientPageResponse>(this.baseUrl, { params: httpParams });
   }
 
-  getClient(id: number): Observable<Client> {
-    return this.http.get<Client>(`${this.baseUrl}/${id}`);
+  getClient(id: number): Observable<ClientFullResponse> {
+    return this.http.get<ClientFullResponse>(`${this.baseUrl}/${id}`);
   }
 
   createClient(client: Partial<Client>): Observable<Client> {

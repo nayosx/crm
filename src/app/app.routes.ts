@@ -28,17 +28,17 @@ export const routes: Routes = [
                     {
                         path: '',
                         loadComponent: () =>
-                            import('./modules/client-page/client-page.component').then(m => m.ClientPageComponent)
+                            import('./modules/client/client-page.component').then(m => m.ClientPageComponent)
                     },
                     {
                         path: 'create',
                         loadComponent: () =>
-                            import('./modules/client-page/components/client-add/client-add.component').then(m => m.ClientAddComponent)
+                            import('./modules/client/components/client-add/client-add.component').then(m => m.ClientAddComponent)
                     },
                     {
                         path: ':id/edit',
                         loadComponent: () =>
-                            import('./modules/client-page/components/client-edit/client-edit.component').then(m => m.ClientEditComponent)
+                            import('./modules/client/components/client-edit/client-edit.component').then(m => m.ClientEditComponent)
                     }
                 ]
             },

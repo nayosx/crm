@@ -1,0 +1,106 @@
+<div *ngIf="client" class="grid">
+  <!-- Información general -->
+  <div class="col-12">
+    <!-- Nombre cliente -->
+    <ng-container *ngIf="useCard; else noCardName">
+      <p-card header="Nombre cliente" class="border-round shadow-2 mb-2">
+        <div class="p-fluid border-bottom-1 surface-border">
+          <div class="field">{{ client.name }}</div>
+        </div>
+      </p-card>
+    </ng-container>
+    <ng-template #noCardName>
+      <div class="p-fluid border-bottom-1 surface-border mb-3">
+        <div class="field font-bold">Nombre cliente</div>
+        <div class="field">{{ client.name }}</div>
+      </div>
+    </ng-template>
+
+    <!-- Teléfonos -->
+    <ng-container *ngIf="useCard; else noCardPhones">
+      <p-card header="Teléfonos" class="border-round shadow-2 mb-3">
+        <ng-container *ngTemplateOutlet="phonesList"></ng-container>
+      </p-card>
+    </ng-container>
+    <ng-template #noCardPhones>
+      <div class="mb-3">
+        <div class="font-bold mb-2">Teléfonos</div>
+        <ng-container *ngTemplateOutlet="phonesList"></ng-container>
+      </div>
+    </ng-template>
+
+    <!-- Direcciones -->
+    <ng-container *ngIf="useCard; else noCardAddresses">
+      <p-card header="Direcciones" class="border-round shadow-2">
+        <ng-container *ngTemplateOutlet="addressesList"></ng-container>
+      </p-card>
+    </ng-container>
+    <ng-template #noCardAddresses>
+      <div>
+        <div class="font-bold mb-2 mt-4">Direcciones</div>
+        <ng-container *ngTemplateOutlet="addressesList"></ng-container>
+      </div>
+    </ng-template>
+
+    <!-- Templates de listas reutilizados -->
+    <ng-template #phonesList>
+      <ul class="list-none p-0 m-0">
+        <li *ngFor="let phone of client.phones" class="border-bottom-1 surface-border py-2 mb-2">
+          <div class="flex flex-row justify-content-between align-items-center gap-2">
+            <div>
+              <span class="font-medium">{{ phone.phone_number }}</span>
+              <span *ngIf="phone.description" class="ml-2 text-color-secondary">{{ phone.description }}</span>
+              <span *ngIf="phone.is_primary" class="ml-2 text-green-500">(Favorito)</span>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <a
+                [href]="getPhoneLink(phone.phone_number)"
+                pButton
+                icon="pi pi-phone"
+                class="no-underline p-button-info"
+              ></a>
+              <a
+                [href]="getWhatsAppLink(phone.phone_number)"
+                target="_blank"
+                pButton
+                icon="pi pi-whatsapp"
+                class="no-underline p-button-success"
+              ></a>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </ng-template>
+
+    <ng-template #addressesList>
+      <ul class="list-none p-0 m-0 mt-2">
+        <li *ngFor="let address of client.addresses" class="border-bottom-1 surface-border py-2 mb-2">
+          <div class="mb-2">
+            <div class="font-medium">{{ address.address_text }}</div>
+            <div *ngIf="address.is_primary" class="text-green-500 mt-1">(Principal)</div>
+          </div>
+          <div class="flex gap-2 mt-2">
+            <a
+              *ngIf="address.map_link"
+              [href]="address.map_link"
+              target="_blank"
+              pButton
+              icon="pi pi-map-marker"
+              label="Ver en Mapa"
+              class="no-underline p-button-sm p-button-secondary"
+            ></a>
+            <a
+              *ngIf="(address.latitude && address.longitude) && (address.latitude !== 0 || address.longitude !== 0)"
+              [href]="'https://waze.com/ul?ll=' + address.latitude + ',' + address.longitude + '&navigate=yes'"
+              target="_blank"
+              pButton
+              icon="pi pi-compass"
+              label="Waze"
+              class="no-underline p-button-sm p-button-info"
+            ></a>
+          </div>
+        </li>
+      </ul>
+    </ng-template>
+  </div>
+</div>

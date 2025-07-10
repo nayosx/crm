@@ -8,7 +8,6 @@ import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-client-form',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -46,7 +45,6 @@ export class ClientFormComponent implements OnChanges {
 
   onCancel() {
     this.model = {};
-    this.submitForm.emit({});
     this.router.navigate(['/clients']);
   }
 }

@@ -1,0 +1,29 @@
+<div class="flex align-items-center gap-2 mb-3">
+  <h2><app-back-button [path]="'/clients'" />Crear Cliente</h2>
+</div>
+
+
+<div class="grid">
+  <div class="col-12 md:col-6 mb-4">
+    <p-card class="border-round shadow-2">
+      <app-client-form
+        [loading]="loading"
+        (submitForm)="onSubmit($event)"
+      ></app-client-form>
+    </p-card>
+  </div>
+</div>
+
+
+<p-dialog
+  [(visible)]="successDialogVisible"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [showHeader]="false"
+  [style]="{ width: '300px', height: '200px' }"
+  contentStyleClass="flex justify-content-center align-items-center flex-column"
+>
+  <i class="pi pi-check-circle text-green-500 mb-4" [style]="{ 'font-size': '4rem' }"></i>
+  <p class="text-lg font-medium text-center">Cliente creado <br />exitosamente.</p>
+</p-dialog>

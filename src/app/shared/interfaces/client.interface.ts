@@ -34,3 +34,18 @@ export interface ClientAddress {
   image_path?: string;
   is_primary: boolean;
 }
+
+
+export interface ClientFullResponse {
+  id: number;
+  name: string;
+  email: string;
+  document_id: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+  phones: ClientPhone[];
+  addresses: ClientAddress[];
+}

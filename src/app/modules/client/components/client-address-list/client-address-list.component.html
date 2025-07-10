@@ -4,25 +4,25 @@
 
 <ul class="list-none p-0 mt-3">
   <li *ngFor="let address of addresses"
-    class="flex flex-column	 justify-content-between align-items-center border-bottom-1 surface-border py-2">
-    <div class="flex flex-row	 justify-content-between align-items-center w-full mb-4">
+    class="flex flex-column	 justify-content-between align-items-center border-bottom-1 surface-border py-4">
+    <div class="flex flex-row	 justify-content-between align-items-center w-full">
       <div>
-      <span class="font-medium">{{ address.address_text }}</span>
-      <span *ngIf="address.is_primary" class="ml-2 text-green-500">(Principal)</span>
-    </div>
+        <span class="font-medium">{{ address.address_text }}</span>
+        <span *ngIf="address.is_primary" class="ml-2 text-green-500">(Principal)</span>
+      </div>
     <div class="flex gap-2">
       <button pButton icon="pi pi-pencil" class="p-button-sm p-button-secondary" (click)="edit.emit(address)"></button>
       <button pButton icon="pi pi-trash" class="p-button-sm p-button-danger" (click)="delete.emit(address.id)"></button>
     </div>
     </div>
-    <div>
+    <div class="mb-2 w-full">
       <div *ngIf="address.latitude && address.longitude" class="flex gap-2 mt-2">
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).googleMaps"
-          target="_blank" label="Ver en Google Maps" icon="pi pi-map-marker" class="p-button-success"></a>
+          target="_blank" label="GMaps" icon="pi pi-map-marker" class="p-button-success no-underline"></a>
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).waze"
-          target="_blank" label="Ver en Waze" icon="pi pi-map" class="p-button-info"></a>
+          target="_blank" label="Waze" icon="pi pi-map" class="p-button-info no-underline"></a>
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).appleMaps"
-          target="_blank" label="Ver en Apple Maps" icon="pi pi-compass" class="p-button-warning"></a>
+          target="_blank" label="Apple" icon="pi pi-compass" class="p-button-warning no-underline"></a>
       </div>
 
     </div>

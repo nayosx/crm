@@ -60,8 +60,8 @@ export class ClientAddressInputComponent implements OnChanges {
     const data = {
       client_id: this.clientId,
       address_text: this.model.address_text,
-      latitude: this.model.latitude || 13.703340,
-      longitude: this.model.longitude || -89.150002,
+      latitude: this.model.latitude || 0,
+      longitude: this.model.longitude || 0,
       map_link: this.model.map_link,
       image_path: this.model.image_path,
       is_primary: this.model.is_primary
@@ -101,7 +101,6 @@ export class ClientAddressInputComponent implements OnChanges {
     let lat: number | undefined;
     let lng: number | undefined;
 
-    // 1. Google Maps !3d...!4d...
     const regex3d4d = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
     const match3d4d = this.model.map_link.match(regex3d4d);
 
@@ -110,7 +109,6 @@ export class ClientAddressInputComponent implements OnChanges {
       lng = parseFloat(match3d4d[2]);
     }
 
-    // 2. Google Maps @lat,lng
     if (!lat || !lng) {
       const regexAt = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
       const matchAt = this.model.map_link.match(regexAt);
@@ -120,7 +118,6 @@ export class ClientAddressInputComponent implements OnChanges {
       }
     }
 
-    // 3. Google Maps q=lat,lng
     if (!lat || !lng) {
       const regexQ = /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/;
       const matchQ = this.model.map_link.match(regexQ);
@@ -130,7 +127,6 @@ export class ClientAddressInputComponent implements OnChanges {
       }
     }
 
-    // 4. Waze ll=lat,lng
     if (!lat || !lng) {
       const regexWaze = /ll=([-?\d\.]+)%2C([-?\d\.]+)/;
       const matchWaze = this.model.map_link.match(regexWaze);
@@ -140,7 +136,6 @@ export class ClientAddressInputComponent implements OnChanges {
       }
     }
 
-    // Si encontró coordenadas, asignarlas
     if (lat !== undefined && lng !== undefined) {
       this.model.latitude = lat;
       this.model.longitude = lng;

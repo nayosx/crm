@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, combineLatest, debounceTime, finalize, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, finalize } from 'rxjs';
 import { ClientService } from './client.service';
 import { Client, ClientPageResponse } from '@shared/interfaces/client.interface';
 
@@ -20,35 +20,7 @@ export class ClientFacade {
   query$ = this.querySubject.asObservable();
   page$ = this.pageSubject.asObservable();
 
-  constructor(private clientService: ClientService) {
-    combineLatest([
-      this.query$.pipe(debounceTime(300)),
-      this.page$
-    ])
-      .pipe(
-        tap(() => {
-          this.loadingSubject.next(true);
-          this.errorSubject.next(null);
-        }),
-        switchMap(([q, page]) =>
-          this.clientService.getClients({
-            q: q || undefined,
-            page: page,
-            per_page: 8
-          }).pipe(
-            finalize(() => this.loadingSubject.next(false))
-          )
-        )
-      )
-      .subscribe({
-        next: (response) => this.clientsSubject.next(response),
-        error: (err) => {
-          console.error(err);
-          this.errorSubject.next('Error cargando clientes');
-        }
-      });
-  }
-
+  constructor(private clientService: ClientService) {}
 
   setQuery(query: string) {
     this.querySubject.next(query);
@@ -59,8 +31,31 @@ export class ClientFacade {
     this.pageSubject.next(page);
   }
 
+  resetFilters() {
+    this.querySubject.next('');
+    this.pageSubject.next(1);
+  }
+
   reload() {
-    this.pageSubject.next(this.pageSubject.value);
+    const query = this.querySubject.value || undefined;
+    const page = this.pageSubject.value;
+
+    this.loadingSubject.next(true);
+    this.errorSubject.next(null);
+
+    this.clientService.getClients({
+      q: query,
+      page: page,
+      per_page: 8
+    })
+    .pipe(finalize(() => this.loadingSubject.next(false)))
+    .subscribe({
+      next: (response) => this.clientsSubject.next(response),
+      error: (err) => {
+        console.error(err);
+        this.errorSubject.next('Error cargando clientes');
+      }
+    });
   }
 
   createClient(client: Partial<Client>) {

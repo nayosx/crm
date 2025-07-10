@@ -2,3 +2,15 @@
 @use "primeicons/primeicons.css";
 @use "primeflex/primeflex.css";
 @use "drstyles/src/main.scss";
+
+
+*,
+body {
+    font-family: "Open Sans", sans-serif;
+    font-optical-sizing: auto;
+}
+
+
+.p-card-custom-header {
+  padding: var(--p-card-body-padding);
+}
