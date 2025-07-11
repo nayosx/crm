@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, ViewEncapsulation } from '@angular/core';
 import { Router } from '@angular/router';
 import { ClientFormComponent } from "../client-form/client-form.component";
-import { ClientFacade } from '@shared/services/client.facade';
+import { ClientFacade } from '@shared/services/client/client.facade';
 import { Client } from '@shared/interfaces/client.interface';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';

@@ -3,7 +3,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
-import { AuthFacade } from '@shared/services/auth.facade';
+import { AuthFacade } from '@shared/services/auth/auth.facade';
 import { ROUTE_PATH } from '@core/routes-path';
 import { Router } from '@angular/router';
 import { KEYSTORE } from '@core/keystore';

@@ -42,6 +42,29 @@ export const routes: Routes = [
                     }
                 ]
             },
+
+
+            {
+                path: ROUTE_PATH.TRANSACTIONS,
+                children: [
+                    {
+                        path: '',
+                        loadComponent: () =>
+                            import('./modules/transaction/transaction.component').then(m => m.TransactionComponent)
+                    },
+                    {
+                        path: 'create',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-add/transaction-add.component').then(m => m.TransactionAddComponent)
+                    },
+                    {
+                        path: ':id/edit',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-edit/transaction-edit.component').then(m => m.TransactionEditComponent)
+                    }
+                ]
+            },
+
             {
                 path: '',
                 redirectTo: ROUTE_PATH.HOME,

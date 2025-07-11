@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, ViewChild, ViewEncapsulation } from '@angular/core';
-import { ClientService } from '@shared/services/client.service';
+import { ClientService } from '@shared/services/client/client.service';
 import { Client, ClientFullResponse } from '@shared/interfaces/client.interface';
-import { ClientFacade } from '@shared/services/client.facade';
+import { ClientFacade } from '@shared/services/client/client.facade';
 import { getReduceName } from '@shared/utils/text.util';
 import { ButtonModule } from 'primeng/button';
 import { PaginatorModule } from 'primeng/paginator';

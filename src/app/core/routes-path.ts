@@ -8,4 +8,9 @@ export const ROUTE_PATH = {
     CLIENT_CREATE: 'clients/create',
     CLIENT_EDIT: 'clients/edit/:id',
     CLIENTS_SEARCH: 'clients/search',
+
+    TRANSACTIONS: 'transactions',
+    TRANSACTION_ADD: 'transactions/add',
+    TRANSACTION_DETAIL: 'transactions/:id',
+    TRANSACTION_EDIT: 'transactions/edit/:id',
 }

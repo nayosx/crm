@@ -2,7 +2,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { KEYSTORE } from '@core/keystore';
-import { AuthService } from '@shared/services/auth.service';
+import { AuthService } from '@shared/services/auth/auth.service';
 
 export const appInterceptor: HttpInterceptorFn = (req, next) => {
   const skipAuth = req.headers.has('skip-auth');

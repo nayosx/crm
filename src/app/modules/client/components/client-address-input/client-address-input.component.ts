@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ClientAddress } from '@shared/interfaces/client.interface';
-import { ClientAddressFacadeService } from '@shared/services/client-address-facade.service';
+import { ClientAddressFacadeService } from '@shared/services/client/client-address-facade.service';
 import { ButtonModule } from 'primeng/button';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextModule } from 'primeng/inputtext';

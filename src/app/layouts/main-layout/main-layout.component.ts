@@ -1,6 +1,6 @@
 import { Component, inject, ViewEncapsulation } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { AuthService } from '@shared/services/auth.service';
+import { AuthService } from '@shared/services/auth/auth.service';
 import { ButtonModule } from 'primeng/button';
 import { PanelMenuModule } from 'primeng/panelmenu';
 import { SidebarModule } from 'primeng/sidebar';
@@ -34,6 +34,11 @@ export class MainLayoutComponent {
       label: 'Clientes',
       icon: 'pi pi-users',
       routerLink: ['/clients']
+    },
+    {
+      label: 'Transacciones',
+      icon: 'pi pi-dollar',
+      routerLink: ['/transactions']
     },
     {
       label: 'Configuración',

@@ -4,7 +4,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputSwitchModule } from 'primeng/inputswitch';
-import { ClientPhoneFacade } from '@shared/services/client-phone-facade.service';
+import { ClientPhoneFacade } from '@shared/services/client/client-phone-facade.service';
 import { ClientPhone } from '@shared/interfaces/client.interface';
 
 @Component({

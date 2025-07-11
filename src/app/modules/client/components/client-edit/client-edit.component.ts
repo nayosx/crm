@@ -1,9 +1,9 @@
 import { Component, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Client, ClientAddress, ClientPhone } from '@shared/interfaces/client.interface';
-import { ClientFacade } from '@shared/services/client.facade';
-import { ClientPhoneFacade } from '@shared/services/client-phone-facade.service';
-import { ClientAddressFacadeService } from '@shared/services/client-address-facade.service';
+import { ClientFacade } from '@shared/services/client/client.facade';
+import { ClientPhoneFacade } from '@shared/services/client/client-phone-facade.service';
+import { ClientAddressFacadeService } from '@shared/services/client/client-address-facade.service';
 import { ClientFormComponent } from '../client-form/client-form.component';
 import { ClientPhoneInputComponent } from '../client-phone-input/client-phone-input.component';
 import { ClientPhoneListComponent } from '../client-phone-list/client-phone-list.component';
