@@ -1,0 +1,24 @@
+<ng-container *ngIf="roles">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-column gap-3">
+        <div class="flex flex-column align-items-start gap-2">
+            <label>Rol</label>
+            <p-dropdown class="w-full" [options]="roles" optionLabel="name" optionValue="id" formControlName="role_id"
+                placeholder="Select Role" />
+        </div>
+        <div class="flex flex-column align-items-start gap-2">
+            <label>Username</label>
+            <input class="w-full" pInputText formControlName="username" />
+        </div>
+        <div class="flex flex-column align-items-start gap-2">
+            <label>Name</label>
+            <input class="w-full" pInputText formControlName="name" />
+        </div>
+        <div class="flex flex-column align-items-start gap-2">
+            <label>Phone</label>
+            <input class="w-full" pInputText formControlName="phone" />
+        </div>
+        <div class="mt-2">
+            <button pButton type="submit" label="Save" [disabled]="form.invalid"></button>
+        </div>
+    </form>
+</ng-container>

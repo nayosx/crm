@@ -41,6 +41,11 @@ export class MainLayoutComponent {
       routerLink: ['/transactions']
     },
     {
+      label: 'Usuarios',
+      icon: 'pi pi-users',
+      routerLink: ['/users']
+    },
+    {
       label: 'Configuración',
       icon: 'pi pi-cog',
       routerLink: ['/settings']

@@ -65,6 +65,50 @@ export const routes: Routes = [
                 ]
             },
 
+
+            {
+                path: ROUTE_PATH.SERVICES_TASK,
+                children: [
+                    {
+                        path: '',
+                        loadComponent: () =>
+                            import('./modules/transaction/transaction.component').then(m => m.TransactionComponent)
+                    },
+                    {
+                        path: 'create',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-add/transaction-add.component').then(m => m.TransactionAddComponent)
+                    },
+                    {
+                        path: ':id/edit',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-edit/transaction-edit.component').then(m => m.TransactionEditComponent)
+                    },
+                    {
+                        path: 'histories',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-edit/transaction-edit.component').then(m => m.TransactionEditComponent)
+                    },
+                    {
+                        path: 'assignments',
+                        loadComponent: () =>
+                            import('./modules/transaction/components/transaction-edit/transaction-edit.component').then(m => m.TransactionEditComponent)
+                    }
+                ]
+            },
+
+
+            {
+                path: ROUTE_PATH.USERS,
+                children: [
+                    {
+                        path: '',
+                        loadComponent: () =>
+                            import('./modules/users/users.component').then(m => m.UsersComponent)
+                    },
+                ]
+            },
+
             {
                 path: '',
                 redirectTo: ROUTE_PATH.HOME,

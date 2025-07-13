@@ -13,4 +13,8 @@ export const ROUTE_PATH = {
     TRANSACTION_ADD: 'transactions/add',
     TRANSACTION_DETAIL: 'transactions/:id',
     TRANSACTION_EDIT: 'transactions/edit/:id',
+
+    SERVICES_TASK: 'service-tasks',
+
+    USERS: 'users',
 }
