@@ -42,8 +42,6 @@ export const routes: Routes = [
                     }
                 ]
             },
-
-
             {
                 path: ROUTE_PATH.TRANSACTIONS,
                 children: [
@@ -64,8 +62,6 @@ export const routes: Routes = [
                     }
                 ]
             },
-
-
             {
                 path: ROUTE_PATH.SERVICES_TASK,
                 children: [
@@ -96,8 +92,6 @@ export const routes: Routes = [
                     }
                 ]
             },
-
-
             {
                 path: ROUTE_PATH.USERS,
                 children: [
@@ -108,7 +102,26 @@ export const routes: Routes = [
                     },
                 ]
             },
-
+            {
+                path: ROUTE_PATH.LAUNDRY,
+                children: [
+                    {
+                        path: '',
+                        loadComponent: () =>
+                            import('./modules/laundry/laundry.component').then(m => m.LaundryComponent)
+                    },
+                    {
+                        path: 'create',
+                        loadComponent: () =>
+                            import('./modules/laundry/components/laundry-add/laundry-add.component').then(m => m.LaundryAddComponent)
+                    },
+                    {
+                        path: ':id/edit',
+                        loadComponent: () =>
+                            import('./modules/laundry/components/laundry-edit/laundry-edit.component').then(m => m.LaundryEditComponent)
+                    }
+                ]
+            },
             {
                 path: '',
                 redirectTo: ROUTE_PATH.HOME,

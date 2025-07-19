@@ -12,10 +12,11 @@ import { EditorModule } from 'primeng/editor';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { DialogModule } from 'primeng/dialog';
 import { UserData } from '@shared/interfaces/auth.interface';
+import { TransactionService } from '@shared/services/transaction/transaction.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-transaction-form',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -27,15 +28,15 @@ import { UserData } from '@shared/interfaces/auth.interface';
     TagModule,
     EditorModule,
     SelectButtonModule,
-    DialogModule,
+    DialogModule
   ],
   templateUrl: './transaction-form.component.html'
 })
 export class TransactionFormComponent implements OnInit {
   @Input() transaction: Transaction | null = null;
-  @Input() paymentTypes: PaymentType[] = [];
-  @Input() categories: TransactionCategory[] = [];
   @Input() submitLabel = 'Guardar';
+  @Input() client: Client | null | undefined = null;
+
   @Output() onSubmit = new EventEmitter<Partial<Transaction>>();
 
   form!: FormGroup;
@@ -43,35 +44,55 @@ export class TransactionFormComponent implements OnInit {
   displayClientDialog = false;
   userId: number | null = null;
 
-  constructor(private fb: FormBuilder) {}
+  paymentTypes: PaymentType[] = [];
+  categories: TransactionCategory[] = [];
+  ready = false;
+
+  constructor(
+    private fb: FormBuilder,
+    private transactionService: TransactionService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-    // Leer user de sessionStorage
     const userRaw = sessionStorage.getItem('user');
     if (userRaw) {
       const user: UserData = JSON.parse(userRaw);
       this.userId = user.id;
     }
 
-    this.form = this.fb.group({
-      transaction_type: [this.transaction?.transaction_type || 'IN', Validators.required],
-      payment_type_id: [this.transaction?.payment_type_id || null, Validators.required],
-      category_id: [{ value: this.transaction?.category_id || null, disabled: false }],
-      client_id: [{ value: this.transaction?.client_id || null, disabled: false }],
-      detail: [this.transaction?.detail || null],
-      amount: [this.transaction?.amount || '', 
-        [
-          Validators.required, 
-          Validators.min(0.01),
-          Validators.pattern(/^\d+(\.\d{1,2})?$/)
+    const isAutoMode = !!this.client;
+
+    this.transactionService.loadPaymentTypesAndCategories().subscribe(data => {
+      this.paymentTypes = data.paymentTypes;
+      this.categories = data.categories;
+      this.ready = true;
+
+      this.form = this.fb.group({
+        transaction_type: [{ value: isAutoMode ? 'IN' : this.transaction?.transaction_type || 'IN', disabled: isAutoMode }, Validators.required],
+        payment_type_id: [this.transaction?.payment_type_id || null, Validators.required],
+        category_id: [{ value: this.transaction?.category_id || null, disabled: true }],
+        client_id: [{ value: isAutoMode ? this.client?.id : this.transaction?.client_id || null, disabled: isAutoMode }],
+        detail: [this.transaction?.detail || null],
+        amount: [
+          this.transaction?.amount || '',
+          [
+            Validators.required,
+            Validators.min(0.01),
+            Validators.pattern(/^\d+(\.\d{1,2})?$/)
+          ]
         ]
-      ],
-    });
+      });
 
-    this.updateValidators(this.form.get('transaction_type')?.value);
+      if (isAutoMode && this.client) {
+        this.selectedClientName = this.client.name;
+      }
 
-    this.form.get('transaction_type')?.valueChanges.subscribe(type => {
-      this.updateValidators(type);
+      this.updateValidators(this.form.get('transaction_type')?.value);
+
+      this.form.get('transaction_type')?.valueChanges.subscribe(type => {
+        this.updateValidators(type);
+      });
     });
   }
 
@@ -80,9 +101,11 @@ export class TransactionFormComponent implements OnInit {
     const clientControl = this.form.get('client_id');
 
     if (type === 'IN') {
-      clientControl?.enable();
-      clientControl?.setValidators([Validators.required]);
-      clientControl?.updateValueAndValidity();
+      if (!this.client) {
+        clientControl?.enable();
+        clientControl?.setValidators([Validators.required]);
+        clientControl?.updateValueAndValidity();
+      }
 
       categoryControl?.setValue(null);
       categoryControl?.clearValidators();
@@ -92,11 +115,18 @@ export class TransactionFormComponent implements OnInit {
       categoryControl?.setValidators([Validators.required]);
       categoryControl?.updateValueAndValidity();
 
-      clientControl?.setValue(null);
-      clientControl?.clearValidators();
-      clientControl?.disable();
+      if (!this.client) {
+        clientControl?.setValue(null);
+        clientControl?.clearValidators();
+        clientControl?.disable();
+      }
+
       this.selectedClientName = '';
     }
+  }
+
+  openClientDialog(): void {
+    this.displayClientDialog = true;
   }
 
   onClientSelected(client: Client): void {
@@ -105,15 +135,16 @@ export class TransactionFormComponent implements OnInit {
     this.displayClientDialog = false;
   }
 
-  openClientDialog(): void {
-    this.displayClientDialog = true;
-  }
-
   submit(): void {
     if (this.form.valid) {
       const formValue = this.form.getRawValue();
       formValue.user_id = this.userId;
+
       this.onSubmit.emit(formValue);
+
+      console.log('Form submitted:', formValue);
+    } else {
+      this.form.markAllAsTouched();
     }
   }
 }

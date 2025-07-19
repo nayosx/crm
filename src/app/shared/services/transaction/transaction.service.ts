@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
-import { PaginatedTransactions, PaymentType, Transaction, TransactionCategory } from '@shared/interfaces/transaction.interface';
+import { PaginatedTransactions, PaymentType, Transaction, TransactionCategory, TransactionResponse } from '@shared/interfaces/transaction.interface';
 import { PaymentTypeService } from './payment-type.service';
 import { TransactionCategoryService } from './transaction-category.service';
 import { environment } from '@env/environment.development';
@@ -40,8 +40,8 @@ export class TransactionService {
         return this.http.get<Transaction>(`${this.apiUrl}/${id}`);
     }
 
-    createTransaction(transaction: Partial<Transaction>): Observable<Transaction> {
-        return this.http.post<Transaction>(this.apiUrl, transaction);
+    createTransaction(transaction: Partial<Transaction>): Observable<TransactionResponse> {
+        return this.http.post<TransactionResponse>(this.apiUrl, transaction);
     }
 
     updateTransaction(id: number, transaction: Partial<Transaction>): Observable<Transaction> {

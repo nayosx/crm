@@ -3,8 +3,8 @@
 </div>
 
 <div class="flex flex-wrap align-items-center gap-2 mb-3">
-  <p-calendar [(ngModel)]="startDate" dateFormat="yy-mm-dd" placeholder="Fecha inicio" [showIcon]="true"></p-calendar>
-  <p-calendar [(ngModel)]="endDate" dateFormat="yy-mm-dd" placeholder="Fecha fin" [showIcon]="true"></p-calendar>
+  <p-datepicker [(ngModel)]="startDate" dateFormat="yy-mm-dd" placeholder="Fecha inicio" [showIcon]="true"></p-datepicker>
+  <p-datepicker [(ngModel)]="endDate" dateFormat="yy-mm-dd" placeholder="Fecha fin" [showIcon]="true"></p-datepicker>
   <button pButton label="Filtrar" icon="pi pi-filter" class="p-button-primary" (click)="loadPage(1, rows)"></button>
   <button pButton label="Reset" icon="pi pi-refresh" class="p-button-secondary" (click)="onResetFilters()"></button>
   <button pButton label="Nueva Transacción" icon="pi pi-plus" class="p-button-success" (click)="onCreate()"></button>

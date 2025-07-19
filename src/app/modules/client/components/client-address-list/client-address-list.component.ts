@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-client-address-list',
+  standalone: true,
   imports: [
     CommonModule,
     ButtonModule
@@ -15,10 +16,11 @@ import { ButtonModule } from 'primeng/button';
 export class ClientAddressListComponent {
   @Input() addresses: ClientAddress[] = [];
   @Input() loading = false;
+  @Input() selectionMode = false;
 
   @Output() edit = new EventEmitter<ClientAddress>();
   @Output() delete = new EventEmitter<number>();
-
+  @Output() select = new EventEmitter<ClientAddress>();
 
   generateNavigationLinks(lat: number, lng: number) {
     return {

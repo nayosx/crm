@@ -1,0 +1,17 @@
+<div class="flex align-items-center gap-2 mb-3">
+  <h2><app-back-button [path]="'/laundry'" />Editar Servicio de Lavandería</h2>
+</div>
+
+<div class="grid">
+  <div class="col-12 md:col-6 mb-4">
+    <p-card class="border-round shadow-2">
+      <ng-container *ngIf="!loading && initialData">
+        <app-laundry-form
+          [initialData]="initialData"
+          [isEditMode]="true"
+          (formSubmit)="onFormSubmit($event)">
+        </app-laundry-form>
+      </ng-container>
+    </p-card>
+  </div>
+</div>

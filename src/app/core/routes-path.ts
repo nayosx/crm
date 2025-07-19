@@ -17,4 +17,6 @@ export const ROUTE_PATH = {
     SERVICES_TASK: 'service-tasks',
 
     USERS: 'users',
+
+    LAUNDRY: 'laundry',
 }

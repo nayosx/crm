@@ -1,18 +1,16 @@
-<form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
+<!-- Renderizar solo si el formulario ya está listo -->
+<form *ngIf="form && ready" [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
 
-  <!-- Transaction Type -->
-  <div class="flex flex-column align-items-start gap-2">
+  <!-- Tipo de Transacción (solo si no es automático) -->
+  <div class="flex flex-column align-items-start gap-2" *ngIf="!client">
     <label for="transactionType">Tipo de Transacción</label>
     <p-selectbutton formControlName="transaction_type" [options]="[
         { label: 'Ingreso', value: 'IN' },
         { label: 'Egreso', value: 'OUT' }
       ]" optionLabel="label" optionValue="value" class="w-full"></p-selectbutton>
-    <small *ngIf="form.get('transaction_type')?.invalid && form.get('transaction_type')?.touched" class="p-error">
-      Requerido
-    </small>
   </div>
 
-  <!-- Category (OUT) -->
+  <!-- Categoría (solo para egreso) -->
   <div *ngIf="form.get('transaction_type')?.value === 'OUT'" class="flex flex-column align-items-start gap-2">
     <label for="category">Categoría</label>
     <p-select id="category" [options]="categories" formControlName="category_id" placeholder="Seleccione categoría"
@@ -22,26 +20,30 @@
     </small>
   </div>
 
-  <!-- Client selector (IN) -->
+  <!-- Cliente -->
   <div *ngIf="form.get('transaction_type')?.value === 'IN'" class="flex flex-column align-items-start gap-2">
     <label>Cliente</label>
-    <button pButton label="Seleccionar Cliente" icon="pi pi-user" (click)="openClientDialog()" type="button"></button>
 
-    <div *ngIf="selectedClientName" class="p-mt-2">
-      <p-tag severity="info" [value]="selectedClientName"></p-tag>
-    </div>
+    <ng-container *ngIf="client; else clientSelector">
+      <p-tag severity="info" [value]="client.name"></p-tag>
+    </ng-container>
 
-    <small *ngIf="form.get('client_id')?.invalid && form.get('client_id')?.touched" class="p-error">
-      Requerido
-    </small>
+    <ng-template #clientSelector>
+      <button pButton label="Seleccionar Cliente" icon="pi pi-user" (click)="openClientDialog()" type="button"></button>
+      <div *ngIf="selectedClientName" class="p-mt-2">
+        <p-tag severity="info" [value]="selectedClientName"></p-tag>
+      </div>
+      <small *ngIf="form.get('client_id')?.invalid && form.get('client_id')?.touched" class="p-error">
+        Requerido
+      </small>
+    </ng-template>
   </div>
 
-  <!-- Client dialog -->
   <p-dialog header="Seleccione Cliente" [(visible)]="displayClientDialog" [modal]="true" [style]="{ width: '40rem' }">
     <app-client-list (clientSelected)="onClientSelected($event)" [showActions]="false"></app-client-list>
   </p-dialog>
 
-  <!-- Payment Type -->
+  <!-- Forma de Pago -->
   <div class="flex flex-column align-items-start gap-2">
     <label for="paymentType">Forma de Pago</label>
     <p-select id="paymentType" [options]="paymentTypes" formControlName="payment_type_id"
@@ -51,41 +53,32 @@
     </small>
   </div>
 
-  <!-- Detail -->
+  <!-- Detalle -->
   <div class="flex flex-column align-items-start gap-2">
     <label for="detail">Detalle</label>
     <p-editor id="detail" formControlName="detail" [style]="{ height: '200px' }" placeholder="Describa la transacción"
       class="w-full"></p-editor>
   </div>
 
-  <!-- Amount -->
+  <!-- Monto -->
   <div class="flex flex-column align-items-start gap-2">
     <label for="amount">Monto</label>
     <input id="amount" pInputText formControlName="amount" type="number" min="0.01" class="w-full" />
 
-    <small *ngIf="
-    form.get('amount')?.errors?.['required'] &&
-    form.get('amount')?.touched" class="text-danger">
+    <small *ngIf="form.get('amount')?.errors?.['required'] && form.get('amount')?.touched" class="text-danger">
       Monto requerido
     </small>
 
-    <small *ngIf="
-    form.get('amount')?.errors?.['min'] &&
-    form.get('amount')?.touched" 
-    class="text-danger">
+    <small *ngIf="form.get('amount')?.errors?.['min'] && form.get('amount')?.touched" class="text-danger">
       El monto debe ser mayor a 0
     </small>
 
-    <small *ngIf="
-    form.get('amount')?.errors?.['pattern'] &&
-    form.get('amount')?.touched" 
-    class="text-danger">
+    <small *ngIf="form.get('amount')?.errors?.['pattern'] && form.get('amount')?.touched" class="text-danger">
       Máximo dos decimales permitidos
     </small>
   </div>
 
-
-  <!-- Submit -->
+  <!-- Guardar -->
   <div class="flex flex-column align-items-start gap-2">
     <button pButton type="submit" [label]="submitLabel" [disabled]="form.invalid" class="p-button-success"></button>
   </div>

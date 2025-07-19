@@ -6,15 +6,11 @@
     <div class="col-12 md:col-6 mb-4">
         <p-card class="border-round shadow-2">
 
-            <ng-container *ngIf="ready; else loading">
-                <app-transaction-form [paymentTypes]="paymentTypes" [categories]="categories"
+            <ng-container>
+                <app-transaction-form
                     [submitLabel]="'Crear Transacción'" (onSubmit)="create($event)">
                 </app-transaction-form>
             </ng-container>
-            <ng-template #loading>
-                <p-skeleton width="100%" height="2rem"></p-skeleton>
-                <p-skeleton width="100%" height="20rem"></p-skeleton>
-            </ng-template>
 
         </p-card>
     </div>

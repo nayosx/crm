@@ -16,6 +16,10 @@ export class ClientAddressService {
     return this.http.get<ClientAddress[]>(this.apiUrl);
   }
 
+  getAddressesByClientId(clientId: number): Observable<ClientAddress[]> {
+    return this.http.get<ClientAddress[]>(`${this.apiUrl}?client_id=${clientId}`);
+  }
+
   getAddress(id: number): Observable<ClientAddress> {
     return this.http.get<ClientAddress>(`${this.apiUrl}/${id}`);
   }

@@ -1,0 +1,108 @@
+<form *ngIf="form" [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
+
+  <!-- Cliente -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Cliente</label>
+    <button pButton label="Seleccionar Cliente" icon="pi pi-user" (click)="openClientDialog()" type="button" [disabled]="initialData?.id"></button>
+    <div *ngIf="selectedClientName" class="mt-2">
+      <p-tag severity="info" [value]="selectedClientName"></p-tag>
+    </div>
+  </div>
+
+  <!-- Dirección -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Dirección</label>
+    <button pButton label="Seleccionar Dirección" icon="pi pi-map-marker" (click)="onChangeAddress(form.get('client_id')?.value)"
+      type="button" [disabled]="!form.get('client_id')?.value || (initialData?.client?.addresses?.length ?? 0) <= 1"></button>
+    <div *ngIf="selectedAddress" class="mt-2">
+      <p-tag severity="info" [value]="selectedAddress"></p-tag>
+    </div>
+  </div>
+
+  <!-- Fecha -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Fecha de recolección</label>
+    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd" showIcon [showOnFocus]="false"></p-datepicker>
+  </div>
+
+  <!-- Hora -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Hora de recolección</label>
+    <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true" hourFormat="12"
+      [stepMinute]="15" showIcon></p-datepicker>
+  </div>
+
+  <!-- Tipo servicio -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Tipo de servicio</label>
+    <p-select class="w-full" formControlName="service_label" [options]="[
+        { label: 'Normal', value: 'NORMAL' },
+        { label: 'Express', value: 'EXPRESS' }
+      ]" optionLabel="label" optionValue="value" placeholder="Selecciona un tipo"></p-select>
+  </div>
+
+  <!-- Estado -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Estado</label>
+    <p-select class="w-full" formControlName="status"
+  [options]="statusOptions"
+  optionLabel="label"
+  optionValue="value"
+  placeholder="Selecciona un estado">
+</p-select>
+
+    <small *ngIf="form.get('status')?.disabled" class="text-muted">
+      Este campo solo se puede modificar luego de crear el servicio.
+    </small>
+  </div>
+
+  <!-- Transacción -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Transacción</label>
+    <ng-container *ngIf="isEditMode && !createdTransaction">
+      <button pButton icon="pi pi-plus" label="Crear Transacción" type="button"
+        (click)="openTransactionDialog()" [disabled]="!initialData?.id"></button>
+    </ng-container>
+
+    <div *ngIf="createdTransaction" class="p-3 border-1 surface-border border-round w-full">
+      <div class="text-sm mb-2 text-primary font-medium">Transacción registrada</div>
+
+      <div class="flex flex-column gap-1">
+        <div><strong>ID:</strong> {{ createdTransaction.id }}</div>
+        <div><strong>Monto:</strong> {{ createdTransaction.amount | currency}}</div>
+        <div><strong>Tipo de pago:</strong> {{ createdTransaction.payment_type_name || 'No disponible' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalle -->
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Detalle</label>
+    <p-editor class="w-full" formControlName="detail" [style]="{ height: '200px' }"></p-editor>
+  </div>
+
+  <!-- Guardar -->
+  <div class="flex flex-column align-items-start gap-2">
+    <button pButton type="submit" label="Guardar" [disabled]="form.invalid"></button>
+  </div>
+</form>
+
+<!-- Diálogo Cliente -->
+<p-dialog header="Seleccione Cliente" [(visible)]="displayClientDialog" [modal]="true" [style]="{ width: '40rem' }">
+  <app-client-list (clientSelected)="onClientSelected($event)" [showActions]="false" *ngIf="displayClientDialog" />
+</p-dialog>
+
+<!-- Diálogo Dirección -->
+<p-dialog header="Seleccione Dirección" [(visible)]="displayAddressDialog" [modal]="true" [style]="{ width: '40rem' }">
+  <app-client-address-list [addresses]="addresses" [loading]="isLoading" [selectionMode]="true"
+    (select)="onAddressSelected($event)" />
+</p-dialog>
+
+<!-- Diálogo Transacción -->
+<p-dialog header="Registrar Transacción" [(visible)]="displayTransactionDialog" [modal]="true" [style]="{ width: '50rem' }">
+  <app-transaction-form
+    [client]="initialData?.client"
+    [submitLabel]="'Guardar'"
+    (onSubmit)="onTransactionSetter($event)" *ngIf="displayTransactionDialog">
+  </app-transaction-form>
+</p-dialog>

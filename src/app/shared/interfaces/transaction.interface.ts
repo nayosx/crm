@@ -14,6 +14,22 @@ export interface Transaction {
   category_name?: string;
 }
 
+export interface TransactionFull {
+  id: number;
+  amount: string;
+  category_id: number | null;
+  client_id: number;
+  client_name: string;
+  created_at: string;
+  updated_at: string;
+  detail: string;
+  payment_type_id: number;
+  payment_type_name: string;
+  transaction_type: 'IN' | 'OUT';
+  user_id: number;
+  user_name: string;
+}
+
 export interface TransactionCategory {
   id: number;
   category_name: string;
@@ -31,4 +47,10 @@ export interface PaginatedTransactions {
   page: number;
   pages: number;
   per_page: number;
+}
+
+
+export interface TransactionResponse {
+  message: string;
+  transaction: Transaction;
 }

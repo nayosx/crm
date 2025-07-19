@@ -6,9 +6,10 @@ import { ButtonModule } from 'primeng/button';
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
-import { CalendarModule } from 'primeng/calendar';
+
 import { Transaction } from '@shared/interfaces/transaction.interface';
 import { FormsModule } from '@angular/forms';
+import { DatePickerModule } from 'primeng/datepicker';
 
 @Component({
   selector: 'app-transaction',
@@ -18,7 +19,7 @@ import { FormsModule } from '@angular/forms';
     TableModule,
     CardModule,
     TagModule,
-    CalendarModule,
+    DatePickerModule,
     FormsModule,
   ],
   templateUrl: './transaction.component.html',

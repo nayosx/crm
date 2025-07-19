@@ -1,0 +1,62 @@
+<div class="flex align-items-center gap-2 mb-3 border-bottom-1 surface-border pb-2 mb-2">
+  <h2>Lista de Programaciones</h2>
+</div>
+
+<div class="flex align-items-center gap-2 mb-3">
+  <button
+    pButton
+    label="Crear Programación"
+    icon="pi pi-plus"
+    class="p-button-success"
+    (click)="onCreateLaundry()"
+    type="button"
+  ></button>
+</div>
+
+<p-card header="Programaciones registradas">
+  <p-table
+    [value]="laundries"
+    [lazy]="true"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="totalRecords"
+    [loading]="loading"
+    (onLazyLoad)="onLazyLoad($event)"
+    [rowsPerPageOptions]="[5, 10, 20, 50]"
+    responsiveLayout="scroll"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>ID</th>
+        <th>Cliente</th>
+        <th>Fecha de recogida</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-laundry>
+      <tr>
+        <td>{{ laundry.id }}</td>
+        <td>{{ laundry.client?.name || 'Sin nombre' }}</td>
+        <td>{{ laundry.scheduled_pickup_at | date: 'short' }}</td>
+        <td>{{ laundry.status }}</td>
+        <td>
+          <button
+            pButton
+            icon="pi pi-pencil"
+            size="small"
+            (click)="onEditLaundry(laundry.id)"
+            type="button"
+          ></button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6">No se encontraron programaciones.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>

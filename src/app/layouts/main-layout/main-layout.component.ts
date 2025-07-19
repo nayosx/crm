@@ -49,6 +49,11 @@ export class MainLayoutComponent {
       label: 'Configuración',
       icon: 'pi pi-cog',
       routerLink: ['/settings']
+    },
+    {
+      label: 'Lavandería',
+      icon: 'pi pi-cog',
+      routerLink: ['/laundry']
     }
   ];
 

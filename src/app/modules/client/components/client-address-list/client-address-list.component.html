@@ -1,22 +1,28 @@
-<div *ngIf="loading" class="mt-2">
-  Cargando direcciones...
-</div>
+<div *ngIf="loading" class="mt-2">Cargando direcciones...</div>
 
 <ul class="list-none p-0 mt-3">
   <li *ngFor="let address of addresses"
-    class="flex flex-column	 justify-content-between align-items-center border-bottom-1 surface-border py-4">
-    <div class="flex flex-row	 justify-content-between align-items-center w-full">
+      class="flex flex-column justify-content-between align-items-center border-bottom-1 surface-border py-3 px-2 rounded-lg">
+    
+    <div class="flex justify-content-between align-items-center w-full">
       <div>
-        <span class="font-medium">{{ address.address_text }}</span>
-        <span *ngIf="address.is_primary" class="ml-2 text-green-500">(Principal)</span>
+        <span class="font-medium text-base">{{ address.address_text }}</span>
+        <span *ngIf="address.is_primary" class="ml-2 text-green-500 text-sm">(Principal)</span>
       </div>
-    <div class="flex gap-2">
-      <button pButton icon="pi pi-pencil" class="p-button-sm p-button-secondary" (click)="edit.emit(address)"></button>
-      <button pButton icon="pi pi-trash" class="p-button-sm p-button-danger" (click)="delete.emit(address.id)"></button>
+
+      <div class="flex gap-2">
+        <ng-container *ngIf="!selectionMode; else selectionActions">
+          <button pButton icon="pi pi-pencil" class="p-button-sm p-button-secondary" (click)="edit.emit(address)" type="button"></button>
+          <button pButton icon="pi pi-trash" class="p-button-sm p-button-danger" (click)="delete.emit(address.id)" type="button"></button>
+        </ng-container>
+        <ng-template #selectionActions>
+          <button pButton label="Seleccionar" class="p-button-sm p-button-success" (click)="select.emit(address)" type="button"></button>
+        </ng-template>
+      </div>
     </div>
-    </div>
-    <div class="mb-2 w-full">
-      <div *ngIf="address.latitude && address.longitude" class="flex gap-2 mt-2">
+
+    <div class="mb-2 w-full" *ngIf="!selectionMode && address.latitude && address.longitude">
+      <div class="flex gap-2 mt-2">
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).googleMaps"
           target="_blank" label="GMaps" icon="pi pi-map-marker" class="p-button-success no-underline"></a>
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).waze"
@@ -24,8 +30,6 @@
         <a pButton type="button" [href]="generateNavigationLinks(address.latitude, address.longitude).appleMaps"
           target="_blank" label="Apple" icon="pi pi-compass" class="p-button-warning no-underline"></a>
       </div>
-
     </div>
-
   </li>
 </ul>
