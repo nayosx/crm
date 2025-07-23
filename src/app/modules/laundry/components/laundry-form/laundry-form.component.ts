@@ -47,7 +47,6 @@ export class LaundryFormComponent implements OnInit {
   @Input() isEditMode = false;
   @Output() formSubmit = new EventEmitter<Partial<LaundryServiceResp>>();
 
-
   form!: FormGroup;
   statuses = LaundryServiceStatusValues;
   statusOptions = this.statuses.map(s => ({ label: s, value: s }));
@@ -67,10 +66,9 @@ export class LaundryFormComponent implements OnInit {
     private fb: FormBuilder,
     private clientServ: ClientAddressService,
     private transactionServ: TransactionService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
-
     const pickupDate = this.initialData?.scheduled_pickup_at
       ? new Date(this.initialData.scheduled_pickup_at)
       : new Date();
@@ -83,10 +81,24 @@ export class LaundryFormComponent implements OnInit {
       pickup_date: [pickupDate, Validators.required],
       pickup_time: [pickupDate, Validators.required],
       service_label: [this.initialData?.service_label ?? 'NORMAL', Validators.required],
-      status: [{ value: this.initialData?.status ?? 'PENDING', disabled: this.isEditMode ? false : true }, Validators.required],
-      detail: [this.initialData?.detail ?? ''],
+      status: [{ value: initialStatus, disabled: this.isEditMode ? false : true }, Validators.required],
       transaction_id: [this.initialData?.transaction?.id ?? null]
     });
+
+    // Desactivar fecha/hora si el estado inicial no es PENDING
+    const editable = initialStatus === 'PENDING';
+    const action = editable ? 'enable' : 'disable';
+    this.form.get('pickup_date')?.[action]();
+    this.form.get('pickup_time')?.[action]();
+
+    // Escuchar cambios en tiempo real (opcional)
+    this.form.get('status')?.valueChanges.subscribe((status) => {
+      const editable = status === 'PENDING';
+      const action = editable ? 'enable' : 'disable';
+      this.form.get('pickup_date')?.[action]();
+      this.form.get('pickup_time')?.[action]();
+    });
+
 
     if (this.initialData?.client?.name) {
       this.selectedClientName = this.initialData.client.name;
@@ -106,6 +118,10 @@ export class LaundryFormComponent implements OnInit {
         }
       });
     }
+  }
+
+  get isPending(): boolean {
+    return this.form?.get('status')?.value === 'PENDING';
   }
 
   submit(): void {
@@ -149,14 +165,11 @@ export class LaundryFormComponent implements OnInit {
     this.form.patchValue({ client_id: client.id });
     this.selectedClientName = client.name;
     this.displayClientDialog = false;
-
-    console.log('Cliente seleccionado:', client);
-
     this.displayAddressDialog = true;
     this.getListAddresses(client.id);
   }
 
-  onChangeAddress(id:number):void {
+  onChangeAddress(id: number): void {
     this.displayAddressDialog = true;
     this.getListAddresses(id);
   }
@@ -167,11 +180,11 @@ export class LaundryFormComponent implements OnInit {
       next: (data) => {
         this.addresses = data;
 
-        if( this.addresses.length > 0 && this.addresses.length <= 1) {
+        if (this.addresses.length > 0 && this.addresses.length <= 1) {
           this.form.patchValue({ client_address_id: this.addresses[0].id });
           this.selectedAddress = this.addresses[0].address_text;
           this.displayAddressDialog = false;
-        } else if( this.addresses.length > 1) {
+        } else if (this.addresses.length > 1) {
           this.displayAddressDialog = true;
         } else {
           this.form.patchValue({ client_address_id: null });
@@ -198,7 +211,6 @@ export class LaundryFormComponent implements OnInit {
   }
 
   onTransactionSetter(transaction: Partial<Transaction>): void {
-
     this.transactionServ.createTransaction(transaction).subscribe({
       next: (resp) => {
         this.form.patchValue({ transaction_id: resp.transaction.id });
@@ -207,4 +219,9 @@ export class LaundryFormComponent implements OnInit {
       }
     });
   }
+
+  get canCreateTransaction(): boolean {
+    return this.form.get('status')?.value === 'READY_FOR_DELIVERY';
+  }
+
 }

@@ -7,6 +7,9 @@ import { CardModule } from 'primeng/card';
 
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { LaundryServiceResp } from '@shared/interfaces/laundry-service.interface';
+import { LaundryStatusColorMap, getLaundryStatusSeverity } from '@shared/utils/color.util';
+import { TagModule } from 'primeng/tag';
+
 
 @Component({
   selector: 'app-laundry',
@@ -16,6 +19,7 @@ import { LaundryServiceResp } from '@shared/interfaces/laundry-service.interface
     ButtonModule,
     TableModule,
     CardModule,
+    TagModule,
   ],
   templateUrl: './laundry.component.html',
   encapsulation: ViewEncapsulation.None
@@ -25,6 +29,7 @@ export class LaundryComponent {
   totalRecords = 0;
   loading = true;
   rows = 10;
+  statusColorMap = LaundryStatusColorMap;
 
   constructor(
     private router: Router,

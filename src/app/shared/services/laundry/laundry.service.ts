@@ -5,7 +5,8 @@ import { Observable } from 'rxjs';
 import {
   LaundryServiceResp,
   LaundryServicePagination,
-  LaundryServiceStatus
+  LaundryServiceStatus,
+  LaundryServiceWithMessages
 } from '@shared/interfaces/laundry-service.interface';
 import { environment } from '@env/environment.development';
 
@@ -56,5 +57,10 @@ export class LaundryService {
 
   updateStatus(id: number, status: LaundryServiceStatus): Observable<LaundryServiceResp> {
     return this.http.patch<LaundryServiceResp>(`${this.baseUrl}/${id}/update_status`, { status });
+  }
+
+
+  getWithMessages(id: number): Observable<LaundryServiceWithMessages> {
+    return this.http.get<LaundryServiceWithMessages>(`${this.baseUrl}/${id}/notes`);
   }
 }

@@ -2,8 +2,10 @@ import { Client, ClientAddress, ClientFullResponse } from "./client.interface";
 import { TransactionFull } from "./transaction.interface";
 import { User } from "./user.interface";
 
+/** Estados válidos del servicio de lavandería */
 export type LaundryServiceStatus =
   | 'PENDING'
+  | 'STARTED'
   | 'IN_PROGRESS'
   | 'READY_FOR_DELIVERY'
   | 'DELIVERED'
@@ -11,14 +13,14 @@ export type LaundryServiceStatus =
 
 export const LaundryServiceStatusValues: LaundryServiceStatus[] = [
   'PENDING',
+  'STARTED',
   'IN_PROGRESS',
   'READY_FOR_DELIVERY',
   'DELIVERED',
   'CANCELLED'
 ];
 
-
-
+/** Respuesta paginada de clientes */
 export interface ClientPageResponse {
   total: number;
   pages: number;
@@ -27,6 +29,7 @@ export interface ClientPageResponse {
   items: Client[];
 }
 
+/** Detalle resumido de una transacción */
 export interface TransactionDetail {
   id: number;
   amount: number;
@@ -34,6 +37,7 @@ export interface TransactionDetail {
   created_at: string;
 }
 
+/** Usuario completo (usado en logs o asignaciones) */
 export interface UserFull {
   id: number;
   name: string;
@@ -44,12 +48,28 @@ export interface UserFull {
   updated_at: string;
 }
 
+/** Nota o comentario asociado al servicio */
+export interface LaundryServiceLog {
+  id: number;
+  laundry_service_id: number;
+  status: LaundryServiceStatus;
+  detail: string;
+  created_at: string;
+  created_by?: User;
+}
+
+/** Payload para crear una nueva nota */
+export interface LaundryServiceLogPayload {
+  status: LaundryServiceStatus;
+  detail: string;
+}
+
+/** Respuesta individual del servicio */
 export interface LaundryServiceResp {
   id: number;
   scheduled_pickup_at: string;
   status: LaundryServiceStatus;
   service_label: 'NORMAL' | 'EXPRESS';
-  detail?: string;
   created_at: string;
   updated_at: string;
   client?: ClientFullResponse;
@@ -59,6 +79,12 @@ export interface LaundryServiceResp {
   created_by?: User;
 }
 
+/** Servicio + comentarios (endpoint /messages) */
+export interface LaundryServiceWithMessages extends LaundryServiceResp {
+  logs: LaundryServiceLog[];
+}
+
+/** Paginación de servicios */
 export interface LaundryServicePagination {
   items: LaundryServiceResp[];
   total: number;

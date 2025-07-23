@@ -29,7 +29,6 @@
       <tr>
         <th>ID</th>
         <th>Cliente</th>
-        <th>Fecha de recogida</th>
         <th>Estado</th>
         <th>Acciones</th>
       </tr>
@@ -39,8 +38,12 @@
       <tr>
         <td>{{ laundry.id }}</td>
         <td>{{ laundry.client?.name || 'Sin nombre' }}</td>
-        <td>{{ laundry.scheduled_pickup_at | date: 'short' }}</td>
-        <td>{{ laundry.status }}</td>
+        <td>
+          <p-tag
+            [value]="laundry.status"
+            [class]="statusColorMap[laundry.status]">
+          </p-tag>
+        </td>
         <td>
           <button
             pButton
