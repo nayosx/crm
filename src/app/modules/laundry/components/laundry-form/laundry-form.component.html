@@ -2,7 +2,8 @@
   <div class="flex flex-column align-items-start gap-2">
     <label>Cliente</label>
     @if (!initialData?.id) {
-      <button pButton label="Seleccionar Cliente" icon="pi pi-user" class="p-button-sm" (click)="openClientDialog()" type="button"></button>
+    <button pButton label="Seleccionar Cliente" icon="pi pi-user" class="p-button-sm" (click)="openClientDialog()"
+      type="button"></button>
     }
     <div *ngIf="selectedClientName" class="mt-2">
       <p-tag severity="info" [value]="selectedClientName"></p-tag>
@@ -11,65 +12,63 @@
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Dirección</label>
-      <button pButton label="Seleccionar Dirección" icon="pi pi-map-marker"
-              (click)="onChangeAddress(form.get('client_id')?.value)" 
-              class="p-button-sm" severity="secondary"
-              type="button" [disabled]="!form.get('client_id')?.value"></button>
+    <button pButton label="Seleccionar Dirección" icon="pi pi-map-marker"
+      (click)="onChangeAddress(form.get('client_id')?.value)" class="p-button-sm" severity="secondary" type="button"
+      [disabled]="!form.get('client_id')?.value"></button>
     <div *ngIf="selectedAddress" class="mt-2">
       <p-tag severity="secondary" [value]="selectedAddress"></p-tag>
     </div>
   </div>
 
   @if(!isPending) {
-    <div class="flex flex-column align-items-start gap-2">
-      <label>Fecha de recolección</label>
-      <p-tag severity="secondary">
-        {{ initialData?.scheduled_pickup_at | date: 'dd MMM yyyy' }} •
-        {{ initialData?.scheduled_pickup_at | date: 'hh:mm a'}}
-      </p-tag>
-    </div>
-      
-  } @else {
-    <div class="flex flex-column align-items-start gap-2">
-      <label>Fecha de recolección</label>
-      <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd"
-                    showIcon [showOnFocus]="false" [disabled]="!isPending"></p-datepicker>
-    </div>
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Fecha de recolección</label>
+    <p-tag severity="secondary">
+      {{ initialData?.scheduled_pickup_at | date: 'dd MMM yyyy' }} •
+      {{ initialData?.scheduled_pickup_at | date: 'hh:mm a'}}
+    </p-tag>
+  </div>
 
-    <div class="flex flex-column align-items-start gap-2">
-      <label>Hora de recolección</label>
-      <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true"
-                    hourFormat="12" [stepMinute]="15" showIcon [disabled]="!isPending"></p-datepicker>
-    </div>
+  } @else {
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Fecha de recolección</label>
+    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd" showIcon [showOnFocus]="false"
+      [disabled]="!isPending"></p-datepicker>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Hora de recolección</label>
+    <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true" hourFormat="12" [stepMinute]="15"
+      showIcon [disabled]="!isPending"></p-datepicker>
+  </div>
   }
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Tipo de servicio</label>
     <p-select class="w-full" formControlName="service_label"
-              [options]="[{ label: 'Normal', value: 'NORMAL' }, { label: 'Express', value: 'EXPRESS' }]"
-              optionLabel="label" optionValue="value" placeholder="Selecciona un tipo">
+      [options]="[{ label: 'Normal', value: 'NORMAL' }, { label: 'Express', value: 'EXPRESS' }]" optionLabel="label"
+      optionValue="value" placeholder="Selecciona un tipo">
     </p-select>
   </div>
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Estado</label>
-    <p-select class="w-full" formControlName="status"
-              [options]="statusOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Selecciona un estado">
+    <p-select class="w-full" formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value"
+      placeholder="Selecciona un estado">
     </p-select>
     <small *ngIf="form.get('status')?.disabled" class="text-muted">
       Este campo solo se puede modificar luego de crear el servicio.
     </small>
   </div>
 
+
+  @if(canCreateTransaction) {
   <div class="flex flex-column align-items-start gap-2">
     <label>Transacción</label>
 
     <ng-container *ngIf="isEditMode && !createdTransaction && canCreateTransaction">
-      <button pButton icon="pi pi-plus" label="Crear Transacción" type="button"
-              (click)="openTransactionDialog()" [disabled]="!initialData?.id">
+      <button pButton icon="pi pi-plus" label="Crear Transacción" type="button" (click)="openTransactionDialog()"
+        [disabled]="!initialData?.id">
       </button>
     </ng-container>
 
@@ -82,6 +81,7 @@
       </div>
     </div>
   </div>
+  }
 
   <div class="flex flex-column align-items-start gap-2">
     <button pButton type="submit" label="Guardar" [disabled]="form.invalid"></button>
@@ -97,10 +97,9 @@
     (select)="onAddressSelected($event)" />
 </p-dialog>
 
-<p-dialog header="Registrar Transacción" [(visible)]="displayTransactionDialog" [modal]="true" [style]="{ width: '50rem' }">
-  <app-transaction-form
-    [client]="initialData?.client"
-    [submitLabel]="'Guardar'"
+<p-dialog header="Registrar Transacción" [(visible)]="displayTransactionDialog" [modal]="true"
+  [style]="{ width: '50rem' }">
+  <app-transaction-form [client]="initialData?.client" [submitLabel]="'Guardar'"
     (onSubmit)="onTransactionSetter($event)" *ngIf="displayTransactionDialog">
   </app-transaction-form>
 </p-dialog>

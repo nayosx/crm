@@ -31,7 +31,6 @@ export class LaundryEditComponent implements OnInit {
   initialData?: LaundryServiceResp;
   loading = true;
 
-  // Control del diálogo y nueva nota
   notesDialogVisible = false;
   latestNote: LaundryServiceLog | null = null;
 
@@ -58,9 +57,17 @@ export class LaundryEditComponent implements OnInit {
   }
 
   onFormSubmit(data: Partial<LaundryServiceResp>): void {
+    const isRedirect = data.isRedirect || false;
+
+    delete data.isRedirect;
+    
     if (!this.initialData) return;
     this.laundryService.update(this.initialData.id, data).subscribe({
-      next: () => this.router.navigate(['/laundry']),
+      next: () => {
+        if(isRedirect) {
+          this.router.navigate(['/laundry']);
+        }
+      },
       error: () => {}
     });
   }

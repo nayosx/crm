@@ -77,6 +77,7 @@ export interface LaundryServiceResp {
   client_address?: ClientAddress;
   transaction?: TransactionDetail;
   created_by?: User;
+  isRedirect?: boolean;
 }
 
 /** Servicio + comentarios (endpoint /messages) */

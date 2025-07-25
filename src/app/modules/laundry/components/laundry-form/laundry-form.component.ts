@@ -127,9 +127,10 @@ export class LaundryFormComponent implements OnInit {
     return this.form?.get('status')?.value === 'PENDING';
   }
 
-  submit(): void {
+  submit(isRedirect:boolean = true): void {
     if (this.form.valid) {
       const formValue = this.form.getRawValue();
+      formValue.isRedirect = isRedirect;
 
       if (typeof formValue.service_label === 'object') {
         formValue.service_label = formValue.service_label.value;
@@ -219,6 +220,8 @@ export class LaundryFormComponent implements OnInit {
         this.form.patchValue({ transaction_id: resp.transaction.id });
         this.createdTransaction = resp.transaction;
         this.displayTransactionDialog = false;
+
+        this.submit(false);
       }
     });
   }

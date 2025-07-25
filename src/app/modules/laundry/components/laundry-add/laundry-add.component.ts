@@ -23,6 +23,7 @@ export class LaundryAddComponent {
   ) {}
 
   onFormSubmit(data: Partial<LaundryServiceResp>): void {
+    delete data.isRedirect;
     this.laundryService.create(data).subscribe({
       next: (resp) => {
         console.log('Laundry service created:', resp);
