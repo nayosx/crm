@@ -1,0 +1,11 @@
+<div *ngIf="!serviceId">
+  <p>Seleccione un servicio primero.</p>
+</div>
+
+<form *ngIf="serviceId" [formGroup]="form" (ngSubmit)="submit()">
+  <p-editor formControlName="note" [style]="{'height': '200px'}"></p-editor>
+  <div class="flex gap-2 pt-4">
+    <button pButton type="submit" label="Agregar nota" [disabled]="form.invalid"></button>
+    <button pButton type="button" label="Cancelar" (click)="onCancel()" severity="secondary"></button>
+  </div>
+</form>

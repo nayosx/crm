@@ -1,9 +1,14 @@
+<!-- parent.component.html -->
 <div class="flex align-items-center gap-2 mb-3">
-  <h2><app-back-button [path]="'/laundry'" />Editar Servicio de Lavandería</h2>
+  <h2>
+    <app-back-button [path]="'/laundry'" />
+    Editar Servicio de Lavandería
+  </h2>
 </div>
 
 <div class="grid">
   <div class="col-12 md:col-6 mb-4">
+    <!-- Formulario de edición existente -->
     <p-card class="border-round shadow-2">
       <ng-container *ngIf="!loading && initialData">
         <app-laundry-form
@@ -12,6 +17,53 @@
           (formSubmit)="onFormSubmit($event)">
         </app-laundry-form>
       </ng-container>
+    </p-card>
+  </div>
+
+  <div class="col-12 md:col-6 mb-4" *ngIf="initialData">
+    <!-- Card de Notas con botón en header -->
+    <p-card class="border-round shadow-2">
+      <ng-template pTemplate="header">
+        <div class="flex justify-content-between align-items-center w-full p-card-custom-header p-card-title pb-2 border-bottom-1 surface-border">
+          <span>Notas del servicio</span>
+          <button
+            pButton
+            icon="pi pi-plus"
+            class="p-button-sm"
+            severity="secondary"
+            (click)="notesDialogVisible = true">
+          </button>
+        </div>
+      </ng-template>
+
+      <!-- Lista de notas -->
+       
+      <app-laundry-note-list
+        [serviceId]="initialData.id"
+        [newNote]="latestNote"
+        (noteDeleted)="onNoteDeleted($event)">
+      </app-laundry-note-list>
+
+      <!-- Diálogo para crear nueva nota -->
+      <p-dialog
+        [(visible)]="notesDialogVisible"
+        [modal]="true"
+        [style]="{ width: '400px' }"
+        [closable]="false">
+        <ng-template pTemplate="header">
+          <div class="flex justify-content-between align-items-center w-full">
+            <span>Agregar nueva nota</span>
+            <button pButton icon="pi pi-times" class="p-button-text" (click)="onCancelNotes()"></button>
+          </div>
+        </ng-template>
+
+        <app-laundry-note
+          [serviceId]="initialData.id"
+          [status]="initialData.status"
+          (noteCreated)="onNoteCreated($event)"
+          (cancel)="onCancelNotes()">
+        </app-laundry-note>
+      </p-dialog>
     </p-card>
   </div>
 </div>

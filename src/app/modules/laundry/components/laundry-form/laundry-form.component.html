@@ -2,7 +2,7 @@
   <div class="flex flex-column align-items-start gap-2">
     <label>Cliente</label>
     @if (!initialData?.id) {
-      <button pButton label="Seleccionar Cliente" icon="pi pi-user" (click)="openClientDialog()" type="button"></button>
+      <button pButton label="Seleccionar Cliente" icon="pi pi-user" class="p-button-sm" (click)="openClientDialog()" type="button"></button>
     }
     <div *ngIf="selectedClientName" class="mt-2">
       <p-tag severity="info" [value]="selectedClientName"></p-tag>
@@ -11,27 +11,37 @@
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Dirección</label>
-    @if (!initialData?.id) {
       <button pButton label="Seleccionar Dirección" icon="pi pi-map-marker"
-              (click)="onChangeAddress(form.get('client_id')?.value)"
+              (click)="onChangeAddress(form.get('client_id')?.value)" 
+              class="p-button-sm" severity="secondary"
               type="button" [disabled]="!form.get('client_id')?.value"></button>
-    }
     <div *ngIf="selectedAddress" class="mt-2">
-      <p-tag severity="info" [value]="selectedAddress"></p-tag>
+      <p-tag severity="secondary" [value]="selectedAddress"></p-tag>
     </div>
   </div>
 
-  <div class="flex flex-column align-items-start gap-2">
-    <label>Fecha de recolección</label>
-    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd"
-                  showIcon [showOnFocus]="false" [disabled]="!isPending"></p-datepicker>
-  </div>
+  @if(!isPending) {
+    <div class="flex flex-column align-items-start gap-2">
+      <label>Fecha de recolección</label>
+      <p-tag severity="secondary">
+        {{ initialData?.scheduled_pickup_at | date: 'dd MMM yyyy' }} •
+        {{ initialData?.scheduled_pickup_at | date: 'hh:mm a'}}
+      </p-tag>
+    </div>
+      
+  } @else {
+    <div class="flex flex-column align-items-start gap-2">
+      <label>Fecha de recolección</label>
+      <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd"
+                    showIcon [showOnFocus]="false" [disabled]="!isPending"></p-datepicker>
+    </div>
 
-  <div class="flex flex-column align-items-start gap-2">
-    <label>Hora de recolección</label>
-    <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true"
-                  hourFormat="12" [stepMinute]="15" showIcon [disabled]="!isPending"></p-datepicker>
-  </div>
+    <div class="flex flex-column align-items-start gap-2">
+      <label>Hora de recolección</label>
+      <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true"
+                    hourFormat="12" [stepMinute]="15" showIcon [disabled]="!isPending"></p-datepicker>
+    </div>
+  }
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Tipo de servicio</label>

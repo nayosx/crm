@@ -25,7 +25,8 @@ export class LaundryAddComponent {
   onFormSubmit(data: Partial<LaundryServiceResp>): void {
     this.laundryService.create(data).subscribe({
       next: (resp) => {
-        this.router.navigate(['/laundry']);
+        console.log('Laundry service created:', resp);
+        this.router.navigate(['/laundry', `${resp.id}`, 'edit']);
       },
       error: () => {
       }
