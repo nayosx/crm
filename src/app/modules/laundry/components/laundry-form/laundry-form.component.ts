@@ -70,8 +70,6 @@ export class LaundryFormComponent implements OnInit {
 
   ngOnInit(): void {
 
-    console.log('Initial Data:', this.initialData);
-
     const pickupDate = this.initialData?.scheduled_pickup_at
       ? new Date(this.initialData.scheduled_pickup_at)
       : new Date();

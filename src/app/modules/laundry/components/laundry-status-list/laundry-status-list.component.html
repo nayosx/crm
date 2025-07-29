@@ -1,0 +1,49 @@
+<p-dataView
+  [value]="items()"
+  [paginator]="true"
+  [rows]="perPage()"
+  [totalRecords]="total()"
+  [loading]="loading()"
+  [pageLinks]="2"
+  [lazy]="true"
+  layout="list"
+  (onLazyLoad)="onLazyLoad($event)"
+>
+
+  <ng-template #list let-items>
+    <div class="p-dataview-list p-3">
+        <div
+          class="border-bottom-1 surface-border py-3 px-2 rounded-lg"
+          [ngClass]="{ 'mt-3': !first }"
+          (click)="onSelect(item)"
+          *ngFor="let item of items; let first = first; trackBy: trackById"
+        >
+          <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3">
+            <div class="flex flex-column gap-1">
+              <div class="font-bold text-lg text-color">
+                <em class="pi pi-user mr-2"></em> {{ item.client?.name || 'Cliente no definido' }}
+              </div>
+              <div class="text-sm text-secondary">
+                <em class="pi pi-calendar-clock mr-2"></em> {{ item.scheduled_pickup_at | date: 'short' }}
+              </div>
+              <div class="text-sm text-300">
+                <em class="pi pi-user-edit mr-2 "></em> {{ item.created_by_user.name || 'User System' }}
+              </div>
+            </div>
+            <div>
+                @if(item.service_label === 'NORMAL') {
+                    <p-tag [value]="item.service_label" severity="secondary"></p-tag>
+                } @else {
+                    <p-tag [value]="item.service_label" severity="success"></p-tag>
+                }
+            </div>
+          </div>
+        </div>
+    </div>
+  </ng-template>
+  <ng-template #emptymessage>
+    <div class="text-center p-5">
+      <p>No hay servicios disponibles para este estado.</p>
+    </div>
+  </ng-template>
+</p-dataView>

@@ -1,0 +1,10 @@
+<div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap['READY_FOR_DELIVERY']">
+    <h2 class="pl-4"><em class="pi pi-truck text-xl"></em> Lista de entrega</h2>
+</div>
+
+<div class="mb-4">
+    <p-card class="border-round shadow-2">
+        <app-laundry-status-list [status]="'READY_FOR_DELIVERY'"
+            (select)="handleSelect($event)"></app-laundry-status-list>
+    </p-card>
+</div>

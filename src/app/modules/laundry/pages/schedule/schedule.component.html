@@ -1,0 +1,10 @@
+<div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap['PENDING']">
+    <h2 class="pl-4"><em class="pi pi-calendar text-xl"></em> Pendientes de recolectar</h2>
+</div>
+
+<div class="mb-4">
+    <p-card class="border-round shadow-2">
+        <app-laundry-status-list [status]="'PENDING'"
+            (select)="handleSelect($event)"></app-laundry-status-list>
+    </p-card>
+</div>

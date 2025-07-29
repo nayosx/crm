@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { AuthService } from '@shared/services/auth/auth.service';
 import { ButtonModule } from 'primeng/button';
 import { PanelMenuModule } from 'primeng/panelmenu';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 import { MenuItem } from 'primeng/api';
 
 @Component({
@@ -13,7 +13,8 @@ import { MenuItem } from 'primeng/api';
     RouterOutlet,
     ButtonModule,
     PanelMenuModule,
-    SidebarModule
+    DrawerModule
+
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -28,36 +29,63 @@ export class MainLayoutComponent {
     {
       label: 'Inicio',
       icon: 'pi pi-home',
-      routerLink: ['/home']
+      routerLink: ['/home'],
+      command: () => this.sidebarVisible = false
     },
     {
       label: 'Clientes',
       icon: 'pi pi-users',
-      routerLink: ['/clients']
+      routerLink: ['/clients'],
+      command: () => this.sidebarVisible = false
     },
     {
       label: 'Transacciones',
       icon: 'pi pi-dollar',
-      routerLink: ['/transactions']
+      routerLink: ['/transactions'],
+      command: () => this.sidebarVisible = false
     },
     {
       label: 'Usuarios',
       icon: 'pi pi-users',
-      routerLink: ['/users']
-    },
-    {
-      label: 'Configuración',
-      icon: 'pi pi-cog',
-      routerLink: ['/settings']
+      routerLink: ['/users'],
+      command: () => this.sidebarVisible = false
     },
     {
       label: 'Lavandería',
-      icon: 'pi pi-cog',
-      routerLink: ['/laundry']
+      icon: '',
+      items: [
+        {
+          label: 'Servicios',
+          icon: 'pi pi-home',
+          routerLink: ['/laundry'],
+          command: () => this.sidebarVisible = false
+        },
+        {
+          label: 'Scheduler',
+          icon: 'pi pi-calendar',
+          routerLink: ['/laundry/scheduler'],
+          command: () => this.sidebarVisible = false
+        },
+        {
+          label: 'Work in Progress',
+          icon: 'pi pi-briefcase',
+          routerLink: ['/laundry/work-in-progress'],
+          command: () => this.sidebarVisible = false
+        },
+        {
+          label: 'Delivery',
+          icon: 'pi pi-truck',
+          routerLink: ['/laundry/delivery'],
+          command: () => this.sidebarVisible = false
+        },
+        
+      ]
     }
   ];
 
+
   toggleSidebar() {
+    console.log('Toggling sidebar visibility');
     this.sidebarVisible = !this.sidebarVisible;
   }
 

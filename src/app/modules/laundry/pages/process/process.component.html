@@ -1,0 +1,10 @@
+<div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap['IN_PROGRESS']">
+    <h2 class="pl-4"><em class="pi pi-briefcase text-xl"></em> Lista de clientes actuales</h2>
+</div>
+
+<div class="mb-4">
+    <p-card class="border-round shadow-2">
+        <app-laundry-status-list [status]="'IN_PROGRESS'"
+            (select)="handleSelect($event)"></app-laundry-status-list>
+    </p-card>
+</div>

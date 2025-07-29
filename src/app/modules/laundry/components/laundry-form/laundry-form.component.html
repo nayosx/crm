@@ -32,14 +32,13 @@
   } @else {
   <div class="flex flex-column align-items-start gap-2">
     <label>Fecha de recolección</label>
-    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd" showIcon [showOnFocus]="false"
-      [disabled]="!isPending"></p-datepicker>
+    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd" showIcon [showOnFocus]="false"></p-datepicker>
   </div>
 
   <div class="flex flex-column align-items-start gap-2">
     <label>Hora de recolección</label>
     <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true" hourFormat="12" [stepMinute]="15"
-      showIcon [disabled]="!isPending"></p-datepicker>
+      showIcon ></p-datepicker>
   </div>
   }
 

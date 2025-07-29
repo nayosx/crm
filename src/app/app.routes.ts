@@ -119,7 +119,23 @@ export const routes: Routes = [
                         path: ':id/edit',
                         loadComponent: () =>
                             import('./modules/laundry/components/laundry-edit/laundry-edit.component').then(m => m.LaundryEditComponent)
-                    }
+                    },
+                    {
+                        path: 'delivery',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/delivery/delivery.component').then(m => m.DeliveryComponent)
+                    },
+                    {
+                        path: 'scheduler',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/schedule/schedule.component').then(m => m.ScheduleComponent)
+                    },
+                    {
+                        path: 'work-in-progress',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/process/process.component').then(m => m.ProcessComponent)
+                    },
+
                 ]
             },
             {

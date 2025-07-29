@@ -1,8 +1,8 @@
-<div class="flex flex-wrap align-items-center gap-2 mb-3 border-bottom-1 surface-border pb-2 mb-2">
-  <h2>Lista de transacciones</h2>
+<div class="flex flex-wrap align-items-center gap-2 border-bottom-1 surface-border pt-4 pb-4">
+  <h2 class="pl-4">Lista de transacciones</h2>
 </div>
 
-<div class="flex flex-wrap align-items-center gap-2 mb-3">
+<div class="flex flex-wrap align-items-center gap-2 px-4 py-2">
   <p-datepicker [(ngModel)]="startDate" dateFormat="yy-mm-dd" placeholder="Fecha inicio" [showIcon]="true"></p-datepicker>
   <p-datepicker [(ngModel)]="endDate" dateFormat="yy-mm-dd" placeholder="Fecha fin" [showIcon]="true"></p-datepicker>
   <button pButton label="Filtrar" icon="pi pi-filter" class="p-button-primary" (click)="loadPage(1, rows)"></button>
@@ -10,46 +10,48 @@
   <button pButton label="Nueva Transacción" icon="pi pi-plus" class="p-button-success" (click)="onCreate()"></button>
 </div>
 
-<p-card header="Transacciones Registradas">
-  <p-table [value]="transactions" [loading]="loading" [paginator]="true" [lazy]="true" [rows]="rows"
-    [totalRecords]="totalRecords" [rowsPerPageOptions]="[5, 10, 20, 50]" (onLazyLoad)="onLazyLoad($event)"
-    responsiveLayout="scroll">
-    <ng-template pTemplate="header">
-      <tr>
-        <th>ID</th>
-        <th>Fecha</th>
-        <th>Usuario</th>
-        <th>Tipo</th>
-        <th>Monto</th>
-        <th>Cliente /<br />Proveedor</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-t>
-      <tr>
-        <td>{{ t.id }}</td>
-        <td>{{ t.created_at | date: 'short' }}</td>
-        <td>{{ t.user_name || '-' }}</td>
-        <td>
-          <p-tag [value]="t.transaction_type" [severity]="t.transaction_type === 'IN' ? 'success' : 'danger'"></p-tag>
-        </td>
-        <td>
-          <ng-container [ngSwitch]="t.payment_type_name">
-            <div class="flex justify-content-start align-items-center gap-2">
-              <i *ngSwitchCase="'efectivo'" class="pi pi-money-bill" title="Efectivo"></i>
-              <i *ngSwitchCase="'transferencia'" class="pi pi-building-columns" title="Transferencia"></i>
-              <i *ngSwitchCase="'tarjeta de credito'" class="pi pi-credit-card" title="Tarjeta de crédito"></i>
-              <span *ngSwitchDefault>{{ t.payment_type_name }}</span>
-              <span>{{ t.amount | currency }}</span>
-            </div>
-          </ng-container>          
-        </td>
-        <td>{{ t.client_name || t.category_name || '-'}} </td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="6">No se encontraron transacciones.</td>
-      </tr>
-    </ng-template>
-  </p-table>
-</p-card>
+<div class="px-4">
+  <p-card header="Transacciones Registradas">
+    <p-table [value]="transactions" [loading]="loading" [paginator]="true" [lazy]="true" [rows]="rows"
+      [totalRecords]="totalRecords" [rowsPerPageOptions]="[5, 10, 20, 50]" (onLazyLoad)="onLazyLoad($event)"
+      responsiveLayout="scroll">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Tipo</th>
+          <th>Monto</th>
+          <th>Cliente /<br />Proveedor</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-t>
+        <tr>
+          <td>{{ t.id }}</td>
+          <td>{{ t.created_at | date: 'short' }}</td>
+          <td>{{ t.user_name || '-' }}</td>
+          <td>
+            <p-tag [value]="t.transaction_type" [severity]="t.transaction_type === 'IN' ? 'success' : 'danger'"></p-tag>
+          </td>
+          <td>
+            <ng-container [ngSwitch]="t.payment_type_name">
+              <div class="flex justify-content-start align-items-center gap-2">
+                <i *ngSwitchCase="'efectivo'" class="pi pi-money-bill" title="Efectivo"></i>
+                <i *ngSwitchCase="'transferencia'" class="pi pi-building-columns" title="Transferencia"></i>
+                <i *ngSwitchCase="'tarjeta de credito'" class="pi pi-credit-card" title="Tarjeta de crédito"></i>
+                <span *ngSwitchDefault>{{ t.payment_type_name }}</span>
+                <span>{{ t.amount | currency }}</span>
+              </div>
+            </ng-container>          
+          </td>
+          <td>{{ t.client_name || t.category_name || '-'}} </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6">No se encontraron transacciones.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>

@@ -93,3 +93,63 @@ export interface LaundryServicePagination {
   per_page: number;
   pages: number;
 }
+
+
+
+export interface LaundryServiceLite {
+  id: number;
+  scheduled_pickup_at: string;
+  status: LaundryServiceStatus;
+  service_label: 'NORMAL' | 'EXPRESS';
+  client: {
+    id: number;
+    name: string;
+  };
+  created_by_user: {
+    name: string;
+  };
+}
+
+
+export interface LaundryServiceDetail {
+  id: number;
+  scheduled_pickup_at: string;
+  status: LaundryServiceStatus;
+  service_label: 'NORMAL' | 'EXPRESS';
+  client: {
+    id: number;
+    name: string;
+    email?: string;
+    document_id?: string;
+    is_deleted?: boolean;
+    phones: {
+      id: number;
+      client_id: number;
+      phone_number: string;
+      description?: string;
+      is_primary: boolean;
+    }[];
+  };
+  client_address: ClientAddress;
+  transaction?: TransactionDetail | null;
+  created_by_user: {
+    name: string;
+  };
+}
+
+
+export interface LaundryServiceLitePagination {
+  items: LaundryServiceLite[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface LaundryServiceDetailPagination {
+  items: LaundryServiceDetail[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}

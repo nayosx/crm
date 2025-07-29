@@ -1,18 +1,11 @@
-<div class="flex align-items-center gap-2 mb-3 border-bottom-1 surface-border pb-2 mb-2">
-  <h2>Lista de clientes</h2>
+<div class="flex align-items-center gap-2 border-bottom-1 surface-border pt-4 pb-4">
+  <h2 class="pl-4">Lista de clientes</h2>
 </div>
 
-<div class="flex align-items-center gap-2 mb-3">
-  <button
-    pButton
-    label="Nuevo Cliente"
-    icon="pi pi-plus"
-    class="p-button-success"
-    (click)="onCreate()"
-  ></button>
+<div class="flex align-items-center gap-2 px-4 py-2">
+  <button pButton label="Nuevo Cliente" icon="pi pi-plus" class="p-button-success" (click)="onCreate()"></button>
 </div>
 
-<app-client-list
-  [showActions]="true"
-  (edit)="onEdit($event)"
-></app-client-list>
+<div class="px-4">
+  <app-client-list [showActions]="true" (edit)="onEdit($event)"></app-client-list>
+</div>

@@ -23,3 +23,13 @@ export const getLaundryStatusSeverity = (status: string): 'info' | 'success' | '
       return undefined;
   }
 };
+
+
+export const LaundryStatusIconMap: Record<string, string> = {
+  PENDING: 'pi pi-clock',
+  STARTED: 'pi pi-play',
+  IN_PROGRESS: 'pi pi-spinner',
+  READY_FOR_DELIVERY: 'pi pi-box',
+  DELIVERED: 'pi pi-check-circle',
+  CANCELLED: 'pi pi-times-circle'
+};

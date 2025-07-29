@@ -7,7 +7,7 @@ import { CardModule } from 'primeng/card';
 
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { LaundryServiceResp } from '@shared/interfaces/laundry-service.interface';
-import { LaundryStatusColorMap, getLaundryStatusSeverity } from '@shared/utils/color.util';
+import { LaundryStatusColorMap } from '@shared/utils/color.util';
 import { TagModule } from 'primeng/tag';
 
 

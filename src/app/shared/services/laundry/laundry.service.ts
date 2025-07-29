@@ -6,7 +6,9 @@ import {
   LaundryServiceResp,
   LaundryServicePagination,
   LaundryServiceStatus,
-  LaundryServiceWithMessages
+  LaundryServiceWithMessages,
+  LaundryServiceLitePagination,
+  LaundryServiceDetailPagination
 } from '@shared/interfaces/laundry-service.interface';
 import { environment } from '@env/environment.development';
 
@@ -37,6 +39,38 @@ export class LaundryService {
     }
 
     return this.http.get<LaundryServicePagination>(this.baseUrl, { params: httpParams });
+  }
+
+    getLite(params: {
+    page?: number;
+    per_page?: number;
+    status: LaundryServiceStatus;
+    client_id?: number;
+  }): Observable<LaundryServiceLitePagination> {
+    let httpParams = new HttpParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        httpParams = httpParams.set(key, value.toString());
+      }
+    });
+
+    return this.http.get<LaundryServiceLitePagination>(`${this.baseUrl}/lite`, { params: httpParams });
+  }
+
+  getDetail(params: {
+    page?: number;
+    per_page?: number;
+    status: LaundryServiceStatus;
+    client_id?: number;
+  }): Observable<LaundryServiceDetailPagination> {
+    let httpParams = new HttpParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        httpParams = httpParams.set(key, value.toString());
+      }
+    });
+
+    return this.http.get<LaundryServiceDetailPagination>(`${this.baseUrl}/detail`, { params: httpParams });
   }
 
   getById(id: number): Observable<LaundryServiceResp> {
