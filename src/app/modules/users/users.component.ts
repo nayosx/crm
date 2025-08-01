@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserRoleFacade } from '@shared/services/user/user-role.facade';
-import { User, Role } from '@shared/interfaces/user.interface';
+import { User, Role, ForcePasswordRequest } from '@shared/interfaces/user.interface';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { UserFormComponent } from './components/user-form/user-form.component';
 import { RolFormComponent } from './components/rol-form/rol-form.component';
+import { ForcepComponent } from './components/forcep/forcep.component';
 
 @Component({
   selector: 'app-users',
@@ -16,7 +17,8 @@ import { RolFormComponent } from './components/rol-form/rol-form.component';
     ButtonModule,
     DialogModule,
     UserFormComponent,
-    RolFormComponent
+    RolFormComponent,
+    ForcepComponent,
   ],
   templateUrl: './users.component.html'
 })
@@ -29,6 +31,7 @@ export class UsersComponent {
 
   displayUserDialog = false;
   displayRoleDialog = false;
+  displayUserForcepDialog = false;
 
   selectedUser: User | null = null;
   selectedRole: Role | null = null;
@@ -86,4 +89,19 @@ export class UsersComponent {
     const roles = this.rolesSubjectCache;
     return roles.find(r => r.id === roleId)?.name ?? '';
   }
+
+  username:string = 'No name parent';
+  showDialogForceP(user:User):void {
+    this.displayUserForcepDialog = true;
+    this.username = user.name;
+    this.selectedUser = user;
+  }
+
+
+  onSubmitForceP(value:ForcePasswordRequest):void {
+    this.username = '';
+    this.facade.forcep(this.selectedUser!.id, value);
+    this.displayUserForcepDialog = false;
+  }
+
 }

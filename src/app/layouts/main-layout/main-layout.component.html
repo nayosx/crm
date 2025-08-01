@@ -9,7 +9,12 @@
         <button pButton type="button" icon="pi pi-bars" class="p-button-sm lg:hidden" (click)="toggleSidebar()"></button>
         <span class="text-xl font-bold">DrClin System</span>
       </div>
-      <button pButton type="button" icon="pi pi-sign-out" label="Cerrar sesión" class="p-button-sm" (click)="logout()"></button>
+      <div class="flex gap-3 align-items-center">
+        @if(user) {
+          <span>{{user.name}}</span>
+        }
+        <button pButton type="button" icon="pi pi-sign-out" class="p-button-sm" (click)="logout()"></button>
+      </div>
     </header>
 
     <main class="flex-1">

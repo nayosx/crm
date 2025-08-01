@@ -23,21 +23,29 @@ export class UserFormComponent implements OnChanges {
   @Output() submitForm = new EventEmitter<Partial<User>>();
 
   form: FormGroup;
+  isCreating = true;
 
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
       username: ['', Validators.required],
       name: ['', Validators.required],
       phone: [''],
-      role_id: [null, Validators.required]
+      role_id: [null, Validators.required],
+      password: ['']
     });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialData']) {
+      this.isCreating = !this.initialData;
+
       if (this.initialData) {
         this.form.patchValue(this.initialData);
+        this.form.get('password')?.clearValidators();
+        this.form.get('password')?.updateValueAndValidity();
       } else {
+        this.form.get('password')?.setValidators(Validators.required);
+        this.form.get('password')?.updateValueAndValidity();
         this.form.reset();
       }
     }
@@ -45,7 +53,11 @@ export class UserFormComponent implements OnChanges {
 
   onSubmit(): void {
     if (this.form.valid) {
-      this.submitForm.emit(this.form.value);
+      const formValue = { ...this.form.value };
+      if (!this.isCreating) {
+        delete formValue.password;
+      }
+      this.submitForm.emit(formValue);
     }
   }
 }

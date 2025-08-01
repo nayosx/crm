@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, forkJoin } from 'rxjs';
 import { UserService } from '@shared/services/user/user.service';
 import { RolService } from '@shared/services/user/rol.service';
-import { User, Role } from '@shared/interfaces/user.interface';
+import { User, Role, ForcePasswordRequest } from '@shared/interfaces/user.interface';
 
 @Injectable({
     providedIn: 'root'
@@ -89,6 +89,16 @@ export class UserRoleFacade {
     deleteRole(id: number): void {
         this.loadingSubject.next(true);
         this.roleService.deleteRole(id).subscribe({
+            next: () => this.loadAll(),
+            error: () => {
+                this.loadingSubject.next(false);
+            }
+        });
+    }
+
+    forcep(id:number, value:ForcePasswordRequest):void {
+        this.loadingSubject.next(true);
+        this.userService.updatePasswordByAdmin(id, value).subscribe({
             next: () => this.loadAll(),
             error: () => {
                 this.loadingSubject.next(false);

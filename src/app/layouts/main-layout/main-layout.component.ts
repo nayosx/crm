@@ -1,10 +1,12 @@
-import { Component, inject, ViewEncapsulation } from '@angular/core';
+import { Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '@shared/services/auth/auth.service';
 import { ButtonModule } from 'primeng/button';
 import { PanelMenuModule } from 'primeng/panelmenu';
 import { DrawerModule } from 'primeng/drawer';
 import { MenuItem } from 'primeng/api';
+import { User } from '@shared/interfaces/user.interface';
+import { KEYSTORE } from '@core/keystore';
 
 @Component({
   selector: 'app-main-layout',
@@ -20,7 +22,8 @@ import { MenuItem } from 'primeng/api';
   styleUrl: './main-layout.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class MainLayoutComponent {
+export class MainLayoutComponent implements OnInit {
+
   authService = inject(AuthService);
 
   sidebarVisible = false;
@@ -83,6 +86,10 @@ export class MainLayoutComponent {
     }
   ];
 
+  ngOnInit(): void {
+    this.getUser();
+  }
+
 
   toggleSidebar() {
     console.log('Toggling sidebar visibility');
@@ -91,5 +98,14 @@ export class MainLayoutComponent {
 
   logout() {
     this.authService.simpleLogout();
+  }
+
+  user:User|null = null;
+
+  getUser():void {
+    const data = sessionStorage.getItem(KEYSTORE.user);
+    if(data) {
+      this.user = JSON.parse(data);
+    }
   }
 }

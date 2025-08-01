@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { User } from '@shared/interfaces/user.interface';
+import { ForcePasswordRequest, ForcePasswordResponse, User } from '@shared/interfaces/user.interface';
 import { environment } from '@env/environment';
 
 @Injectable({
@@ -39,4 +39,9 @@ export class UserService {
 
     return this.http.get<User[]>(`${this.apiUrl}?lite=true`);
   }
+
+  updatePasswordByAdmin(userId: number, payload: ForcePasswordRequest): Observable<ForcePasswordResponse> {
+    return this.http.put<ForcePasswordResponse>(`${this.apiUrl}/${userId}/force-password`, payload);
+  }
+
 }

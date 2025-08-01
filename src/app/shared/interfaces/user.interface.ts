@@ -12,3 +12,11 @@ export interface User {
   name: string;
   role?: Role;
 }
+
+export interface ForcePasswordRequest {
+  new_password: string;
+}
+
+export interface ForcePasswordResponse {
+  message: string;
+}
