@@ -11,6 +11,6 @@ RUN npm run build --prod
 FROM nginx:alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist/tu-nombre-app/ /usr/share/nginx/html/
+COPY --from=builder /app/dist/crm/ /usr/share/nginx/html/
 
 EXPOSE 80
