@@ -72,13 +72,11 @@ export class LaundryEditComponent implements OnInit {
     });
   }
 
-  // Cuando se crea una nota desde el formulario
   onNoteCreated(log: LaundryServiceLog) {
     this.latestNote = log;
     this.notesDialogVisible = false;
   }
 
-  // Cerrar diálogo sin acción
   onCancelNotes() {
     this.notesDialogVisible = false;
   }

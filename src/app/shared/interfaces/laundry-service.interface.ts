@@ -30,7 +30,7 @@ export interface ClientPageResponse {
 }
 
 /** Detalle resumido de una transacción */
-export interface TransactionDetail {
+export interface TransactionLite {
   id: number;
   amount: number;
   type: string;
@@ -75,7 +75,7 @@ export interface LaundryServiceResp {
   client?: ClientFullResponse;
   client_id?: number;
   client_address?: ClientAddress;
-  transaction?: TransactionDetail;
+  transaction?: TransactionLite;
   created_by?: User;
   isRedirect?: boolean;
 }
@@ -131,7 +131,7 @@ export interface LaundryServiceDetail {
     }[];
   };
   client_address: ClientAddress;
-  transaction?: TransactionDetail | null;
+  transaction?: TransactionFull | null;
   created_by_user: {
     name: string;
   };

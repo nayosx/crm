@@ -4,6 +4,7 @@ import { LaundryServiceLite, LaundryServiceResp } from '@shared/interfaces/laund
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { LaundryStatusColorMap } from '@shared/utils/color.util';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-delivery',
@@ -18,10 +19,12 @@ import { LaundryStatusColorMap } from '@shared/utils/color.util';
 export class DeliveryComponent {
   statusColorMap = LaundryStatusColorMap;
 
+  constructor(private router: Router) {}
 
   handleSelect(item: LaundryServiceLite) {
-    console.log('Seleccionado:', item);
+    this.router.navigate(['/laundry', item.id, 'detail'], {
+      queryParams: { status: 'READY_FOR_DELIVERY' }
+    });
   }
-
 
 }

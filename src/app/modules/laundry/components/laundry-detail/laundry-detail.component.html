@@ -1,0 +1,62 @@
+@if(status && data) {
+
+  @if(status == 'PENDING' || status == 'STARTED' || status == 'READY_FOR_DELIVERY') {
+  <div class="px-4 pt-4">
+    <app-client-detail [client]="getFullClient(data.client, data.client_address)" [useCard]="false" />
+  </div>
+
+  @if(status == 'READY_FOR_DELIVERY') {
+    <div class="px-4 pt-4">
+      <h3 class="mb-2">Detalle de entrega</h3>
+      <p-card class="border-round shadow-2">
+        <p class="mb-4">
+          {{data.transaction?.amount | currency}} {{data.transaction?.payment_type_name}}
+        </p>
+        <div class="mb-4" [innerHTML]="data.transaction?.detail"></div>
+        <div class="text-sm text-300">
+          <em class="pi pi-user-edit mr-2 "></em> {{ data.transaction?.user_name || 'User System' }}
+        </div>
+      </p-card>
+    </div>
+  }
+
+  } @if(status == 'IN_PROGRESS') {
+
+  <div class="px-4 pt-4 mb-4">
+    <h3>Cliente: {{data.client.name}}</h3>
+    <p class="mt-2">
+      Dirección: {{data.client_address.address_text}}
+    </p>
+  </div>
+  }
+  <div class="w-full flex gap-2 justify-content-center px-4  mt-2 ">
+    <button pButton type="button" (click)="confirm($event)">Completado</button>
+    <button pButton type="button" severity="secondary" (click)="notesDialogVisible = true">Agregar nota</button>
+  </div>
+
+  <div class="w-full px-4  mt-2 ">
+    <app-laundry-note-list [serviceId]="data!.id" [newNote]="latestNote" (noteDeleted)="onNoteDeleted($event)" />
+  </div>
+
+
+  <p *ngIf="loading">Cargando...</p>
+  <p *ngIf="!loading && !data">No se encontró información.</p>
+  <p-confirmdialog />
+
+
+
+  <p-dialog [(visible)]="notesDialogVisible" [modal]="true" [style]="{ width: '400px' }" [closable]="false">
+    <ng-template pTemplate="header">
+      <div class="flex justify-content-between align-items-center w-full">
+        <span>Agregar nueva nota</span>
+        <button pButton icon="pi pi-times" class="p-button-text" (click)="onCancelNotes()"></button>
+      </div>
+    </ng-template>
+
+    <app-laundry-note [serviceId]="data!.id" [status]="status" (noteCreated)="onNoteCreated($event)"
+      (cancel)="onCancelNotes()">
+    </app-laundry-note>
+  </p-dialog>
+} @else {
+<h3>No has entrado por status ni data</h3>
+}

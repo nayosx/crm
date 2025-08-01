@@ -41,7 +41,7 @@ export class LaundryService {
     return this.http.get<LaundryServicePagination>(this.baseUrl, { params: httpParams });
   }
 
-    getLite(params: {
+  getLite(params: {
     page?: number;
     per_page?: number;
     status: LaundryServiceStatus;

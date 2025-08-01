@@ -135,6 +135,11 @@ export const routes: Routes = [
                         loadComponent: () =>
                             import('./modules/laundry/pages/process/process.component').then(m => m.ProcessComponent)
                     },
+                    {
+                        path: ':id/detail',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/detail/detail.component').then(m => m.DetailComponent)
+                    },
 
                 ]
             },

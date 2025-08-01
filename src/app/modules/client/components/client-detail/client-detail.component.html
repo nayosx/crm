@@ -37,7 +37,12 @@
     </ng-container>
     <ng-template #noCardAddresses>
       <div>
-        <div class="font-bold mb-2 mt-4">Direcciones</div>
+        @if(client.addresses.length > 1) {
+          <div class="font-bold mb-2 mt-4">Direcciones</div>
+        } @else {
+          <div class="font-bold mb-2 mt-4">Dirección</div>
+        }
+        
         <ng-container *ngTemplateOutlet="addressesList"></ng-container>
       </div>
     </ng-template>
