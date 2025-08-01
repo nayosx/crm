@@ -7,6 +7,7 @@ import { AuthFacade } from '@shared/services/auth/auth.facade';
 import { ROUTE_PATH } from '@core/routes-path';
 import { Router } from '@angular/router';
 import { KEYSTORE } from '@core/keystore';
+import { environment } from '@env/environment';
 
 
 @Component({
@@ -55,4 +56,10 @@ export class AuthComponent implements OnInit {
       }
     });
   }
+
+  getVersion():string {
+    return environment.version
+  }
+
+
 }
