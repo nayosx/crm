@@ -4,7 +4,7 @@ import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
 import { PaginatedTransactions, PaymentType, Transaction, TransactionCategory, TransactionResponse } from '@shared/interfaces/transaction.interface';
 import { PaymentTypeService } from './payment-type.service';
 import { TransactionCategoryService } from './transaction-category.service';
-import { environment } from '@env/environment.development';
+import { environment } from '@env/environment';
 
 @Injectable({
     providedIn: 'root'

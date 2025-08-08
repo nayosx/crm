@@ -10,7 +10,7 @@ import {
   LaundryServiceLitePagination,
   LaundryServiceDetailPagination
 } from '@shared/interfaces/laundry-service.interface';
-import { environment } from '@env/environment.development';
+import { environment } from '@env/environment';
 
 @Injectable({
   providedIn: 'root'
