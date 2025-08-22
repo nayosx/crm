@@ -1,7 +1,7 @@
 import { Component, ViewEncapsulation, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
-import { LaundryServiceLite, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceCompact, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
 import { DataView } from 'primeng/dataview';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from "primeng/button";
@@ -14,9 +14,9 @@ import { ButtonModule } from "primeng/button";
 })
 export class LaundryStatusListComponent {
   @Input() status!: LaundryServiceStatus;
-  @Output() select = new EventEmitter<LaundryServiceLite>();
+  @Output() select = new EventEmitter<LaundryServiceCompact>();
 
-  items = signal<LaundryServiceLite[]>([]);
+  items = signal<LaundryServiceCompact[]>([]);
   total = signal(0);
   loading = signal(false);
 
@@ -28,7 +28,7 @@ export class LaundryStatusListComponent {
 
   fetch(): void {
     this.loading.set(true);
-    this.laundryService.getLite({
+    this.laundryService.getCompact({
       page: this.page(),
       per_page: this.perPage(),
       status: this.status
@@ -67,12 +67,12 @@ onLazyLoad(event: any): void {
   }
 
 
-  onSelect(item: LaundryServiceLite): void {
+  onSelect(item: LaundryServiceCompact): void {
     this.select.emit(item);
   }
 
 
-  trackById(index: number, item: LaundryServiceLite) {
+  trackById(index: number, item: LaundryServiceCompact) {
   return item.id;
 }
 

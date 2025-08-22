@@ -8,7 +8,8 @@ import {
   LaundryServiceStatus,
   LaundryServiceWithMessages,
   LaundryServiceLitePagination,
-  LaundryServiceDetailPagination
+  LaundryServiceDetailPagination,
+  LaundryServiceCompactPagination
 } from '@shared/interfaces/laundry-service.interface';
 import { environment } from '@env/environment';
 
@@ -18,7 +19,7 @@ import { environment } from '@env/environment';
 export class LaundryService {
   private baseUrl = `${environment.API}/laundry_services`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAll(params?: {
     page?: number;
@@ -71,6 +72,23 @@ export class LaundryService {
     });
 
     return this.http.get<LaundryServiceDetailPagination>(`${this.baseUrl}/detail`, { params: httpParams });
+  }
+
+
+  getCompact(params: {
+    page?: number;
+    per_page?: number;
+    status?: LaundryServiceStatus;
+    client_id?: number;
+  }): Observable<LaundryServiceCompactPagination> {
+    let httpParams = new HttpParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        httpParams = httpParams.set(key, value.toString());
+      }
+    });
+
+    return this.http.get<LaundryServiceCompactPagination>(`${this.baseUrl}/compact`, { params: httpParams });
   }
 
   getById(id: number): Observable<LaundryServiceResp> {

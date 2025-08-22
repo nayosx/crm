@@ -137,6 +137,29 @@ export interface LaundryServiceDetail {
   };
 }
 
+export interface LaundryServiceCompact {
+  id: number;
+  service_label: 'NORMAL' | 'EXPRESS';
+  status: LaundryServiceStatus;
+  created_at: string;
+  created_by_user: {
+    name: string;
+  };
+  created_by_user_id: number;
+  client: {
+    id: number;
+    name: string;
+  };
+  client_id: number;
+  client_address_id: number;
+  client_address: {
+    id: number;
+    client_id: number;
+    address_text: string;
+  } | null;
+  has_transaction: boolean;
+}
+
 
 export interface LaundryServiceLitePagination {
   items: LaundryServiceLite[];
@@ -153,3 +176,16 @@ export interface LaundryServiceDetailPagination {
   per_page: number;
   pages: number;
 }
+
+
+
+export interface LaundryServiceCompactPagination {
+  items: LaundryServiceCompact[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+
+

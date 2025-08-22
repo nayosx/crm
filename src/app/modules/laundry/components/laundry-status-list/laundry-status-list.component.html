@@ -24,6 +24,22 @@
                 <em class="pi pi-user mr-2"></em> {{ item.client?.name || 'Cliente no definido' }}
               </div>
               <div class="text-sm text-secondary">
+                <em class="pi pi-map-marker mr-2"></em> {{ item.client_address.address_text || 'Dirección no definida' }}
+              </div>
+
+              @if(status === 'READY_FOR_DELIVERY') {
+                @if(item.has_transaction) {
+                  <div class="text-sm text-green-500">
+                    <em class="pi pi-dollar mr-2"></em> Se ha registrado pago
+                  </div>
+                } @else {
+                  <div class="text-sm text-red-500">
+                    <em class="pi pi-dollar mr-2"></em> NO SE HA REGISTRADO PAGO
+                  </div>
+                }
+              }
+
+              <div class="text-sm text-secondary">
                 <em class="pi pi-calendar-clock mr-2"></em> {{ item.scheduled_pickup_at | date: 'short' }}
               </div>
               <div class="text-sm text-300">
