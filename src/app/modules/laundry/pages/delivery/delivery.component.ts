@@ -21,7 +21,7 @@ export class DeliveryComponent {
 
   constructor(private router: Router) {}
 
-  handleSelect(item: LaundryServiceCompact) {
+  handleSelect(item: LaundryServiceCompact):void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
       queryParams: { status: 'READY_FOR_DELIVERY' }
     });

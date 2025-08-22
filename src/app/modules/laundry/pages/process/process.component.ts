@@ -1,6 +1,6 @@
 import { Component, ViewEncapsulation } from '@angular/core';
 import { LaundryStatusListComponent } from '@modules/laundry/components/laundry-status-list/laundry-status-list.component';
-import { LaundryServiceLite, LaundryServiceResp } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceCompact } from '@shared/interfaces/laundry-service.interface';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { LaundryStatusColorMap } from '@shared/utils/color.util';
@@ -22,7 +22,7 @@ export class ProcessComponent {
 
   constructor(private router: Router) {}
 
-  handleSelect(item: LaundryServiceLite) {
+  handleSelect(item: LaundryServiceCompact):void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
       queryParams: { status: 'IN_PROGRESS' }
     });
