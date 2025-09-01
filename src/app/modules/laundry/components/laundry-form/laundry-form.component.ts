@@ -17,6 +17,7 @@ import { ClientAddressListComponent } from '@modules/client/components/client-ad
 import { PaymentType, Transaction, TransactionCategory } from '@shared/interfaces/transaction.interface';
 import { TransactionFormComponent } from '@modules/transaction/components/transaction-form/transaction-form.component';
 import { TransactionService } from '@shared/services/transaction/transaction.service';
+import { combineDateAndTime, formatToSQLDateTime } from '@shared/utils/datetime.util';
 
 @Component({
   selector: 'app-laundry-form',
@@ -45,6 +46,7 @@ export class LaundryFormComponent implements OnInit {
   @Input() paymentTypes: PaymentType[] = [];
   @Input() categories: TransactionCategory[] = [];
   @Input() isEditMode = false;
+  @Input() autoInProgress = false;
   @Output() formSubmit = new EventEmitter<Partial<LaundryServiceResp>>();
 
   form!: FormGroup;
@@ -66,40 +68,35 @@ export class LaundryFormComponent implements OnInit {
     private fb: FormBuilder,
     private clientServ: ClientAddressService,
     private transactionServ: TransactionService
-  ) { }
+  ) {}
 
   ngOnInit(): void {
-
-    const pickupDate = this.initialData?.scheduled_pickup_at
-      ? new Date(this.initialData.scheduled_pickup_at)
-      : new Date();
-
-    const initialStatus = this.initialData?.status ?? 'PENDING';
+    const baseDate = this.initialData?.scheduled_pickup_at ? new Date(this.initialData.scheduled_pickup_at) : new Date();
+    const initialStatus = this.isEditMode
+      ? (this.initialData?.status ?? 'PENDING')
+      : (this.autoInProgress ? 'IN_PROGRESS' : (this.initialData?.status ?? 'PENDING'));
 
     this.form = this.fb.group({
       client_id: [this.initialData?.client?.id ?? null, Validators.required],
       client_address_id: [this.initialData?.client_address?.id ?? null, Validators.required],
-      pickup_date: [pickupDate, Validators.required],
-      pickup_time: [pickupDate, Validators.required],
+      pickup_date: [baseDate, Validators.required],
+      pickup_time: [baseDate, Validators.required],
       service_label: [this.initialData?.service_label ?? 'NORMAL', Validators.required],
       status: [{ value: initialStatus, disabled: this.isEditMode ? false : true }, Validators.required],
       transaction_id: [this.initialData?.transaction?.id ?? null]
     });
 
-    // Desactivar fecha/hora si el estado inicial no es PENDING
     const editable = initialStatus === 'PENDING';
     const action = editable ? 'enable' : 'disable';
     this.form.get('pickup_date')?.[action]();
     this.form.get('pickup_time')?.[action]();
 
-    // Escuchar cambios en tiempo real (opcional)
     this.form.get('status')?.valueChanges.subscribe((status) => {
-      const editable = status === 'PENDING';
-      const action = editable ? 'enable' : 'disable';
-      this.form.get('pickup_date')?.[action]();
-      this.form.get('pickup_time')?.[action]();
+      const isEditable = status === 'PENDING';
+      const act = isEditable ? 'enable' : 'disable';
+      this.form.get('pickup_date')?.[act]();
+      this.form.get('pickup_time')?.[act]();
     });
-
 
     if (this.initialData?.client?.name) {
       this.selectedClientName = this.initialData.client.name;
@@ -125,9 +122,16 @@ export class LaundryFormComponent implements OnInit {
     return this.form?.get('status')?.value === 'PENDING';
   }
 
-  submit(isRedirect:boolean = true): void {
+  get scheduledPickupDate(): Date | null {
+    if (!this.form) return null;
+    const date = this.form.get('pickup_date')?.value;
+    const time = this.form.get('pickup_time')?.value;
+    return combineDateAndTime(date, time);
+  }
+
+  submit(isRedirect: boolean = true): void {
     if (this.form.valid) {
-      const formValue = this.form.getRawValue();
+      const formValue: any = this.form.getRawValue();
       formValue.isRedirect = isRedirect;
 
       if (typeof formValue.service_label === 'object') {
@@ -138,16 +142,9 @@ export class LaundryFormComponent implements OnInit {
         formValue.status = formValue.status.value;
       }
 
-      const date = this.form.get('pickup_date')?.value;
-      const time = this.form.get('pickup_time')?.value;
-
-      if (date && time) {
-        const fullDate = new Date(date);
-        fullDate.setHours(time.getHours());
-        fullDate.setMinutes(time.getMinutes());
-        fullDate.setSeconds(0);
-        fullDate.setMilliseconds(0);
-        formValue.scheduled_pickup_at = fullDate.toISOString();
+      const combined = this.scheduledPickupDate;
+      if (combined) {
+        formValue.scheduled_pickup_at = formatToSQLDateTime(combined);
       }
 
       delete formValue.pickup_date;
@@ -181,7 +178,6 @@ export class LaundryFormComponent implements OnInit {
     this.clientServ.getAddressesByClientId(clientId).subscribe({
       next: (data) => {
         this.addresses = data;
-
         if (this.addresses.length > 0 && this.addresses.length <= 1) {
           this.form.patchValue({ client_address_id: this.addresses[0].id });
           this.selectedAddress = this.addresses[0].address_text;
@@ -218,7 +214,6 @@ export class LaundryFormComponent implements OnInit {
         this.form.patchValue({ transaction_id: resp.transaction.id });
         this.createdTransaction = resp.transaction;
         this.displayTransactionDialog = false;
-
         this.submit(false);
       }
     });
@@ -227,5 +222,4 @@ export class LaundryFormComponent implements OnInit {
   get canCreateTransaction(): boolean {
     return this.form.get('status')?.value === 'READY_FOR_DELIVERY';
   }
-
 }

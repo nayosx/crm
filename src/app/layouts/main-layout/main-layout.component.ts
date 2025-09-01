@@ -64,19 +64,19 @@ export class MainLayoutComponent implements OnInit {
           command: () => this.sidebarVisible = false
         },
         {
-          label: 'Scheduler',
+          label: 'Recolectas',
           icon: 'pi pi-calendar',
           routerLink: ['/laundry/scheduler'],
           command: () => this.sidebarVisible = false
         },
         {
-          label: 'Work in Progress',
+          label: 'En Progreso',
           icon: 'pi pi-briefcase',
           routerLink: ['/laundry/work-in-progress'],
           command: () => this.sidebarVisible = false
         },
         {
-          label: 'Delivery',
+          label: 'Entregas',
           icon: 'pi pi-truck',
           routerLink: ['/laundry/delivery'],
           command: () => this.sidebarVisible = false
