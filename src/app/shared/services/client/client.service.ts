@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Client, ClientFullResponse, ClientPageResponse } from '@shared/interfaces/client.interface';
+import { Client, ClientFullResponse, ClientPageResponse, ClientDetailPageResponse } from '@shared/interfaces/client.interface';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -12,21 +12,20 @@ export class ClientService {
 
   constructor(private http: HttpClient) {}
 
-  getClients(params?: { page?: number; per_page?: number; q?: string }): Observable<ClientPageResponse> {
-    let httpParams = new HttpParams();
-    if (params) {
-      if (params.page !== undefined) {
-        httpParams = httpParams.set('page', params.page.toString());
-      }
-      if (params.per_page !== undefined) {
-        httpParams = httpParams.set('per_page', params.per_page.toString());
-      }
-      if (params.q) {
-        httpParams = httpParams.set('q', params.q);
-      }
-    }
+  getClients(params?: { page?: number; per_page?: number; q?: string }): Observable<ClientDetailPageResponse> {
+    let httpParams = new HttpParams().set('detail', 'true');
+    if (params?.page !== undefined) httpParams = httpParams.set('page', String(params.page));
+    if (params?.per_page !== undefined) httpParams = httpParams.set('per_page', String(params.per_page));
+    if (params?.q) httpParams = httpParams.set('q', params.q);
+    return this.http.get<ClientDetailPageResponse>(this.baseUrl, { params: httpParams });
+  }
 
-    return this.http.get<ClientPageResponse>(this.baseUrl, { params: httpParams });
+  getClientsLite(params?: { page?: number; per_page?: number; q?: string }): Observable<ClientPageResponse> {
+    let httpParams = new HttpParams();
+    if (params?.page !== undefined) httpParams = httpParams.set('page', String(params.page));
+    if (params?.per_page !== undefined) httpParams = httpParams.set('per_page', String(params.per_page));
+    if (params?.q) httpParams = httpParams.set('q', params.q);
+    return this.http.get<ClientPageResponse>(`${this.baseUrl}/lite`, { params: httpParams });
   }
 
   getClient(id: number): Observable<ClientFullResponse> {

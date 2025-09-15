@@ -1,3 +1,4 @@
+// src/app/shared/interfaces/client.interface.ts
 export interface Client {
   id: number;
   name: string;
@@ -35,7 +36,6 @@ export interface ClientAddress {
   is_primary: boolean;
 }
 
-
 export interface ClientFullResponse {
   id: number;
   name: string;
@@ -48,4 +48,12 @@ export interface ClientFullResponse {
   updated_by: string | null;
   phones: ClientPhone[];
   addresses: ClientAddress[];
+}
+
+export interface ClientDetailPageResponse {
+  total: number;
+  pages: number;
+  current_page: number;
+  per_page: number;
+  items: ClientFullResponse[];
 }

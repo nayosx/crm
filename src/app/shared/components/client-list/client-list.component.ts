@@ -12,6 +12,9 @@ import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-d
 import { ClientDetailComponent } from '@modules/client/components/client-detail/client-detail.component';
 import { MenuModule } from 'primeng/menu';
 
+import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+
+
 @Component({
   selector: 'app-client-list',
   standalone: true,
@@ -24,6 +27,7 @@ import { MenuModule } from 'primeng/menu';
     LoaderDialogComponent,
     ClientDetailComponent,
     MenuModule,
+    TruncatePipe,
   ],
   templateUrl: './client-list.component.html',
   encapsulation: ViewEncapsulation.None
@@ -48,7 +52,7 @@ export class ClientListComponent implements OnInit {
     private clientFacade: ClientFacade,
     private clientService: ClientService,
   ) {
-    this.clients$ = this.clientFacade.clients$;
+    this.clients$ = this.clientFacade.clientsDetail$;
     this.loading$ = this.clientFacade.loading$;
     this.error$ = this.clientFacade.error$;
   }
