@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, ViewChild, ViewEncapsulation } from '@angular/core';
 import { ClientService } from '@shared/services/client/client.service';
-import { Client, ClientFullResponse } from '@shared/interfaces/client.interface';
+import { ClientFullResponse } from '@shared/interfaces/client.interface';
 import { ClientFacade } from '@shared/services/client/client.facade';
 import { getReduceName } from '@shared/utils/text.util';
 import { ButtonModule } from 'primeng/button';
@@ -43,7 +43,7 @@ export class ClientListComponent implements OnInit {
 
   @Output() edit = new EventEmitter<number>();
   @Output() viewDetail = new EventEmitter<number>();
-  @Output() clientSelected = new EventEmitter<Client>();
+  @Output() clientSelected = new EventEmitter<ClientFullResponse>();
 
   selectedClient?: ClientFullResponse;
   detailDialogVisible = false;
@@ -110,7 +110,7 @@ export class ClientListComponent implements OnInit {
     });
   }
 
-  onSelectClient(client: Client) {
+  onSelectClient(client: ClientFullResponse) {
     this.clientSelected.emit(client);
   }
 

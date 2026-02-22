@@ -112,9 +112,9 @@ export class LaundrySocketService {
     }
   }
 
-  joinQueue(status?: string | readonly string[]): Observable<LaundryQueueJoinAckSuccess> {
+  joinQueue<TItem = unknown>(status?: string | readonly string[]): Observable<LaundryQueueJoinAckSuccess<TItem>> {
     const payload = toLaundryStatusPayload(status);
-    return this.emitWithAck('laundry:queue:join', payload);
+    return this.emitWithAck('laundry:queue:join', payload) as Observable<LaundryQueueJoinAckSuccess<TItem>>;
   }
 
   leaveQueue(status?: string | readonly string[]): Observable<LaundryQueueLeaveAckSuccess> {
@@ -125,14 +125,18 @@ export class LaundrySocketService {
   reorderPending(
     ids: readonly number[],
     status?: string | readonly string[]
-  ): Observable<LaundryPendingReorderAckSuccess> {
+  ): Observable<LaundryPendingReorderAckSuccess<unknown>>;
+  reorderPending<TResult = unknown>(
+    ids: readonly number[],
+    status?: string | readonly string[]
+  ): Observable<LaundryPendingReorderAckSuccess<TResult>> {
     const validIds = validateLaundryIds(ids);
     const payload = {
       ids: validIds,
       ...toLaundryStatusPayload(status)
     };
 
-    return this.emitWithAck('laundry:pending:reorder', payload);
+    return this.emitWithAck('laundry:pending:reorder', payload) as Observable<LaundryPendingReorderAckSuccess<TResult>>;
   }
 
   ping<TPayload = unknown>(data?: TPayload): Observable<LaundryQueuePingAckSuccess<TPayload>> {
@@ -170,8 +174,19 @@ export class LaundrySocketService {
         subscriber.complete();
       };
 
-      socket.timeout(this.socketConfig.ackTimeoutMs).emit(event, payload, callback);
+      this.emitWithTimeout(socket, event, payload, callback);
     });
+  }
+
+  private emitWithTimeout<K extends LaundryClientEventName>(
+    socket: LaundrySocket,
+    event: K,
+    payload: LaundryEventPayloadMap[K],
+    callback: (err: unknown, response?: LaundryEventAckMap[K]) => void
+  ): void {
+    (socket.timeout(this.socketConfig.ackTimeoutMs) as {
+      emit: (eventName: K, payloadData: LaundryEventPayloadMap[K], ackCallback: typeof callback) => void;
+    }).emit(event, payload, callback);
   }
 
   private getOrCreateSocket(): LaundrySocket {

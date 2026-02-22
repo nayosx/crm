@@ -58,6 +58,12 @@ export class MainLayoutComponent implements OnInit {
       icon: '',
       items: [
         {
+          label: 'Socket',
+          icon: 'pi pi-home',
+          routerLink: ['/laundry/socket-queues'],
+          command: () => this.sidebarVisible = false
+        },
+        {
           label: 'Servicios',
           icon: 'pi pi-home',
           routerLink: ['/laundry'],
@@ -67,6 +73,12 @@ export class MainLayoutComponent implements OnInit {
           label: 'Recolectas',
           icon: 'pi pi-calendar',
           routerLink: ['/laundry/scheduler'],
+          command: () => this.sidebarVisible = false
+        },
+        {
+          label: 'Pendientes (DnD)',
+          icon: 'pi pi-sort-alt',
+          routerLink: ['/laundry/pending'],
           command: () => this.sidebarVisible = false
         },
         {

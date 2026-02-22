@@ -131,9 +131,19 @@ export const routes: Routes = [
                             import('./modules/laundry/pages/schedule/schedule.component').then(m => m.ScheduleComponent)
                     },
                     {
+                        path: 'pending',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/pending/pending.component').then(m => m.PendingComponent)
+                    },
+                    {
                         path: 'work-in-progress',
                         loadComponent: () =>
                             import('./modules/laundry/pages/process/process.component').then(m => m.ProcessComponent)
+                    },
+                    {
+                        path: 'socket-queues',
+                        loadComponent: () =>
+                            import('./modules/laundry/pages/socket-queues/socket-queues.component').then(m => m.SocketQueuesComponent)
                     },
                     {
                         path: ':id/detail',

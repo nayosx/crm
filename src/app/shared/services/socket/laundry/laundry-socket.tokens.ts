@@ -31,5 +31,5 @@ export const LAUNDRY_SOCKET_CONFIG = new InjectionToken<LaundrySocketConfig>('LA
 export const LAUNDRY_SOCKET_FACTORY = new InjectionToken<LaundrySocketFactory>('LAUNDRY_SOCKET_FACTORY', {
   providedIn: 'root',
   factory: (): LaundrySocketFactory => (url, options) =>
-    io<LaundryServerToClientEvents, LaundryClientToServerEvents>(url, options)
+    io(url, options) as LaundrySocket
 });

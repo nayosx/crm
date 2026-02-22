@@ -1,0 +1,70 @@
+<div class="flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
+  <div class="flex align-items-center gap-2">
+    <i class="pi pi-sort-alt text-yellow-600 text-xl"></i>
+    <h2 class="m-0">Pendientes (Drag & Drop)</h2>
+  </div>
+
+  <div class="flex align-items-center gap-2">
+    <p-tag [value]="items().length.toString()" severity="warn"></p-tag>
+    <p-tag *ngIf="savingOrder()" value="Guardando orden..." severity="info"></p-tag>
+    <button pButton type="button" label="Nuevo servicio" icon="pi pi-plus" size="small"
+      [disabled]="savingOrder() || creating()" (click)="openCreateDialog()"></button>
+    <button pButton type="button" label="Refrescar" icon="pi pi-refresh" size="small" severity="secondary"
+      [disabled]="loading() || savingOrder() || creating()" (click)="loadPending()"></button>
+  </div>
+</div>
+
+<div class="px-4 py-3">
+  <p-message *ngIf="errorMessage()" severity="error" [text]="errorMessage() ?? ''"></p-message>
+</div>
+
+<div class="px-4 pb-4">
+  <p-card styleClass="shadow-2 border-round-xl">
+    <div *ngIf="loading()" class="flex justify-content-center py-6">
+      <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+    </div>
+
+    <div *ngIf="!loading() && items().length === 0" class="text-center py-5 text-color-secondary">
+      No hay servicios pendientes.
+    </div>
+
+    <div *ngIf="!loading() && items().length > 0" class="flex flex-column gap-2">
+      <div
+        *ngFor="let item of items(); let i = index; trackBy: trackByLaundryId"
+        class="border-1 surface-border border-round-lg px-3 py-3 cursor-move"
+        draggable="true"
+        (dragstart)="onDragStart(i)"
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop(i)"
+        (dragend)="onDragEnd()">
+        <div class="flex align-items-start justify-content-between gap-3">
+          <div class="flex flex-column gap-2">
+            <div class="font-semibold text-lg">#{{ item.id }} - {{ item.client.name || 'Cliente sin nombre' }}</div>
+            <div class="text-sm text-color-secondary">{{ item.client_address?.address_text || 'Sin dirección registrada' }}</div>
+            <div class="text-sm text-color-secondary">Creado por: {{ item.created_by_user.name || 'Sistema' }}</div>
+          </div>
+
+          <div class="flex align-items-center gap-2">
+            <p-tag [value]="item.service_label" [severity]="item.service_label === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
+            <button pButton type="button" icon="pi pi-arrow-right" size="small" severity="contrast"
+              (click)="openDetail(item)"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </p-card>
+</div>
+
+<p-dialog
+  header="Crear servicio de lavandería"
+  [visible]="createDialogVisible()"
+  [modal]="true"
+  [closable]="!creating()"
+  [style]="{ width: '34rem' }"
+  (onHide)="closeCreateDialog()">
+  <app-pending-create-laundry-form
+    [submitting]="creating()"
+    (formSubmit)="createPendingService($event)"
+    (cancel)="closeCreateDialog()">
+  </app-pending-create-laundry-form>
+</p-dialog>

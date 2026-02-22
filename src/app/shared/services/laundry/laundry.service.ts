@@ -115,4 +115,8 @@ export class LaundryService {
   getWithMessages(id: number): Observable<LaundryServiceWithMessages> {
     return this.http.get<LaundryServiceWithMessages>(`${this.baseUrl}/${id}/notes`);
   }
+
+  reorderPending(ids: number[]): Observable<{ message?: string }> {
+    return this.http.patch<{ message?: string }>(`${this.baseUrl}/pending/reorder`, { ids });
+  }
 }

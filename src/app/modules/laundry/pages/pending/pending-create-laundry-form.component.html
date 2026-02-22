@@ -1,0 +1,60 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3 pt-2">
+  <div class="flex flex-column gap-2">
+    <label class="font-medium">Cliente</label>
+    <button pButton type="button" icon="pi pi-user" label="Seleccionar cliente" (click)="openClientDialog()" [disabled]="submitting"></button>
+    <p-tag *ngIf="selectedClientName" severity="info" [value]="selectedClientName"></p-tag>
+    <small *ngIf="form.get('client_id')?.invalid && form.get('client_id')?.touched" class="p-error">
+      Debes seleccionar un cliente.
+    </small>
+  </div>
+
+  <div class="flex flex-column gap-2">
+    <label class="font-medium">Dirección (automática)</label>
+    <small *ngIf="selectedAddressText" class="text-color-secondary">{{ selectedAddressText }}</small>
+    <small *ngIf="form.get('client_address_id')?.invalid && form.get('client_address_id')?.touched" class="p-error">
+      El cliente debe tener al menos una dirección.
+    </small>
+  </div>
+
+  <div class="flex align-items-center justify-content-between gap-2">
+    <label class="font-medium">Servicio express</label>
+    <p-toggleswitch formControlName="is_express" [disabled]="submitting"></p-toggleswitch>
+  </div>
+
+  <div class="flex flex-column gap-2">
+    <small class="text-color-secondary">`status` se enviará como `PENDING` y `transaction_id` como `null`.</small>
+    <small class="text-color-secondary">`scheduled_pickup_at` se enviará con fecha/hora actual del servidor cliente.</small>
+  </div>
+
+  <div class="flex justify-content-end gap-2 mt-2">
+    <button pButton type="button" label="Cancelar" severity="secondary" (click)="close()" [disabled]="submitting"></button>
+    <button pButton type="submit" label="Crear servicio" [loading]="submitting" [disabled]="form.invalid || submitting"></button>
+  </div>
+</form>
+
+<p-dialog
+  header="Selecciona un cliente"
+  [(visible)]="displayClientDialog"
+  [modal]="true"
+  [closable]="!submitting"
+  [style]="{ width: '42rem' }">
+  <app-client-list
+    [showActions]="false"
+    (clientSelected)="onClientSelected($event)"
+    *ngIf="displayClientDialog">
+  </app-client-list>
+</p-dialog>
+
+<p-dialog
+  header="No se puede continuar"
+  [(visible)]="displayNoAddressDialog"
+  [modal]="true"
+  [closable]="false"
+  [style]="{ width: '28rem' }">
+  <p class="m-0 mb-3">
+    El cliente seleccionado no tiene dirección registrada. No se puede continuar con la creación del servicio.
+  </p>
+  <div class="flex justify-content-end">
+    <button pButton type="button" label="Entendido" (click)="closeNoAddressDialog()"></button>
+  </div>
+</p-dialog>
