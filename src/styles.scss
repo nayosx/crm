@@ -77,3 +77,71 @@ body {
 .u-card-group > div:last-child {
   border-bottom: none;
 }
+
+.u-flex-min-w-0 {
+  min-width: 0;
+}
+
+.u-flex-1-auto {
+  flex: 1 1 auto;
+}
+
+.u-text-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.u-header-counter {
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media screen and (max-width: 640px) {
+  .u-mobile-stack-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .u-mobile-full-left {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .u-mobile-wrap-start {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .u-mobile-icon-button {
+    min-width: 3rem;
+    width: 3rem;
+    height: 3rem;
+    padding-inline: 0;
+  }
+
+  .u-header-counter {
+    min-height: 3rem;
+  }
+
+  .u-mobile-icon-button .p-button-label {
+    display: none;
+  }
+
+  .u-mobile-wrap {
+    flex-wrap: wrap;
+  }
+
+  .u-mobile-full {
+    width: 100%;
+  }
+
+  .u-mobile-actions-end {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}

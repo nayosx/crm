@@ -139,6 +139,7 @@ export interface LaundryServiceDetail {
 
 export interface LaundryServiceCompact {
   id: number;
+  pending_order?: number;
   service_label: 'NORMAL' | 'EXPRESS';
   status: LaundryServiceStatus;
   created_at: string;
@@ -186,6 +187,5 @@ export interface LaundryServiceCompactPagination {
   per_page: number;
   pages: number;
 }
-
 
 

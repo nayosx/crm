@@ -1,16 +1,28 @@
-<div class="flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
-  <div class="flex align-items-center gap-2">
+<div class="pending-header u-flex-min-w-0 u-mobile-stack-left flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
+  <div class="pending-header-title u-flex-min-w-0 u-mobile-full-left flex align-items-center gap-2">
     <i class="pi pi-sort-alt text-yellow-600 text-xl"></i>
-    <h2 class="m-0">Pendientes (Drag & Drop)</h2>
+    <h2 class="m-0">Servicios</h2>
   </div>
 
-  <div class="flex align-items-center gap-2">
-    <p-tag [value]="items().length.toString()" severity="warn"></p-tag>
+  <div class="pending-header-actions u-flex-min-w-0 u-mobile-wrap-start flex align-items-center gap-2">
+    <p-tag class="u-header-counter" [value]="items().length.toString()" severity="warn"></p-tag>
     <p-tag *ngIf="savingOrder()" value="Guardando orden..." severity="info"></p-tag>
+    <p-tag *ngIf="updatingStatus()" value="Actualizando estado..." severity="contrast"></p-tag>
     <button pButton type="button" label="Nuevo servicio" icon="pi pi-plus" size="small"
-      [disabled]="savingOrder() || creating()" (click)="openCreateDialog()"></button>
+      class="u-mobile-icon-button"
+      [attr.aria-label]="'Nuevo servicio'"
+      [attr.title]="'Nuevo servicio'"
+      [disabled]="savingOrder() || creating() || updatingStatus()" (click)="openCreateDialog()"></button>
+    <button pButton type="button" label="Nuevo cliente + dirección" icon="pi pi-user-plus" size="small" severity="secondary"
+      class="u-mobile-icon-button"
+      [attr.aria-label]="'Nuevo cliente + dirección'"
+      [attr.title]="'Nuevo cliente + dirección'"
+      [disabled]="savingOrder() || creating() || updatingStatus()" (click)="openCreateWithClientAddressDialog()"></button>
     <button pButton type="button" label="Refrescar" icon="pi pi-refresh" size="small" severity="secondary"
-      [disabled]="loading() || savingOrder() || creating()" (click)="loadPending()"></button>
+      class="u-mobile-icon-button"
+      [attr.aria-label]="'Refrescar'"
+      [attr.title]="'Refrescar'"
+      [disabled]="loading() || savingOrder() || creating() || updatingStatus()" (click)="loadPending()"></button>
   </div>
 </div>
 
@@ -18,7 +30,7 @@
   <p-message *ngIf="errorMessage()" severity="error" [text]="errorMessage() ?? ''"></p-message>
 </div>
 
-<div class="px-4 pb-4">
+<div class="pending-card-shell px-4 pb-4">
   <p-card styleClass="shadow-2 border-round-xl">
     <div *ngIf="loading()" class="flex justify-content-center py-6">
       <p-progress-spinner strokeWidth="4"></p-progress-spinner>
@@ -31,23 +43,47 @@
     <div *ngIf="!loading() && items().length > 0" class="flex flex-column gap-2">
       <div
         *ngFor="let item of items(); let i = index; trackBy: trackByLaundryId"
-        class="border-1 surface-border border-round-lg px-3 py-3 cursor-move"
+        class="pending-item u-flex-min-w-0 border-1 surface-border border-round-lg px-3 py-3 cursor-move"
+        [class.pending-item-moved]="movedItemId() === item.id"
         draggable="true"
         (dragstart)="onDragStart(i)"
         (dragover)="onDragOver($event)"
         (drop)="onDrop(i)"
         (dragend)="onDragEnd()">
-        <div class="flex align-items-start justify-content-between gap-3">
-          <div class="flex flex-column gap-2">
-            <div class="font-semibold text-lg">#{{ item.id }} - {{ item.client.name || 'Cliente sin nombre' }}</div>
-            <div class="text-sm text-color-secondary">{{ item.client_address?.address_text || 'Sin dirección registrada' }}</div>
-            <div class="text-sm text-color-secondary">Creado por: {{ item.created_by_user.name || 'Sistema' }}</div>
-          </div>
+        <div class="pending-item-content u-flex-min-w-0 u-mobile-wrap flex align-items-start justify-content-between gap-3">
+          <div class="pending-item-main u-flex-min-w-0 u-flex-1-auto u-mobile-full flex flex-column gap-2">
+            <div class="pending-item-header flex align-items-start justify-content-between">
+              <div class="pending-item-title pending-item-text u-text-break font-semibold text-lg">
+                @if ((('#' + item.id + ' - ' + (item.client.name || 'Cliente sin nombre')).length) > 30) {
+                  {{ ('#' + item.id + ' - ' + (item.client.name || 'Cliente sin nombre')) | truncate:30 }}
+                } @else {
+                  {{ '#' + item.id + ' - ' + (item.client.name || 'Cliente sin nombre') }}
+                }
+              </div>
 
-          <div class="flex align-items-center gap-2">
-            <p-tag [value]="item.service_label" [severity]="item.service_label === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
-            <button pButton type="button" icon="pi pi-arrow-right" size="small" severity="contrast"
-              (click)="openDetail(item)"></button>
+              <div class="pending-item-header-actions flex align-items-center gap-2">
+                <p-tag [value]="item.service_label" [severity]="item.service_label === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
+                <p-menu #menu [model]="rowActions" [popup]="true" appendTo="body"></p-menu>
+                <button
+                  pButton
+                  type="button"
+                  icon="pi pi-ellipsis-v"
+                  size="small"
+                  severity="secondary"
+                  [disabled]="updatingStatus()"
+                  (mousedown)="$event.stopPropagation()"
+                  (click)="openItemMenu($event, item, menu)">
+                </button>
+              </div>
+            </div>
+            <div class="pending-item-text text-sm text-color-secondary flex align-items-center gap-2">
+              <i class="pi pi-map-marker"></i>
+              <span class="u-text-break">{{ item.client_address?.address_text || 'Sin dirección registrada' }}</span>
+            </div>
+            <div class="pending-item-text text-sm text-color-secondary flex align-items-center gap-2">
+              <i class="pi pi-id-card"></i>
+              <span class="u-text-break">{{ item.created_by_user.name || 'Sistema' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -62,9 +98,30 @@
   [closable]="!creating()"
   [style]="{ width: '34rem' }"
   (onHide)="closeCreateDialog()">
-  <app-pending-create-laundry-form
-    [submitting]="creating()"
-    (formSubmit)="createPendingService($event)"
-    (cancel)="closeCreateDialog()">
-  </app-pending-create-laundry-form>
+  @if (createDialogVisible()) {
+    <app-pending-create-laundry-form
+      [submitting]="creating()"
+      (formSubmit)="createPendingService($event)"
+      (cancel)="closeCreateDialog()">
+    </app-pending-create-laundry-form>
+  }
 </p-dialog>
+
+<p-dialog
+  header="Nuevo cliente + dirección + servicio"
+  [visible]="createWithClientAddressDialogVisible()"
+  [modal]="true"
+  [style]="{ width: '34rem' }"
+  (onHide)="closeCreateWithClientAddressDialog()">
+  @if (createWithClientAddressDialogVisible()) {
+    <app-pending-create-client-address-laundry-form
+      (created)="onCreatedWithClientAddressFlow()"
+      (cancel)="closeCreateWithClientAddressDialog()">
+    </app-pending-create-client-address-laundry-form>
+  }
+</p-dialog>
+
+<app-loader-dialog></app-loader-dialog>
+<p-confirmdialog
+  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }" />

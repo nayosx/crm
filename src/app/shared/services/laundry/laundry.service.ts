@@ -80,6 +80,8 @@ export class LaundryService {
     per_page?: number;
     status?: LaundryServiceStatus;
     client_id?: number;
+    sort_by?: string;
+    sort_dir?: 'asc' | 'desc';
   }): Observable<LaundryServiceCompactPagination> {
     let httpParams = new HttpParams();
     Object.entries(params || {}).forEach(([key, value]) => {
