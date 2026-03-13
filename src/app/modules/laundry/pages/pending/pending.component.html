@@ -7,7 +7,7 @@
   <div class="pending-header-actions u-flex-min-w-0 u-mobile-wrap-start flex align-items-center gap-2">
     <p-tag class="u-header-counter" [value]="items().length.toString()" severity="warn"></p-tag>
     <p-tag *ngIf="savingOrder()" value="Guardando orden..." severity="info"></p-tag>
-    <p-tag *ngIf="updatingStatus()" value="Actualizando estado..." severity="contrast"></p-tag>
+    <p-tag *ngIf="updatingStatus()" value="Actualizando servicio..." severity="contrast"></p-tag>
     <button pButton type="button" label="Nuevo servicio" icon="pi pi-plus" size="small"
       class="u-mobile-icon-button"
       [attr.aria-label]="'Nuevo servicio'"

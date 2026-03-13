@@ -28,6 +28,8 @@ type CreateLaundryPayload = {
   transaction_id: null;
 };
 
+type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
+
 @Component({
   selector: 'app-pending',
   imports: [
@@ -108,23 +110,7 @@ export class PendingComponent implements OnInit {
   private dragIndex: number | null = null;
   private previousItems: LaundryServiceCompact[] = [];
   private movedItemAnimationTimeout: ReturnType<typeof setTimeout> | null = null;
-  readonly rowActions: MenuItem[] = [
-    {
-      label: 'Ver detalle',
-      icon: 'pi pi-arrow-right',
-      command: () => this.openSelectedItemDetail()
-    },
-    {
-      label: 'Marcar listo para entrega',
-      icon: 'pi pi-truck',
-      command: () => this.runSelectedItemAction('READY_FOR_DELIVERY')
-    },
-    {
-      label: 'Cancelar servicio',
-      icon: 'pi pi-times-circle',
-      command: () => this.runSelectedItemAction('CANCELLED')
-    }
-  ];
+  rowActions: MenuItem[] = this.buildRowActions();
 
   constructor(
     private readonly laundryService: LaundryService,
@@ -252,6 +238,7 @@ export class PendingComponent implements OnInit {
   openItemMenu(event: Event, item: LaundryServiceCompact, menu: Menu): void {
     event.stopPropagation();
     this.selectedActionItemId.set(item.id);
+    this.rowActions = this.buildRowActions(item);
     menu.toggle(event);
   }
 
@@ -276,6 +263,26 @@ export class PendingComponent implements OnInit {
       },
       error: () => {
         this.errorMessage.set('No se pudo actualizar el estado del servicio.');
+      }
+    });
+  }
+
+  private updateServiceLabel(id: number, serviceLabel: LaundryServiceLabel): void {
+    this.updatingStatus.set(true);
+    this.errorMessage.set(null);
+    this.loader?.open('Actualizando tipo de servicio...');
+
+    this.laundryService.update(id, { service_label: serviceLabel }).pipe(
+      finalize(() => {
+        this.updatingStatus.set(false);
+        this.loader?.close();
+      })
+    ).subscribe({
+      next: () => {
+        this.loadPending();
+      },
+      error: () => {
+        this.errorMessage.set('No se pudo actualizar el tipo de servicio.');
       }
     });
   }
@@ -318,6 +325,35 @@ export class PendingComponent implements OnInit {
     this.openDetail(item);
   }
 
+  private toggleSelectedItemServiceLabel(): void {
+    const item = this.getSelectedActionItem();
+    if (!item) {
+      return;
+    }
+
+    const nextLabel = this.getNextServiceLabel(item.service_label);
+
+    this.confirmationService.confirm({
+      header: 'Confirmar tipo de servicio',
+      message: `Vas a cambiar el servicio #${item.id} del cliente ${item.client.name || 'Cliente sin nombre'} de ${this.getServiceLabelLabel(item.service_label)} a ${this.getServiceLabelLabel(nextLabel)}.`,
+      closable: true,
+      closeOnEscape: true,
+      icon: 'pi pi-bolt',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        outlined: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, actualizar',
+        severity: 'warn',
+      },
+      accept: () => {
+        this.updateServiceLabel(item.id, nextLabel);
+      }
+    });
+  }
+
   private persistOrder(ids: number[]): void {
     this.savingOrder.set(true);
     this.errorMessage.set(null);
@@ -355,6 +391,35 @@ export class PendingComponent implements OnInit {
     return this.items().find((item) => item.id === selectedId) ?? null;
   }
 
+  private buildRowActions(item?: LaundryServiceCompact | null): MenuItem[] {
+    const selectedItem = item ?? this.getSelectedActionItem();
+
+    return [
+      {
+        label: 'Ver detalle',
+        icon: 'pi pi-arrow-right',
+        command: () => this.openSelectedItemDetail()
+      },
+      {
+        label: selectedItem
+          ? `Cambiar a ${this.getServiceLabelLabel(this.getNextServiceLabel(selectedItem.service_label))}`
+          : 'Cambiar tipo de servicio',
+        icon: 'pi pi-bolt',
+        command: () => this.toggleSelectedItemServiceLabel()
+      },
+      {
+        label: 'Marcar listo para entrega',
+        icon: 'pi pi-truck',
+        command: () => this.runSelectedItemAction('READY_FOR_DELIVERY')
+      },
+      {
+        label: 'Cancelar servicio',
+        icon: 'pi pi-times-circle',
+        command: () => this.runSelectedItemAction('CANCELLED')
+      }
+    ];
+  }
+
   private getStatusLabel(status: LaundryServiceStatus): string {
     switch (status) {
       case 'PENDING':
@@ -370,6 +435,14 @@ export class PendingComponent implements OnInit {
       case 'CANCELLED':
         return 'Cancelado';
     }
+  }
+
+  private getNextServiceLabel(serviceLabel: LaundryServiceLabel): LaundryServiceLabel {
+    return serviceLabel === 'EXPRESS' ? 'NORMAL' : 'EXPRESS';
+  }
+
+  private getServiceLabelLabel(serviceLabel: LaundryServiceLabel): string {
+    return serviceLabel === 'EXPRESS' ? 'Express' : 'Normal';
   }
 
   private getStatusConfirmationCopy(item: LaundryServiceCompact, status: LaundryServiceStatus): {

@@ -1,29 +1,49 @@
 <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3 pt-2">
   <div class="flex flex-column gap-2">
     <label class="font-medium">Cliente</label>
-    <button pButton type="button" icon="pi pi-user" label="Seleccionar cliente" (click)="openClientDialog()" [disabled]="submitting"></button>
-    <p-tag *ngIf="selectedClientName" severity="info" [value]="selectedClientName"></p-tag>
+    <button
+      pButton
+      type="button"
+      icon="pi pi-user"
+      [label]="selectedClientName ? 'Cambiar cliente' : 'Seleccionar cliente'"
+      class="pending-create-service-select-button"
+      severity="secondary"
+      (click)="openClientDialog()"
+      [disabled]="submitting">
+    </button>
+
+    @if (selectedClientName || selectedAddressText) {
+      <div
+        class="pending-create-service-summary flex flex-column gap-2"
+        [class.pending-create-service-summary-animated]="clientChanged()">
+        @if (selectedClientName) {
+          <div class="flex align-items-center gap-2">
+            <i class="pi pi-user text-color-secondary"></i>
+            <span class="font-medium">{{ selectedClientName }}</span>
+          </div>
+        }
+
+        @if (selectedAddressText) {
+          <div class="flex align-items-start gap-2 text-color-secondary">
+            <i class="pi pi-map-marker mt-1"></i>
+            <span>{{ selectedAddressText }}</span>
+          </div>
+        }
+      </div>
+    }
+
     <small *ngIf="form.get('client_id')?.invalid && form.get('client_id')?.touched" class="p-error">
       Debes seleccionar un cliente.
     </small>
   </div>
 
-  <div class="flex flex-column gap-2">
-    <label class="font-medium">Dirección (automática)</label>
-    <small *ngIf="selectedAddressText" class="text-color-secondary">{{ selectedAddressText }}</small>
-    <small *ngIf="form.get('client_address_id')?.invalid && form.get('client_address_id')?.touched" class="p-error">
-      El cliente debe tener al menos una dirección.
-    </small>
-  </div>
+  <small *ngIf="form.get('client_address_id')?.invalid && form.get('client_address_id')?.touched" class="p-error">
+    El cliente debe tener al menos una dirección.
+  </small>
 
   <div class="flex align-items-center justify-content-between gap-2">
     <label class="font-medium">Servicio express</label>
     <p-toggleswitch formControlName="is_express" [disabled]="submitting"></p-toggleswitch>
-  </div>
-
-  <div class="flex flex-column gap-2">
-    <small class="text-color-secondary">`status` se enviará como `PENDING` y `transaction_id` como `null`.</small>
-    <small class="text-color-secondary">`scheduled_pickup_at` se enviará con fecha/hora actual del servidor cliente.</small>
   </div>
 
   <div class="flex justify-content-end gap-2 mt-2">
