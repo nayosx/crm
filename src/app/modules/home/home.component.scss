@@ -1,0 +1,63 @@
+.section-kicker {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.section-copy {
+  color: #475569;
+  max-width: 38rem;
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.shortcut-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.shortcut-card-delete-active {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.shortcut-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.shortcut-path {
+  color: #64748b;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+@media (max-width: 1023px) {
+  .shortcut-card {
+    cursor: pointer;
+  }
+
+  .shortcut-open-button {
+    display: none;
+  }
+
+  .shortcut-delete-button {
+    display: inline-flex;
+  }
+
+  .shortcut-delete-cancel {
+    display: inline-flex;
+  }
+}

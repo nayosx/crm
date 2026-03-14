@@ -1,0 +1,99 @@
+<section class="queue-page">
+  <header class="queue-header">
+    <div class="queue-header__copy">
+      <p class="queue-kicker">{{ texts.kicker }}</p>
+      <h1 class="queue-title">{{ texts.title }}</h1>
+      <p class="queue-subtitle">{{ texts.subtitle }}</p>
+    </div>
+
+    <div class="queue-header__status">
+      <p-tag
+        [value]="(connected$ | async) ? connectionTexts.connected : connectionTexts.disconnected"
+        [severity]="(connected$ | async) ? 'success' : 'danger'"
+      ></p-tag>
+      <p-tag *ngIf="reconnecting$ | async" [value]="connectionTexts.reconnecting" severity="warn"></p-tag>
+    </div>
+  </header>
+
+  <p-message *ngIf="errorMessage()" severity="error" [text]="errorMessage() ?? ''"></p-message>
+
+  <p-card styleClass="queue-card">
+    <ng-template pTemplate="header">
+      <div class="queue-card__header">
+        <div>
+          <p class="queue-card__eyebrow">{{ texts.totalEyebrow }}</p>
+          <h2 class="queue-card__title">{{ texts.totalTitle }}</h2>
+        </div>
+
+        <p-tag [value]="total().toString()" severity="warn"></p-tag>
+      </div>
+    </ng-template>
+
+    <div *ngIf="loading()" class="queue-loading">
+      <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+    </div>
+
+    <p-dataView
+      *ngIf="!loading()"
+      [value]="items()"
+      layout="list"
+    >
+      <ng-template #list let-items>
+        <div class="queue-list">
+          <article
+            *ngFor="let item of items; trackBy: trackByLaundryId"
+            class="queue-item"
+          >
+            <div class="queue-item__top">
+              <div>
+                <p class="queue-item__id">#{{ item.id }}</p>
+                <h3 class="queue-item__client">{{ item.client?.name || texts.unnamedClient }}</h3>
+              </div>
+
+              <div class="queue-item__tags">
+                <p-tag
+                  [value]="getServiceLabel(item.service_label)"
+                  [severity]="getServiceSeverity(item.service_label)"
+                ></p-tag>
+                <p-tag
+                  [value]="getStatusLabel(item.status)"
+                  [severity]="getSeverity(item.status)"
+                ></p-tag>
+              </div>
+            </div>
+
+            <div class="queue-item__body">
+              <p>
+                <span>{{ texts.addressLabel }}</span>
+                {{ item.client_address?.address_text || texts.noAddress }}
+              </p>
+              <p>
+                <span>{{ texts.createdByLabel }}</span>
+                {{ item.created_by_user?.name || texts.systemUser }}
+              </p>
+              <p *ngIf="item.pending_order">
+                <span>{{ texts.orderLabel }}</span>
+                {{ item.pending_order }}
+              </p>
+            </div>
+
+            <button
+              pButton
+              type="button"
+              [label]="texts.openDetail"
+              icon="pi pi-arrow-right"
+              class="queue-item__action"
+              (click)="openDetail(item)"
+            ></button>
+          </article>
+        </div>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <div class="queue-empty">
+          {{ texts.empty }}
+        </div>
+      </ng-template>
+    </p-dataView>
+  </p-card>
+</section>

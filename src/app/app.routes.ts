@@ -133,6 +133,11 @@ export const routes: Routes = [
                     {
                         path: 'pending',
                         loadComponent: () =>
+                            import('./modules/laundry/pages/pending-queue/pending-queue.component').then(m => m.PendingQueueComponent)
+                    },
+                    {
+                        path: 'pending-board',
+                        loadComponent: () =>
                             import('./modules/laundry/pages/pending/pending.component').then(m => m.PendingComponent)
                     },
                     {

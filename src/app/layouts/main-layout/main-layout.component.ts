@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '@shared/services/auth/auth.service';
 import { ButtonModule } from 'primeng/button';
 import { PanelMenuModule } from 'primeng/panelmenu';
@@ -7,6 +7,8 @@ import { DrawerModule } from 'primeng/drawer';
 import { MenuItem } from 'primeng/api';
 import { User } from '@shared/interfaces/user.interface';
 import { KEYSTORE } from '@core/keystore';
+import { NavigationService } from '@shared/services/navigation/navigation.service';
+import { filter, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-main-layout',
@@ -22,84 +24,34 @@ import { KEYSTORE } from '@core/keystore';
   styleUrl: './main-layout.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class MainLayoutComponent implements OnInit {
+export class MainLayoutComponent implements OnInit, OnDestroy {
 
   authService = inject(AuthService);
+  navigationService = inject(NavigationService);
+  router = inject(Router);
+
+  private readonly subscriptions = new Subscription();
 
   sidebarVisible = false;
+  hideDesktopSidebar = false;
 
-  menuItems: MenuItem[] = [
-    {
-      label: 'Inicio',
-      icon: 'pi pi-home',
-      routerLink: ['/home'],
-      command: () => this.sidebarVisible = false
-    },
-    {
-      label: 'Clientes',
-      icon: 'pi pi-users',
-      routerLink: ['/clients'],
-      command: () => this.sidebarVisible = false
-    },
-    {
-      label: 'Transacciones',
-      icon: 'pi pi-dollar',
-      routerLink: ['/transactions'],
-      command: () => this.sidebarVisible = false
-    },
-    {
-      label: 'Usuarios',
-      icon: 'pi pi-users',
-      routerLink: ['/users'],
-      command: () => this.sidebarVisible = false
-    },
-    {
-      label: 'Lavandería',
-      icon: '',
-      items: [
-        {
-          label: 'Socket',
-          icon: 'pi pi-home',
-          routerLink: ['/laundry/socket-queues'],
-          command: () => this.sidebarVisible = false
-        },
-        {
-          label: 'Servicios',
-          icon: 'pi pi-home',
-          routerLink: ['/laundry'],
-          command: () => this.sidebarVisible = false
-        },
-        {
-          label: 'Recolectas',
-          icon: 'pi pi-calendar',
-          routerLink: ['/laundry/scheduler'],
-          command: () => this.sidebarVisible = false
-        },
-        {
-          label: 'Pendientes (DnD)',
-          icon: 'pi pi-sort-alt',
-          routerLink: ['/laundry/pending'],
-          command: () => this.sidebarVisible = false
-        },
-        {
-          label: 'En Progreso',
-          icon: 'pi pi-briefcase',
-          routerLink: ['/laundry/work-in-progress'],
-          command: () => this.sidebarVisible = false
-        },
-        {
-          label: 'Entregas',
-          icon: 'pi pi-truck',
-          routerLink: ['/laundry/delivery'],
-          command: () => this.sidebarVisible = false
-        },
-        
-      ]
-    }
-  ];
+  menuItems: MenuItem[] = this.navigationService.getMainMenuItems(() => this.sidebarVisible = false);
 
   ngOnInit(): void {
     this.getUser();
+    this.updateSidebarVisibility(this.router.url);
+
+    this.subscriptions.add(
+      this.router.events
+        .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+        .subscribe((event) => {
+          this.updateSidebarVisibility(event.urlAfterRedirects);
+        })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
   }
 
 
@@ -119,5 +71,9 @@ export class MainLayoutComponent implements OnInit {
     if(data) {
       this.user = JSON.parse(data);
     }
+  }
+
+  private updateSidebarVisibility(url: string): void {
+    this.hideDesktopSidebar = url.startsWith('/laundry/socket-queues');
   }
 }

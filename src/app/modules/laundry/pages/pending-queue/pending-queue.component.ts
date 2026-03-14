@@ -1,13 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription, catchError, of } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { DataViewModule } from 'primeng/dataview';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { Observable, Subscription, catchError, of } from 'rxjs';
 
 import {
   type LaundryQueueUpdatedEvent,
@@ -19,6 +19,7 @@ import {
   type LaundryServiceStatus
 } from '@shared/interfaces/laundry-service.interface';
 import {
+  LaundryPendingQueueTexts,
   LaundryServiceLabelMap,
   LaundrySocketQueueTexts,
   LaundryStatusLabelMap
@@ -28,36 +29,33 @@ import { getLaundryStatusSeverity } from '@shared/utils/color.util';
 type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined;
 
 @Component({
-  selector: 'app-socket-queues',
+  selector: 'app-pending-queue',
   imports: [
     CommonModule,
     CardModule,
-    TableModule,
+    DataViewModule,
     TagModule,
     ButtonModule,
     MessageModule,
     ProgressSpinnerModule
   ],
-  templateUrl: './socket-queues.component.html',
-  styleUrl: './socket-queues.component.scss'
+  templateUrl: './pending-queue.component.html',
+  styleUrl: './pending-queue.component.scss'
 })
-export class SocketQueuesComponent implements OnInit, OnDestroy {
+export class PendingQueueComponent implements OnInit, OnDestroy {
   private readonly subscription = new Subscription();
-  readonly texts = LaundrySocketQueueTexts;
+  readonly texts = LaundryPendingQueueTexts;
+  readonly connectionTexts = LaundrySocketQueueTexts;
   readonly statusLabels = LaundryStatusLabelMap;
   readonly serviceLabels = LaundryServiceLabelMap;
 
-  readonly pendingItems = signal<LaundryServiceCompact[]>([]);
-  readonly readyItems = signal<LaundryServiceCompact[]>([]);
-  readonly pendingLoading = signal<boolean>(true);
-  readonly readyLoading = signal<boolean>(true);
+  readonly items = signal<LaundryServiceCompact[]>([]);
+  readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
+  readonly total = computed(() => this.items().length);
 
-  readonly pendingCount = computed(() => this.pendingItems().length);
-  readonly readyCount = computed(() => this.readyItems().length);
-
-  readonly connected$: Observable<boolean>;
-  readonly reconnecting$: Observable<boolean>;
+  readonly connected$;
+  readonly reconnecting$;
 
   constructor(
     private readonly laundrySocket: LaundrySocketService,
@@ -70,19 +68,17 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.laundrySocket.connect();
     this.bindSocketStreams();
-    this.joinInitialRooms();
+    this.joinPendingRoom();
   }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
-
     this.laundrySocket.leaveQueue('PENDING').pipe(catchError(() => of(null))).subscribe();
-    this.laundrySocket.leaveQueue('READY_FOR_DELIVERY').pipe(catchError(() => of(null))).subscribe();
   }
 
-  openDetail(item: LaundryServiceCompact, status: LaundryServiceStatus): void {
+  openDetail(item: LaundryServiceCompact): void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status }
+      queryParams: { status: 'PENDING' }
     });
   }
 
@@ -97,6 +93,10 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
 
   getServiceLabel(serviceLabel: LaundryServiceCompact['service_label']): string {
     return this.serviceLabels[serviceLabel];
+  }
+
+  getServiceSeverity(serviceLabel: LaundryServiceCompact['service_label']): TagSeverity {
+    return serviceLabel === 'EXPRESS' ? 'danger' : 'secondary';
   }
 
   trackByLaundryId(_: number, item: LaundryServiceCompact): number {
@@ -118,34 +118,21 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
 
     this.subscription.add(
       this.laundrySocket.transportError$.subscribe((event: LaundrySocketTransportError) => {
-        this.errorMessage.set(event.code ?? this.texts.socketTransportError);
+        this.errorMessage.set(event.code ?? this.connectionTexts.socketTransportError);
       })
     );
   }
 
-  private joinInitialRooms(): void {
+  private joinPendingRoom(): void {
     this.subscription.add(
       this.laundrySocket.joinQueue<LaundryServiceCompact>('PENDING').subscribe({
         next: (ack) => {
-          this.pendingItems.set(ack.items);
-          this.pendingLoading.set(false);
+          this.items.set(this.sortPendingItems(ack.items));
+          this.loading.set(false);
         },
         error: (error: unknown) => {
-          this.pendingLoading.set(false);
-          this.errorMessage.set(error instanceof Error ? error.message : this.texts.joinPendingError);
-        }
-      })
-    );
-
-    this.subscription.add(
-      this.laundrySocket.joinQueue<LaundryServiceCompact>('READY_FOR_DELIVERY').subscribe({
-        next: (ack) => {
-          this.readyItems.set(ack.items);
-          this.readyLoading.set(false);
-        },
-        error: (error: unknown) => {
-          this.readyLoading.set(false);
-          this.errorMessage.set(error instanceof Error ? error.message : this.texts.joinReadyError);
+          this.loading.set(false);
+          this.errorMessage.set(error instanceof Error ? error.message : this.connectionTexts.joinPendingError);
         }
       })
     );
@@ -154,20 +141,24 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
   private applyQueueUpdate(event: LaundryQueueUpdatedEvent<LaundryServiceCompact>): void {
     const statuses = event.filters.status.map((status) => status.toUpperCase());
 
-    if (statuses.length === 0 || statuses.includes('ALL')) {
-      this.pendingItems.set(event.items.filter((item) => item.status === 'PENDING'));
-      this.readyItems.set(event.items.filter((item) => item.status === 'READY_FOR_DELIVERY'));
-      return;
+    if (statuses.length === 0 || statuses.includes('ALL') || statuses.includes('PENDING')) {
+      this.items.set(
+        this.sortPendingItems(event.items.filter((item) => item.status === 'PENDING'))
+      );
+      this.loading.set(false);
     }
+  }
 
-    if (statuses.includes('PENDING')) {
-      this.pendingItems.set(event.items.filter((item) => item.status === 'PENDING'));
-      this.pendingLoading.set(false);
-    }
+  private sortPendingItems(items: LaundryServiceCompact[]): LaundryServiceCompact[] {
+    return [...items].sort((a, b) => {
+      const aOrder = a.pending_order ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.pending_order ?? Number.MAX_SAFE_INTEGER;
 
-    if (statuses.includes('READY_FOR_DELIVERY')) {
-      this.readyItems.set(event.items.filter((item) => item.status === 'READY_FOR_DELIVERY'));
-      this.readyLoading.set(false);
-    }
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+
+      return a.id - b.id;
+    });
   }
 }

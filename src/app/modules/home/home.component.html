@@ -1,1 +1,102 @@
-<p>home works!</p>
+<section class="p-4">
+  <div class="shortcuts-header flex flex-column gap-2 md:flex-row md:justify-content-between md:align-items-center mb-4">
+    <div>
+      <p class="section-kicker m-0">Inicio</p>
+      <h1 class="m-0">Accesos directos</h1>
+      <p class="section-copy mt-2 mb-0">
+        Personaliza esta seccion con los modulos que usas mas seguido.
+      </p>
+    </div>
+
+    <button
+      pButton
+      type="button"
+      icon="pi pi-plus"
+      label="Agregar acceso"
+      (click)="openShortcutDialog()"
+      [disabled]="!hasAvailableShortcuts()"
+    ></button>
+  </div>
+
+  <div class="shortcuts-grid">
+    @for (shortcut of shortcuts(); track shortcut.id) {
+      <article
+        class="shortcut-card surface-card shadow-1 border-round-xl p-4"
+        [class.shortcut-card-delete-active]="pendingDeleteShortcutId() === shortcut.id"
+        (click)="navigateFromCard(shortcut)"
+        (pointerdown)="startLongPress(shortcut.id)"
+        (pointerup)="cancelLongPress()"
+        (pointerleave)="cancelLongPress()"
+        (pointercancel)="cancelLongPress()"
+      >
+        <div class="flex justify-content-between align-items-start gap-3">
+          <div class="flex align-items-start gap-3">
+            <span class="shortcut-icon">
+              <i [class]="shortcut.icon"></i>
+            </span>
+
+            <div>
+              <h2 class="m-0">{{ shortcut.label }}</h2>
+              <p class="mt-2 mb-0 shortcut-path">{{ shortcut.routerLink?.join(' / ') }}</p>
+            </div>
+          </div>
+
+          @if (showDeleteAction(shortcut.id)) {
+            <button
+              pButton
+              type="button"
+              icon="pi pi-times"
+              class="p-button-rounded p-button-text p-button-danger shortcut-delete-button"
+              (click)="confirmRemoveShortcut(shortcut); $event.stopPropagation()"
+              [attr.aria-label]="'Quitar ' + shortcut.label"
+            ></button>
+          }
+        </div>
+
+        <div class="mt-4 shortcut-open-button">
+          <a
+            pButton
+            class="p-button-sm"
+            [routerLink]="shortcut.routerLink!"
+          >
+            Abrir
+          </a>
+        </div>
+
+        @if (pendingDeleteShortcutId() === shortcut.id) {
+          <button
+            pButton
+            type="button"
+            label="Cancelar"
+            class="p-button-sm p-button-text p-button-secondary mt-3 shortcut-delete-cancel"
+            (click)="hideDeleteAction(shortcut.id); $event.stopPropagation()"
+          ></button>
+        }
+      </article>
+    }
+  </div>
+</section>
+
+<p-confirmdialog [style]="{ width: 'calc(100vw - 2rem)', maxWidth: '40rem' }" />
+
+<p-dialog
+  header="Agregar acceso directo"
+  [(visible)]="shortcutDialogVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '26rem', maxWidth: 'calc(100vw - 2rem)' }"
+>
+  @if (hasAvailableShortcuts()) {
+    <p class="mt-0 mb-3">
+      Selecciona uno de los accesos disponibles para agregarlo a inicio.
+    </p>
+
+    <p-menu [model]="availableShortcutMenuItems()"></p-menu>
+  } @else {
+    <p class="m-0">
+      Ya agregaste todos los accesos disponibles.
+    </p>
+  }
+</p-dialog>

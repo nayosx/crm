@@ -1,12 +1,12 @@
 <div class="flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
   <div class="flex align-items-center gap-2">
     <i class="pi pi-bolt text-primary text-xl"></i>
-    <h2 class="m-0">Monitoreo en tiempo real</h2>
+    <h2 class="m-0">{{ texts.headerTitle }}</h2>
   </div>
 
   <div class="flex align-items-center gap-2">
-    <p-tag [value]="(connected$ | async) ? 'Conectado' : 'Desconectado'" [severity]="(connected$ | async) ? 'success' : 'danger'"></p-tag>
-    <p-tag *ngIf="reconnecting$ | async" value="Reconectando" severity="warn"></p-tag>
+    <p-tag [value]="(connected$ | async) ? texts.connected : texts.disconnected" [severity]="(connected$ | async) ? 'success' : 'danger'"></p-tag>
+    <p-tag *ngIf="reconnecting$ | async" [value]="texts.reconnecting" severity="warn"></p-tag>
   </div>
 </div>
 
@@ -21,7 +21,7 @@
         <div class="flex align-items-center justify-content-between px-3 py-3 border-bottom-1 surface-border">
           <div class="flex align-items-center gap-2">
             <i class="pi pi-clock text-yellow-600"></i>
-            <span class="font-semibold text-lg">Pendientes</span>
+            <span class="font-semibold text-lg">{{ texts.pendingTitle }}</span>
           </div>
           <p-tag [value]="pendingCount().toString()" severity="warn"></p-tag>
         </div>
@@ -35,10 +35,10 @@
         <ng-template pTemplate="header">
           <tr>
             <th>ID</th>
-            <th>Cliente</th>
-            <th>Servicio</th>
-            <th>Estado</th>
-            <th class="text-right">Acciones</th>
+            <th>{{ texts.clientColumn }}</th>
+            <th>{{ texts.serviceColumn }}</th>
+            <th>{{ texts.statusColumn }}</th>
+            <th class="text-right">{{ texts.actionsColumn }}</th>
           </tr>
         </ng-template>
 
@@ -46,10 +46,11 @@
           <tr>
             <td class="font-medium">#{{ item.id }}</td>
             <td>{{ item.client?.name || 'Sin nombre' }}</td>
-            <td>{{ item.service_label }}</td>
-            <td><p-tag [value]="item.status" [severity]="getSeverity(item.status)"></p-tag></td>
+            <td>{{ getServiceLabel(item.service_label) }}</td>
+            <td><p-tag [value]="getStatusLabel(item.status)" [severity]="getSeverity(item.status)"></p-tag></td>
             <td class="text-right">
               <button pButton type="button" icon="pi pi-arrow-right" size="small" severity="contrast"
+                [attr.aria-label]="texts.openDetailAriaLabel"
                 (click)="openDetail(item, 'PENDING')"></button>
             </td>
           </tr>
@@ -57,7 +58,7 @@
 
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="5" class="text-center py-4 text-color-secondary">Sin servicios pendientes en cola.</td>
+            <td colspan="5" class="text-center py-4 text-color-secondary">{{ texts.pendingEmpty }}</td>
           </tr>
         </ng-template>
       </p-table>
@@ -70,7 +71,7 @@
         <div class="flex align-items-center justify-content-between px-3 py-3 border-bottom-1 surface-border">
           <div class="flex align-items-center gap-2">
             <i class="pi pi-truck text-indigo-600"></i>
-            <span class="font-semibold text-lg">Ready for delivery</span>
+            <span class="font-semibold text-lg">{{ texts.readyTitle }}</span>
           </div>
           <p-tag [value]="readyCount().toString()" severity="success"></p-tag>
         </div>
@@ -84,10 +85,10 @@
         <ng-template pTemplate="header">
           <tr>
             <th>ID</th>
-            <th>Cliente</th>
-            <th>Servicio</th>
-            <th>Estado</th>
-            <th class="text-right">Acciones</th>
+            <th>{{ texts.clientColumn }}</th>
+            <th>{{ texts.serviceColumn }}</th>
+            <th>{{ texts.statusColumn }}</th>
+            <th class="text-right">{{ texts.actionsColumn }}</th>
           </tr>
         </ng-template>
 
@@ -95,10 +96,11 @@
           <tr>
             <td class="font-medium">#{{ item.id }}</td>
             <td>{{ item.client?.name || 'Sin nombre' }}</td>
-            <td>{{ item.service_label }}</td>
-            <td><p-tag [value]="item.status" [severity]="getSeverity(item.status)"></p-tag></td>
+            <td>{{ getServiceLabel(item.service_label) }}</td>
+            <td><p-tag [value]="getStatusLabel(item.status)" [severity]="getSeverity(item.status)"></p-tag></td>
             <td class="text-right">
               <button pButton type="button" icon="pi pi-arrow-right" size="small" severity="contrast"
+                [attr.aria-label]="texts.openDetailAriaLabel"
                 (click)="openDetail(item, 'READY_FOR_DELIVERY')"></button>
             </td>
           </tr>
@@ -106,7 +108,7 @@
 
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="5" class="text-center py-4 text-color-secondary">Sin servicios listos para entrega.</td>
+            <td colspan="5" class="text-center py-4 text-color-secondary">{{ texts.readyEmpty }}</td>
           </tr>
         </ng-template>
       </p-table>
