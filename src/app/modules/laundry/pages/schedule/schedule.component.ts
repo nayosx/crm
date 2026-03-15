@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { LaundryStatusColorMap } from '@shared/utils/color.util';
 import { Router } from '@angular/router';
+import { BackButtonComponent } from '@shared/components/back/back-button.component';
 
 @Component({
   selector: 'app-schedule',
@@ -12,6 +13,7 @@ import { Router } from '@angular/router';
     LaundryStatusListComponent,
     CardModule,
     ButtonModule,
+    BackButtonComponent,
   ],
   templateUrl: './schedule.component.html',
   encapsulation: ViewEncapsulation.None
@@ -25,7 +27,10 @@ export class ScheduleComponent {
 
   handleSelect(item: LaundryServiceCompact):void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status: this.status }
+      queryParams: { status: this.status },
+      state: {
+        backTo: ['/laundry', 'scheduler']
+      }
     });
   }
 

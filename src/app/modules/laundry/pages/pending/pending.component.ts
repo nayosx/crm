@@ -18,6 +18,7 @@ import { PendingCreateLaundryFormComponent } from './pending-create-laundry-form
 import { PendingCreateClientAddressLaundryFormComponent } from './pending-create-client-address-laundry-form.component';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { BackButtonComponent } from '@shared/components/back/back-button.component';
 
 type CreateLaundryPayload = {
   client_id: number;
@@ -45,7 +46,8 @@ type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
     PendingCreateLaundryFormComponent,
     PendingCreateClientAddressLaundryFormComponent,
     LoaderDialogComponent,
-    TruncatePipe
+    TruncatePipe,
+    BackButtonComponent
   ],
   providers: [ConfirmationService],
   templateUrl: './pending.component.html',
@@ -206,7 +208,10 @@ export class PendingComponent implements OnInit {
 
   openDetail(item: LaundryServiceCompact): void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status: 'PENDING' }
+      queryParams: { status: 'PENDING' },
+      state: {
+        backTo: ['/laundry', 'pending-board']
+      }
     });
   }
 

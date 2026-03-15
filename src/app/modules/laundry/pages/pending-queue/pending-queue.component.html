@@ -2,7 +2,10 @@
   <header class="queue-header">
     <div class="queue-header__copy">
       <p class="queue-kicker">{{ texts.kicker }}</p>
-      <h1 class="queue-title">{{ texts.title }}</h1>
+      <h1 class="queue-title">
+        <app-back-button [fallbackRoute]="'/laundry'" />
+        {{ texts.title }}
+      </h1>
       <p class="queue-subtitle">{{ texts.subtitle }}</p>
     </div>
 

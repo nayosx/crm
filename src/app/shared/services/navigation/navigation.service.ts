@@ -6,7 +6,7 @@ export interface AppNavigationItem {
   label: string;
   icon?: string;
   routerLink?: string[];
-  shortcutEligible?: boolean;
+  includeInShortcuts?: boolean;
   items?: AppNavigationItem[];
 }
 
@@ -21,29 +21,25 @@ export class NavigationService {
       id: 'home',
       label: 'Inicio',
       icon: 'pi pi-home',
-      routerLink: ['/home'],
-      shortcutEligible: true
+      routerLink: ['/home']
     },
     {
       id: 'clients',
       label: 'Clientes',
       icon: 'pi pi-users',
-      routerLink: ['/clients'],
-      shortcutEligible: true
+      routerLink: ['/clients']
     },
     {
       id: 'transactions',
       label: 'Transacciones',
       icon: 'pi pi-dollar',
-      routerLink: ['/transactions'],
-      shortcutEligible: true
+      routerLink: ['/transactions']
     },
     {
       id: 'users',
       label: 'Usuarios',
       icon: 'pi pi-users',
-      routerLink: ['/users'],
-      shortcutEligible: true
+      routerLink: ['/users']
     },
     {
       id: 'laundry',
@@ -53,57 +49,50 @@ export class NavigationService {
           id: 'laundry-socket-queues',
           label: 'Monitor en tiempo real',
           icon: 'pi pi-bolt',
-          routerLink: ['/laundry', 'socket-queues'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'socket-queues']
         },
         {
           id: 'laundry-services',
           label: 'Servicios Detallados',
           icon: 'pi pi-home',
-          routerLink: ['/laundry'],
-          shortcutEligible: true
+          routerLink: ['/laundry']
         },
         {
           id: 'laundry-scheduler',
           label: 'Recolectas',
           icon: 'pi pi-calendar',
-          routerLink: ['/laundry', 'scheduler'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'scheduler']
         },
         {
           id: 'laundry-pending',
           label: 'Pendientes',
           icon: 'pi pi-clock',
-          routerLink: ['/laundry', 'pending'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'pending']
         },
         {
           id: 'laundry-pending-board',
           label: 'Servicios',
           icon: 'pi pi-address-book',
-          routerLink: ['/laundry', 'pending-board'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'pending-board']
         },
         {
           id: 'laundry-work-in-progress',
           label: 'En Progreso',
           icon: 'pi pi-list-check',
-          routerLink: ['/laundry', 'work-in-progress'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'work-in-progress']
         },
         {
           id: 'laundry-delivery',
           label: 'Listos para entrega',
           icon: 'pi pi-truck',
-          routerLink: ['/laundry', 'delivery'],
-          shortcutEligible: true
+          routerLink: ['/laundry', 'delivery']
         }
       ]
     }
   ];
 
   private readonly shortcutCatalog = this.flattenNavigation(this.navigationTree)
-    .filter((item) => item.shortcutEligible && item.routerLink);
+    .filter((item) => this.isShortcutCandidate(item));
 
   private readonly shortcutIds = signal<string[]>(this.readShortcutIds());
 
@@ -150,6 +139,10 @@ export class NavigationService {
 
   private flattenNavigation(items: AppNavigationItem[]): AppNavigationItem[] {
     return items.flatMap((item) => item.items?.length ? this.flattenNavigation(item.items) : [item]);
+  }
+
+  private isShortcutCandidate(item: AppNavigationItem): boolean {
+    return Boolean(item.routerLink?.length) && item.includeInShortcuts !== false;
   }
 
   private readShortcutIds(): string[] {

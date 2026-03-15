@@ -8,6 +8,7 @@ import { MenuItem } from 'primeng/api';
 import { User } from '@shared/interfaces/user.interface';
 import { KEYSTORE } from '@core/keystore';
 import { NavigationService } from '@shared/services/navigation/navigation.service';
+import { NavigationHistoryService } from '@shared/services/navigation/navigation-history.service';
 import { filter, Subscription } from 'rxjs';
 
 @Component({
@@ -28,6 +29,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   authService = inject(AuthService);
   navigationService = inject(NavigationService);
+  navigationHistoryService = inject(NavigationHistoryService);
   router = inject(Router);
 
   private readonly subscriptions = new Subscription();

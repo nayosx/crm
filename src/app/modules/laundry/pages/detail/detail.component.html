@@ -1,6 +1,6 @@
 @if(status !=null) {
 <div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap[status]">
-  <h2 class="pl-4"><app-back-button [path]="pathToBack" />Detalle</h2>
+  <h2 class="pl-4"><app-back-button [fallbackRoute]="fallbackRoute" />Detalle</h2>
 </div>
 
 <app-laundry-detail [status]="status" />

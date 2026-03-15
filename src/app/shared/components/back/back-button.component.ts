@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
+import { NavigationHistoryService, NavigationRouteTarget } from '@shared/services/navigation/navigation-history.service';
 
 @Component({
   selector: 'app-back-button',
@@ -21,17 +22,32 @@ import { ButtonModule } from 'primeng/button';
 export class BackButtonComponent {
   @Input() label: string = '';
   @Input() path?: string;
+  @Input() fallbackRoute?: NavigationRouteTarget;
 
   constructor(
     private router: Router,
-    private location: Location
+    private location: Location,
+    private navigationHistoryService: NavigationHistoryService
   ) {}
 
   goBack() {
     if (this.path) {
       this.router.navigate([this.path]);
-    } else {
-      this.location.back();
+      return;
     }
+
+    const backTarget = this.navigationHistoryService.resolveBackTarget(this.fallbackRoute);
+
+    if (Array.isArray(backTarget)) {
+      this.router.navigate(backTarget);
+      return;
+    }
+
+    if (typeof backTarget === 'string' && backTarget.length > 0) {
+      this.router.navigateByUrl(backTarget);
+      return;
+    }
+
+    this.location.back();
   }
 }

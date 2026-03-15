@@ -1,5 +1,8 @@
 <div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap['IN_PROGRESS']">
-    <h2 class="pl-4"><em class="pi pi-briefcase text-xl"></em> Lista de clientes actuales</h2>
+    <h2 class="pl-4">
+        <app-back-button [fallbackRoute]="'/laundry'" />
+        <em class="pi pi-briefcase text-xl"></em> Lista de clientes actuales
+    </h2>
 </div>
 
 <div class="mb-4">

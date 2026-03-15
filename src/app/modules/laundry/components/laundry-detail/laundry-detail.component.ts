@@ -19,6 +19,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list.component';
 import { LaundryNoteComponent } from '../laundry-note/laundry-note.component';
 import { ToBackLaundry } from '@modules/laundry/commons/route';
+import { NavigationHistoryService } from '@shared/services/navigation/navigation-history.service';
 
 @Component({
   selector: 'app-laundry-detail',
@@ -55,7 +56,8 @@ export class LaundryDetailComponent implements OnInit {
     private router: Router,
     private laundryService: LaundryService,
     private confirmationService: ConfirmationService,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private navigationHistoryService: NavigationHistoryService
   ) { }
 
   ngOnInit(): void {
@@ -151,12 +153,23 @@ export class LaundryDetailComponent implements OnInit {
   changeStatus():void {
     this.getNextStatus();
 
-    this.pathToBack = ToBackLaundry(this.status);
+    this.pathToBack = `/${ToBackLaundry(this.status)}`;
+    const backTarget = this.navigationHistoryService.resolveBackTarget(this.pathToBack);
 
     if(this.nextStatus) {
       if(this.data){
         this.laundryService.updateStatus(this.data?.id, this.nextStatus).subscribe({
           next: response => {
+            if (Array.isArray(backTarget)) {
+              this.router.navigate(backTarget);
+              return;
+            }
+
+            if (typeof backTarget === 'string' && backTarget.length > 0) {
+              this.router.navigateByUrl(backTarget);
+              return;
+            }
+
             this.router.navigate([this.pathToBack]);
           },
           error: (httpErr:HttpErrorResponse) => {}

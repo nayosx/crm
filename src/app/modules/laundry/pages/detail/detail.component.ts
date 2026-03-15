@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { LaundryServiceDetail, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -33,13 +33,10 @@ import { ToBackLaundry } from '@modules/laundry/commons/route';
   encapsulation: ViewEncapsulation.None
 })
 export class DetailComponent implements OnInit {
-  data?: LaundryServiceDetail;
-  loading = true;
   statusColorMap = LaundryStatusColorMap;
-  addressDialogVisible: boolean = false;
   status:LaundryServiceStatus|null = null;
 
-  pathToBack:string = 'laundry';
+  fallbackRoute: string = '/laundry';
 
   constructor(
     private router: Router,
@@ -49,10 +46,12 @@ export class DetailComponent implements OnInit {
   ngOnInit(): void {
     this.status = this.route.snapshot.queryParamMap.get('status') as LaundryServiceStatus;
 
-    this.pathToBack = ToBackLaundry(this.status);
+    if (this.status) {
+      this.fallbackRoute = `/${ToBackLaundry(this.status)}`;
+    }
 
     if(!this.status) {
-      this.router.navigate([this.pathToBack]);
+      this.router.navigate([this.fallbackRoute]);
     }
   }
 

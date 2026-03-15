@@ -8,6 +8,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { Observable, Subscription, catchError, of } from 'rxjs';
+import { BackButtonComponent } from '@shared/components/back/back-button.component';
 
 import {
   type LaundryQueueUpdatedEvent,
@@ -36,7 +37,8 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
     TagModule,
     ButtonModule,
     MessageModule,
-    ProgressSpinnerModule
+    ProgressSpinnerModule,
+    BackButtonComponent
   ],
   templateUrl: './socket-queues.component.html',
   styleUrl: './socket-queues.component.scss'
@@ -82,7 +84,10 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
 
   openDetail(item: LaundryServiceCompact, status: LaundryServiceStatus): void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status }
+      queryParams: { status },
+      state: {
+        backTo: ['/laundry', 'socket-queues']
+      }
     });
   }
 

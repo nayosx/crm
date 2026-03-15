@@ -8,6 +8,7 @@ import { DataViewModule } from 'primeng/dataview';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
+import { BackButtonComponent } from '@shared/components/back/back-button.component';
 
 import {
   type LaundryQueueUpdatedEvent,
@@ -37,7 +38,8 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
     TagModule,
     ButtonModule,
     MessageModule,
-    ProgressSpinnerModule
+    ProgressSpinnerModule,
+    BackButtonComponent
   ],
   templateUrl: './pending-queue.component.html',
   styleUrl: './pending-queue.component.scss'
@@ -78,7 +80,10 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
 
   openDetail(item: LaundryServiceCompact): void {
     this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status: 'PENDING' }
+      queryParams: { status: 'PENDING' },
+      state: {
+        backTo: ['/laundry', 'pending']
+      }
     });
   }
 
