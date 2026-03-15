@@ -1,16 +1,5 @@
-<div class="flex flex-column sm:flex-row sm:align-items-center sm:justify-content-between gap-3 p-3 pb-0">
-  <button
-    pButton
-    type="button"
-    icon="pi pi-refresh"
-    label="Actualizar lista"
-    severity="secondary"
-    [outlined]="true"
-    [loading]="loading()"
-    (click)="refresh()"
-  ></button>
-
-  <div class="flex align-items-center gap-2">
+<div class="flex flex-wrap align-items-center justify-content-end gap-2 p-3 pb-2 pr-0">
+  <div class="flex align-items-center gap-2 flex-wrap">
     <label for="laundry-status-per-page" class="text-sm text-color-secondary">Mostrar</label>
     <p-select
       inputId="laundry-status-per-page"
@@ -22,16 +11,27 @@
       [style]="{ width: '10rem' }"
     ></p-select>
   </div>
+
+  <button
+    pButton
+    type="button"
+    icon="pi pi-refresh"
+    label="Actualizar"
+    severity="secondary"
+    [outlined]="true"
+    [loading]="loading()"
+    (click)="refresh()"
+  ></button>
 </div>
 
 <p-dataView
   [value]="items()"
-  [paginator]="perPage() !== -1"
-  [rows]="perPage() === -1 ? total() || items().length || 1 : perPage()"
+  [paginator]="dataViewPaginatorEnabled()"
+  [rows]="dataViewRows()"
   [totalRecords]="total()"
   [loading]="loading()"
   [pageLinks]="2"
-  [lazy]="perPage() !== -1"
+  [lazy]="dataViewPaginatorEnabled()"
   layout="list"
   (onLazyLoad)="onLazyLoad($event)"
 >

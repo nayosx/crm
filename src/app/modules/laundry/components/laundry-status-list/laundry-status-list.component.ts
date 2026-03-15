@@ -1,4 +1,4 @@
-import { Component, ViewEncapsulation, Input, Output, EventEmitter, OnChanges, OnInit, SimpleChanges, signal } from '@angular/core';
+import { Component, ViewEncapsulation, Input, Output, EventEmitter, OnChanges, OnInit, SimpleChanges, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
@@ -20,6 +20,8 @@ type PerPageOption = {
   encapsulation: ViewEncapsulation.None
 })
 export class LaundryStatusListComponent implements OnInit, OnChanges {
+  private readonly defaultPerPage = 10;
+
   @Input() status!: LaundryServiceStatus;
   @Output() select = new EventEmitter<LaundryServiceCompact>();
 
@@ -28,10 +30,18 @@ export class LaundryStatusListComponent implements OnInit, OnChanges {
   loading = signal(false);
 
   page = signal(1);
-  perPage = signal(10);
-  rows = signal(1);
+  perPage = signal(this.defaultPerPage);
+  dataViewPaginatorEnabled = computed(() => this.perPage() !== -1);
+  dataViewRows = computed(() => {
+    if (this.perPage() === -1) {
+      return this.total() || this.items().length || 1;
+    }
+
+    return this.perPage();
+  });
+
   perPageOptions: PerPageOption[] = [
-    { label: '10', value: 10 },
+    { label: '10', value: this.defaultPerPage },
     { label: '20', value: 20 },
     { label: 'Todos', value: -1 }
   ];

@@ -51,7 +51,7 @@ export class NavigationService {
       items: [
         {
           id: 'laundry-socket-queues',
-          label: 'Monitor socket',
+          label: 'Monitor en tiempo real',
           icon: 'pi pi-bolt',
           routerLink: ['/laundry', 'socket-queues'],
           shortcutEligible: true
