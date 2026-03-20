@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { AuthFacade } from '@shared/services/auth/auth.facade';
 import { ROUTE_PATH } from '@core/routes-path';
@@ -14,6 +15,7 @@ import { environment } from '@env/environment';
   selector: 'app-auth',
   imports: [
     ButtonModule,
+    CheckboxModule,
     FormsModule,
     LoaderDialogComponent,
     InputTextModule,
@@ -24,6 +26,7 @@ import { environment } from '@env/environment';
 export class AuthComponent implements OnInit {
   email = '';
   password = '';
+  rememberUser = false;
 
   @ViewChild('loaderDialog') loaderDialog!: LoaderDialogComponent;
 
@@ -32,8 +35,13 @@ export class AuthComponent implements OnInit {
   ngOnInit(): void {
     const tempUser = localStorage.getItem(KEYSTORE.tempUser);
     if (tempUser) {
-      const { email } = JSON.parse(tempUser);
-      this.email = email;
+      try {
+        const { email } = JSON.parse(tempUser);
+        this.email = email ?? '';
+        this.rememberUser = !!email;
+      } catch {
+        localStorage.removeItem(KEYSTORE.tempUser);
+      }
     }
   }
 
@@ -46,7 +54,11 @@ export class AuthComponent implements OnInit {
 
     this.authFacade.login(this.email, this.password).subscribe({
       next: () => {
-        localStorage.setItem(KEYSTORE.tempUser, JSON.stringify({ email: this.email }));
+        if (this.rememberUser) {
+          localStorage.setItem(KEYSTORE.tempUser, JSON.stringify({ email: this.email }));
+        } else {
+          localStorage.removeItem(KEYSTORE.tempUser);
+        }
         this.loaderDialog.close();
         this.router.navigate([ROUTE_PATH.HOME]);
       },

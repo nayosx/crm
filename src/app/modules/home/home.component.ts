@@ -27,6 +27,7 @@ export class HomeComponent {
   private readonly confirmationService = inject(ConfirmationService);
   private longPressTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private longPressTriggered = false;
+  private draggedShortcutId: string | null = null;
 
   readonly shortcuts = this.navigationService.shortcuts;
   readonly hasAvailableShortcuts = computed(() => this.navigationService.availableShortcuts().length > 0);
@@ -40,6 +41,8 @@ export class HomeComponent {
   readonly pendingDeleteShortcutId = signal<string | null>(null);
 
   shortcutDialogVisible = false;
+  dragOverShortcutId: string | null = null;
+  isDraggingShortcut = false;
 
   openShortcutDialog(): void {
     this.shortcutDialogVisible = true;
@@ -48,6 +51,10 @@ export class HomeComponent {
   addShortcut(id: string): void {
     this.navigationService.addShortcut(id);
     this.shortcutDialogVisible = false;
+  }
+
+  canDragShortcuts(): boolean {
+    return !this.isCompactViewport();
   }
 
   showDeleteAction(shortcutId: string): boolean {
@@ -81,7 +88,7 @@ export class HomeComponent {
   }
 
   navigateFromCard(shortcut: AppNavigationItem): void {
-    if (this.longPressTriggered) {
+    if (this.longPressTriggered || this.isDraggingShortcut) {
       this.longPressTriggered = false;
       return;
     }
@@ -115,11 +122,67 @@ export class HomeComponent {
     }
   }
 
+  startDrag(event: DragEvent, shortcutId: string): void {
+    if (!this.canDragShortcuts()) {
+      return;
+    }
+
+    this.draggedShortcutId = shortcutId;
+    this.isDraggingShortcut = true;
+    this.pendingDeleteShortcutId.set(null);
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', shortcutId);
+    }
+  }
+
+  allowDrop(event: DragEvent, shortcutId: string): void {
+    if (!this.isDraggingShortcut || this.draggedShortcutId === shortcutId) {
+      return;
+    }
+
+    event.preventDefault();
+    this.dragOverShortcutId = shortcutId;
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  dropShortcut(event: DragEvent, targetShortcutId: string): void {
+    if (!this.draggedShortcutId || this.draggedShortcutId === targetShortcutId) {
+      this.clearDragState();
+      return;
+    }
+
+    event.preventDefault();
+
+    const shortcutIds = this.shortcuts().map((shortcut) => shortcut.id);
+    const fromIndex = shortcutIds.indexOf(this.draggedShortcutId);
+    const toIndex = shortcutIds.indexOf(targetShortcutId);
+
+    this.navigationService.reorderShortcuts(fromIndex, toIndex);
+    this.clearDragState();
+  }
+
+  endDrag(): void {
+    setTimeout(() => {
+      this.clearDragState();
+    });
+  }
+
   private clearLongPress(): void {
     if (this.longPressTimeoutId) {
       clearTimeout(this.longPressTimeoutId);
       this.longPressTimeoutId = null;
     }
+  }
+
+  private clearDragState(): void {
+    this.draggedShortcutId = null;
+    this.dragOverShortcutId = null;
+    this.isDraggingShortcut = false;
   }
 
   private isCompactViewport(): boolean {

@@ -1,4 +1,6 @@
 import { computed, Injectable, signal } from '@angular/core';
+import { KEYSTORE } from '@core/keystore';
+import { UserData } from '@shared/interfaces/auth.interface';
 import { MenuItem } from 'primeng/api';
 
 export interface AppNavigationItem {
@@ -127,6 +129,25 @@ export class NavigationService {
     this.persistShortcutIds(nextIds);
   }
 
+  reorderShortcuts(fromIndex: number, toIndex: number): void {
+    const currentIds = [...this.shortcutIds()];
+
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= currentIds.length ||
+      toIndex >= currentIds.length
+    ) {
+      return;
+    }
+
+    const [movedId] = currentIds.splice(fromIndex, 1);
+    currentIds.splice(toIndex, 0, movedId);
+
+    this.persistShortcutIds(currentIds);
+  }
+
   private toMenuItem(item: AppNavigationItem, onSelect?: () => void): MenuItem {
     return {
       label: item.label,
@@ -150,7 +171,8 @@ export class NavigationService {
       return ['laundry-scheduler'];
     }
 
-    const rawData = localStorage.getItem(this.shortcutStorageKey);
+    const rawData = localStorage.getItem(this.getShortcutStorageKey())
+      ?? localStorage.getItem(this.shortcutStorageKey);
 
     if (!rawData) {
       return ['laundry-scheduler'];
@@ -181,6 +203,30 @@ export class NavigationService {
       return;
     }
 
-    localStorage.setItem(this.shortcutStorageKey, JSON.stringify(nextIds));
+    localStorage.setItem(this.getShortcutStorageKey(), JSON.stringify(nextIds));
+  }
+
+  private getShortcutStorageKey(): string {
+    const userId = this.getLoggedUserId();
+    return userId ? `${this.shortcutStorageKey}.user.${userId}` : this.shortcutStorageKey;
+  }
+
+  private getLoggedUserId(): number | null {
+    if (typeof sessionStorage === 'undefined') {
+      return null;
+    }
+
+    const rawUser = sessionStorage.getItem(KEYSTORE.user);
+
+    if (!rawUser) {
+      return null;
+    }
+
+    try {
+      const user = JSON.parse(rawUser) as Partial<UserData>;
+      return typeof user.id === 'number' ? user.id : null;
+    } catch {
+      return null;
+    }
   }
 }

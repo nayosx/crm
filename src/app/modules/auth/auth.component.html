@@ -31,6 +31,16 @@
         />
       </div>
 
+      <div class="flex align-items-center gap-2 mb-4">
+        <p-checkbox
+          inputId="rememberUser"
+          name="rememberUser"
+          [(ngModel)]="rememberUser"
+          [binary]="true"
+        />
+        <label for="rememberUser" class="m-0">Recordar usuario</label>
+      </div>
+
       <button
         pButton
         type="submit"

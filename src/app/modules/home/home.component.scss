@@ -19,10 +19,29 @@
 
 .shortcut-card {
   border: 1px solid rgba(148, 163, 184, 0.2);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.shortcut-card[draggable='true'] {
+  cursor: grab;
+}
+
+.shortcut-card[draggable='true']:active {
+  cursor: grabbing;
 }
 
 .shortcut-card-delete-active {
   border-color: rgba(239, 68, 68, 0.35);
+}
+
+.shortcut-card-dragging {
+  user-select: none;
+}
+
+.shortcut-card-drag-over {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+  transform: translateY(-4px);
 }
 
 .shortcut-icon {

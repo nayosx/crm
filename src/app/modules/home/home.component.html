@@ -23,11 +23,18 @@
       <article
         class="shortcut-card surface-card shadow-1 border-round-xl p-4"
         [class.shortcut-card-delete-active]="pendingDeleteShortcutId() === shortcut.id"
+        [class.shortcut-card-drag-over]="dragOverShortcutId === shortcut.id"
+        [class.shortcut-card-dragging]="isDraggingShortcut"
         (click)="navigateFromCard(shortcut)"
         (pointerdown)="startLongPress(shortcut.id)"
         (pointerup)="cancelLongPress()"
         (pointerleave)="cancelLongPress()"
         (pointercancel)="cancelLongPress()"
+        [draggable]="canDragShortcuts()"
+        (dragstart)="startDrag($event, shortcut.id)"
+        (dragover)="allowDrop($event, shortcut.id)"
+        (drop)="dropShortcut($event, shortcut.id)"
+        (dragend)="endDrag()"
       >
         <div class="flex justify-content-between align-items-start gap-3">
           <div class="flex align-items-start gap-3">
