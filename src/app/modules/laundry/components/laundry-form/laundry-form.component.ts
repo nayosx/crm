@@ -1,13 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } from '@angular/core';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ClientListComponent } from '@shared/components/client-list/client-list.component';
-import { LaundryServiceResp, LaundryServiceStatusValues } from '@shared/interfaces/laundry-service.interface';
+import {
+  LaundryServiceExtra,
+  LaundryServiceExtraType,
+  LaundryServiceItem,
+  LaundryServiceResp,
+  LaundryServiceStatusValues,
+  LaundryUnitType
+} from '@shared/interfaces/laundry-service.interface';
+import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { EditorModule } from 'primeng/editor';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputTextarea } from 'primeng/inputtextarea';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TagModule } from 'primeng/tag';
@@ -18,6 +27,8 @@ import { PaymentType, Transaction, TransactionCategory } from '@shared/interface
 import { TransactionFormComponent } from '@modules/transaction/components/transaction-form/transaction-form.component';
 import { TransactionService } from '@shared/services/transaction/transaction.service';
 import { combineDateAndTime, formatToSQLDateTime } from '@shared/utils/datetime.util';
+import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
+import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 
 @Component({
   selector: 'app-laundry-form',
@@ -35,6 +46,7 @@ import { combineDateAndTime, formatToSQLDateTime } from '@shared/utils/datetime.
     SelectButtonModule,
     DialogModule,
     DatePickerModule,
+    InputTextarea,
     ClientAddressListComponent,
     TransactionFormComponent
   ],
@@ -61,13 +73,21 @@ export class LaundryFormComponent implements OnInit {
   selectedAddress = '';
   addresses: ClientAddress[] = [];
   createdTransaction?: Transaction;
+  garmentTypes: LaundryGarmentType[] = [];
+  extraTypes: LaundryServiceExtraType[] = [];
+  readonly unitTypeOptions = [
+    { label: 'Unidad', value: 'UNIT' as LaundryUnitType },
+    { label: 'Par', value: 'PAIR' as LaundryUnitType }
+  ];
 
   isLoading = false;
 
   constructor(
     private fb: FormBuilder,
     private clientServ: ClientAddressService,
-    private transactionServ: TransactionService
+    private transactionServ: TransactionService,
+    private garmentTypesService: LaundryGarmentTypesService,
+    private extraTypesService: LaundryServiceExtraTypesService
   ) {}
 
   ngOnInit(): void {
@@ -83,8 +103,14 @@ export class LaundryFormComponent implements OnInit {
       pickup_time: [baseDate, Validators.required],
       service_label: [this.initialData?.service_label ?? 'NORMAL', Validators.required],
       status: [{ value: initialStatus, disabled: this.isEditMode ? false : true }, Validators.required],
-      transaction_id: [this.initialData?.transaction?.id ?? null]
+      transaction_id: [this.initialData?.transaction?.id ?? null],
+      weight_lb: [this.initialData?.weight_lb ?? null],
+      notes: [this.initialData?.notes ?? null],
+      items: this.fb.array([]),
+      extras: this.fb.array([])
     });
+
+    this.setInitialCollections();
 
     const editable = initialStatus === 'PENDING';
     const action = editable ? 'enable' : 'disable';
@@ -116,6 +142,24 @@ export class LaundryFormComponent implements OnInit {
         }
       });
     }
+
+    this.garmentTypesService.getAll().subscribe({
+      next: (types) => {
+        this.garmentTypes = types.filter((type) => type.active !== false);
+      },
+      error: () => {
+        this.garmentTypes = [];
+      }
+    });
+
+    this.extraTypesService.getAll().subscribe({
+      next: (types) => {
+        this.extraTypes = types.filter((type) => type.active !== false);
+      },
+      error: () => {
+        this.extraTypes = [];
+      }
+    });
   }
 
   get isPending(): boolean {
@@ -127,6 +171,14 @@ export class LaundryFormComponent implements OnInit {
     const date = this.form.get('pickup_date')?.value;
     const time = this.form.get('pickup_time')?.value;
     return combineDateAndTime(date, time);
+  }
+
+  get itemsArray(): FormArray {
+    return this.form.get('items') as FormArray;
+  }
+
+  get extrasArray(): FormArray {
+    return this.form.get('extras') as FormArray;
   }
 
   submit(isRedirect: boolean = true): void {
@@ -149,6 +201,11 @@ export class LaundryFormComponent implements OnInit {
 
       delete formValue.pickup_date;
       delete formValue.pickup_time;
+
+      formValue.weight_lb = this.toNullableNumber(formValue.weight_lb);
+      formValue.notes = this.normalizeText(formValue.notes);
+      formValue.items = this.normalizeItems(formValue.items);
+      formValue.extras = this.normalizeExtras(formValue.extras);
 
       this.formSubmit.emit(formValue);
     } else {
@@ -221,5 +278,131 @@ export class LaundryFormComponent implements OnInit {
 
   get canCreateTransaction(): boolean {
     return this.form.get('status')?.value === 'READY_FOR_DELIVERY';
+  }
+
+  addItem(): void {
+    this.itemsArray.push(this.createItemGroup());
+  }
+
+  removeItem(index: number): void {
+    this.itemsArray.removeAt(index);
+  }
+
+  addExtra(): void {
+    this.extrasArray.push(this.createExtraGroup());
+  }
+
+  removeExtra(index: number): void {
+    this.extrasArray.removeAt(index);
+  }
+
+  onGarmentTypeChange(index: number): void {
+    const group = this.itemsArray.at(index) as FormGroup;
+    const garmentTypeId = Number(group.get('garment_type_id')?.value);
+    const selected = this.garmentTypes.find((type) => type.id === garmentTypeId);
+
+    if (!selected) {
+      return;
+    }
+
+    if (!group.get('unit_type')?.value && selected.default_unit_type) {
+      group.patchValue({ unit_type: selected.default_unit_type }, { emitEvent: false });
+    }
+
+    if ((group.get('unit_price')?.value === null || group.get('unit_price')?.value === '') && selected.default_unit_price !== undefined) {
+      group.patchValue({ unit_price: selected.default_unit_price }, { emitEvent: false });
+    }
+  }
+
+  onExtraTypeChange(index: number): void {
+    const group = this.extrasArray.at(index) as FormGroup;
+    const extraTypeId = Number(group.get('service_extra_type_id')?.value);
+    const selected = this.extraTypes.find((type) => type.id === extraTypeId);
+
+    if (!selected) {
+      return;
+    }
+
+    if (group.get('unit_price')?.value === null || group.get('unit_price')?.value === '') {
+      group.patchValue({ unit_price: selected.default_unit_price }, { emitEvent: false });
+    }
+  }
+
+  private setInitialCollections(): void {
+    const initialItems = this.initialData?.items ?? [];
+    const initialExtras = this.initialData?.extras ?? [];
+
+    if (initialItems.length) {
+      initialItems.forEach((item) => this.itemsArray.push(this.createItemGroup(item)));
+    }
+
+    if (initialExtras.length) {
+      initialExtras.forEach((extra) => this.extrasArray.push(this.createExtraGroup(extra)));
+    }
+  }
+
+  private createItemGroup(item?: Partial<LaundryServiceItem>): FormGroup {
+    return this.fb.group({
+      garment_type_id: [item?.garment_type_id ?? null, Validators.required],
+      quantity: [item?.quantity ?? 1, [Validators.required, Validators.min(1)]],
+      unit_type: [item?.unit_type ?? 'UNIT', Validators.required],
+      unit_price: [item?.unit_price ?? null],
+      notes: [item?.notes ?? null]
+    });
+  }
+
+  private createExtraGroup(extra?: Partial<LaundryServiceExtra>): FormGroup {
+    return this.fb.group({
+      service_extra_type_id: [extra?.service_extra_type_id ?? null, Validators.required],
+      quantity: [extra?.quantity ?? 1, [Validators.required, Validators.min(1)]],
+      unit_price: [extra?.unit_price ?? null],
+      notes: [extra?.notes ?? null]
+    });
+  }
+
+  private normalizeItems(items: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+    return items
+      .map((item) => ({
+        garment_type_id: this.toRequiredNumber(item['garment_type_id']),
+        quantity: this.toRequiredNumber(item['quantity']),
+        unit_type: item['unit_type'],
+        unit_price: this.toNullableNumber(item['unit_price']),
+        notes: this.normalizeText(item['notes'])
+      }))
+      .filter((item) => item.garment_type_id !== null);
+  }
+
+  private normalizeExtras(extras: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+    return extras
+      .map((extra) => ({
+        service_extra_type_id: this.toRequiredNumber(extra['service_extra_type_id']),
+        quantity: this.toRequiredNumber(extra['quantity']),
+        unit_price: this.toNullableNumber(extra['unit_price']),
+        notes: this.normalizeText(extra['notes'])
+      }))
+      .filter((extra) => extra.service_extra_type_id !== null);
+  }
+
+  private toNullableNumber(value: unknown): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private toRequiredNumber(value: unknown): number | null {
+    const parsed = this.toNullableNumber(value);
+    return parsed === null ? null : parsed;
+  }
+
+  private normalizeText(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
   }
 }

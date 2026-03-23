@@ -2,6 +2,47 @@ import { Client, ClientAddress, ClientFullResponse } from "./client.interface";
 import { TransactionFull } from "./transaction.interface";
 import { User } from "./user.interface";
 
+export type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
+export type LaundryUnitType = 'UNIT' | 'PAIR';
+
+export interface LaundryServiceItem {
+  garment_type_id: number;
+  quantity: number;
+  unit_type: LaundryUnitType;
+  unit_price: number | null;
+  notes: string | null;
+  garment_type?: {
+    id: number;
+    name: string;
+    icon?: string | null;
+  };
+}
+
+export interface LaundryServiceExtra {
+  service_extra_type_id: number;
+  quantity: number;
+  unit_price: number | null;
+  notes: string | null;
+  service_extra_type?: {
+    id: number;
+    code: string;
+    name: string;
+    unit_label?: string | null;
+  };
+}
+
+export interface LaundryServiceExtraType {
+  id: number;
+  code: string;
+  name: string;
+  unit_label: string | null;
+  default_unit_price: number | null;
+  active: boolean;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 /** Estados válidos del servicio de lavandería */
 export type LaundryServiceStatus =
   | 'PENDING'
@@ -69,14 +110,26 @@ export interface LaundryServiceResp {
   id: number;
   scheduled_pickup_at: string;
   status: LaundryServiceStatus;
-  service_label: 'NORMAL' | 'EXPRESS';
+  service_label: LaundryServiceLabel;
   created_at: string;
   updated_at: string;
   client?: ClientFullResponse;
   client_id?: number;
   client_address?: ClientAddress;
+  client_address_id?: number;
   transaction?: TransactionLite;
+  transaction_id?: number | null;
   created_by?: User;
+  created_by_user?: User;
+  pending_order?: number | null;
+  weight_lb?: number | null;
+  notes?: string | null;
+  logs?: LaundryServiceLog[];
+  items?: LaundryServiceItem[];
+  extras?: LaundryServiceExtra[];
+  items_total?: number | null;
+  extras_total?: number | null;
+  grand_total?: number | null;
   isRedirect?: boolean;
 }
 
@@ -100,7 +153,7 @@ export interface LaundryServiceLite {
   id: number;
   scheduled_pickup_at: string;
   status: LaundryServiceStatus;
-  service_label: 'NORMAL' | 'EXPRESS';
+  service_label: LaundryServiceLabel;
   client: {
     id: number;
     name: string;
@@ -115,7 +168,7 @@ export interface LaundryServiceDetail {
   id: number;
   scheduled_pickup_at: string;
   status: LaundryServiceStatus;
-  service_label: 'NORMAL' | 'EXPRESS';
+  service_label: LaundryServiceLabel;
   client: {
     id: number;
     name: string;
@@ -132,6 +185,13 @@ export interface LaundryServiceDetail {
   };
   client_address: ClientAddress;
   transaction?: TransactionFull | null;
+  weight_lb?: number | null;
+  notes?: string | null;
+  items?: LaundryServiceItem[];
+  extras?: LaundryServiceExtra[];
+  items_total?: number | null;
+  extras_total?: number | null;
+  grand_total?: number | null;
   created_by_user: {
     name: string;
   };
@@ -140,7 +200,7 @@ export interface LaundryServiceDetail {
 export interface LaundryServiceCompact {
   id: number;
   pending_order?: number;
-  service_label: 'NORMAL' | 'EXPRESS';
+  service_label: LaundryServiceLabel;
   status: LaundryServiceStatus;
   created_at: string;
   created_by_user: {
@@ -187,5 +247,4 @@ export interface LaundryServiceCompactPagination {
   per_page: number;
   pages: number;
 }
-
 

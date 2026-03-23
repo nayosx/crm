@@ -18,6 +18,7 @@ import { environment } from '@env/environment';
 })
 export class LaundryService {
   private baseUrl = `${environment.API}/laundry_services`;
+  private v2BaseUrl = `${environment.API}/v2/laundry_services`;
 
   constructor(private http: HttpClient) { }
 
@@ -94,23 +95,23 @@ export class LaundryService {
   }
 
   getById(id: number): Observable<LaundryServiceResp> {
-    return this.http.get<LaundryServiceResp>(`${this.baseUrl}/${id}`);
+    return this.http.get<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`);
   }
 
   create(data: Partial<LaundryServiceResp>): Observable<LaundryServiceResp> {
-    return this.http.post<LaundryServiceResp>(this.baseUrl, data);
+    return this.http.post<LaundryServiceResp>(this.v2BaseUrl, data);
   }
 
   update(id: number, data: Partial<LaundryServiceResp>): Observable<LaundryServiceResp> {
-    return this.http.put<LaundryServiceResp>(`${this.baseUrl}/${id}`, data);
+    return this.http.put<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`, data);
   }
 
   delete(id: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.baseUrl}/${id}`);
+    return this.http.delete<{ message: string }>(`${this.v2BaseUrl}/${id}`);
   }
 
   updateStatus(id: number, status: LaundryServiceStatus): Observable<LaundryServiceResp> {
-    return this.http.patch<LaundryServiceResp>(`${this.baseUrl}/${id}/update_status`, { status });
+    return this.http.put<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`, { status });
   }
 
 
