@@ -49,7 +49,10 @@
       <tr>
         <th>ID</th>
         <th>Cliente</th>
+        <th>Dirección</th>
         <th>Estado</th>
+        <th>Peso</th>
+        <th>Total</th>
         <th>Acciones</th>
       </tr>
     </ng-template>
@@ -58,9 +61,12 @@
       <tr>
         <td>{{ laundry.id }}</td>
         <td>{{ laundry.client?.name || 'Sin nombre' }}</td>
+        <td>{{ laundry.client_address?.address_text || 'Sin dirección' }}</td>
         <td>
           <p-tag [value]="laundry.status" [class]="statusColorMap[laundry.status]"></p-tag>
         </td>
+        <td>{{ laundry.weight_lb ?? 0 }} lb</td>
+        <td>{{ laundry.grand_total ?? 0 | currency }}</td>
         <td>
           <button
             pButton
@@ -75,7 +81,7 @@
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="6">No se encontraron programaciones.</td>
+        <td colspan="7">No se encontraron programaciones.</td>
       </tr>
     </ng-template>
   </p-table>

@@ -117,7 +117,7 @@ export interface LaundryServiceResp {
   client_id?: number;
   client_address?: ClientAddress;
   client_address_id?: number;
-  transaction?: TransactionLite;
+  transaction?: TransactionLite | TransactionFull | null;
   transaction_id?: number | null;
   created_by?: User;
   created_by_user?: User;
@@ -247,4 +247,3 @@ export interface LaundryServiceCompactPagination {
   per_page: number;
   pages: number;
 }
-

@@ -2,7 +2,7 @@ import { Component, Input, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
-import { LaundryServiceDetail, LaundryServiceLog, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceLog, LaundryServiceResp, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -20,6 +20,7 @@ import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list
 import { LaundryNoteComponent } from '../laundry-note/laundry-note.component';
 import { ToBackLaundry } from '@modules/laundry/commons/route';
 import { NavigationHistoryService } from '@shared/services/navigation/navigation-history.service';
+import { DividerModule } from 'primeng/divider';
 
 @Component({
   selector: 'app-laundry-detail',
@@ -34,6 +35,7 @@ import { NavigationHistoryService } from '@shared/services/navigation/navigation
     ToastModule,
     LaundryNoteListComponent,
     LaundryNoteComponent,
+    DividerModule,
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './laundry-detail.component.html',
@@ -43,7 +45,7 @@ export class LaundryDetailComponent implements OnInit {
 
   @Input() status!:LaundryServiceStatus;
   
-  data?: LaundryServiceDetail;
+  data?: LaundryServiceResp;
   
   loading = true;
   statusColorMap = LaundryStatusColorMap;
@@ -64,14 +66,14 @@ export class LaundryDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) return;
 
-    this.laundryService.getDetail({ client_id: undefined, status: this.status }).subscribe({
+    this.laundryService.getById(id).subscribe({
       next: (res) => {
-        const found = res.items.find(item => item.id === id);
-        this.data = found;
+        this.data = res;
         this.loading = false;
       },
       error: () => {
         this.loading = false;
+        this.router.navigate(['/laundry']);
       }
     });
   }
@@ -94,6 +96,28 @@ export class LaundryDetailComponent implements OnInit {
       is_deleted: false,
       updated_by: ''
     }
+  }
+
+  get itemCount(): number {
+    return this.data?.items?.reduce((total, item) => total + (item.quantity ?? 0), 0) ?? 0;
+  }
+
+  get extraCount(): number {
+    return this.data?.extras?.reduce((total, extra) => total + (extra.quantity ?? 0), 0) ?? 0;
+  }
+
+  get transactionDetail(): {
+    amount?: number;
+    payment_type_name?: string;
+    detail?: string;
+    user_name?: string;
+  } | null {
+    return (this.data?.transaction as {
+      amount?: number;
+      payment_type_name?: string;
+      detail?: string;
+      user_name?: string;
+    } | null) ?? null;
   }
 
 
