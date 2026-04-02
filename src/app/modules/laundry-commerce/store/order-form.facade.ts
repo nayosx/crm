@@ -16,7 +16,7 @@ import { WeightPricingApiService } from '../services/weight-pricing-api.service'
 import { ServiceCategory } from '../interfaces/category.interface';
 import { DeliveryZone } from '../interfaces/delivery-zone.interface';
 import { Extra } from '../interfaces/extra.interface';
-import { Order, OrderExtraItem, OrderItem, OrderPayload } from '../interfaces/order.interface';
+import { DeliveryFeeSuggestion, Order, OrderExtraItem, OrderItem, OrderPayload } from '../interfaces/order.interface';
 import { ServicePriceOption } from '../interfaces/service-price-option.interface';
 import { LaundryCommercialService } from '../interfaces/service.interface';
 import { WeightPricingProfile, WeightPricingQuoteResponse } from '../interfaces/weight-pricing.interface';
@@ -119,6 +119,14 @@ export class OrderFormFacade {
 
   getOrder(id: number): Observable<Order> {
     return this.ordersApi.getById(id);
+  }
+
+  getDeliveryFeeSuggestion(params: {
+    client_id: number;
+    client_address_id?: number | null;
+    delivery_zone_id?: number | null;
+  }): Observable<DeliveryFeeSuggestion> {
+    return this.ordersApi.getDeliveryFeeSuggestion(params);
   }
 
   getClientAddresses(clientId: number): Observable<ClientAddress[]> {

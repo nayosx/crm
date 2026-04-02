@@ -18,6 +18,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ClientAddress } from '@shared/interfaces/client.interface';
 import { DeliveryZone } from '../../interfaces/delivery-zone.interface';
 import { Extra } from '../../interfaces/extra.interface';
+import { DeliveryFeeSuggestion } from '../../interfaces/order.interface';
 import { LaundryCommercialService } from '../../interfaces/service.interface';
 import { ServicePriceOption } from '../../interfaces/service-price-option.interface';
 import { WeightPricingQuoteResponse } from '../../interfaces/weight-pricing.interface';
@@ -75,6 +76,9 @@ export class OrderUpsertComponent implements OnInit, OnDestroy {
   readonly pageError = signal('');
   readonly addresses = signal<ClientAddress[]>([]);
   readonly referenceData = signal<LaundryCommerceReferenceData | null>(null);
+  readonly deliveryFeeSuggestion = signal<DeliveryFeeSuggestion | null>(null);
+  readonly deliveryFeeSuggestionLoading = signal(false);
+  readonly deliveryFeeSuggestionError = signal('');
   readonly totals = signal<OrderTotals>({
     subtotalItems: 0,
     subtotalExtras: 0,
@@ -173,13 +177,10 @@ export class OrderUpsertComponent implements OnInit, OnDestroy {
   }
 
   onDeliveryZoneSelected(zoneId: number | null): void {
-    const suggested = this.facade.matchDeliverySuggestedAmount(zoneId, this.deliveryZones());
-    this.form.patchValue({
-      deliverySuggestedAmount: suggested,
-      deliveryFinalAmount: suggested,
-      deliveryOverrideReason: ''
-    }, { emitEvent: false });
-    this.recalculateTotals();
+    this.requestDeliveryFeeSuggestion({
+      deliveryZoneId: zoneId,
+      syncFinalAmount: !this.isEditMode
+    });
   }
 
   requestQuote(index: number): void {
@@ -332,12 +333,22 @@ export class OrderUpsertComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.form.controls.clientId.valueChanges.subscribe((clientId) => {
         this.form.controls.clientAddressId.setValue(null, { emitEvent: false });
+        this.clearDeliverySuggestionState();
         if (!clientId) {
           this.addresses.set([]);
           return;
         }
 
         this.loadAddresses(clientId, null);
+      })
+    );
+
+    this.subscription.add(
+      this.form.controls.clientAddressId.valueChanges.subscribe((clientAddressId) => {
+        this.requestDeliveryFeeSuggestion({
+          clientAddressId,
+          syncFinalAmount: !this.isEditMode
+        });
       })
     );
   }
@@ -358,10 +369,21 @@ export class OrderUpsertComponent implements OnInit, OnDestroy {
 
       if (selectedAddressId) {
         this.form.controls.clientAddressId.setValue(selectedAddressId, { emitEvent: false });
+        this.requestDeliveryFeeSuggestion({
+          clientId,
+          clientAddressId: selectedAddressId,
+          syncFinalAmount: false
+        });
         return;
       }
 
-      this.form.controls.clientAddressId.setValue(addresses[0]?.id ?? null, { emitEvent: false });
+      const defaultAddressId = addresses[0]?.id ?? null;
+      this.form.controls.clientAddressId.setValue(defaultAddressId, { emitEvent: false });
+      this.requestDeliveryFeeSuggestion({
+        clientId,
+        clientAddressId: defaultAddressId,
+        syncFinalAmount: !this.isEditMode
+      });
     });
   }
 
@@ -385,8 +407,116 @@ export class OrderUpsertComponent implements OnInit, OnDestroy {
     }
   }
 
+  getDeliveryReferenceLabel(): string {
+    const suggestion = this.deliveryFeeSuggestion();
+    if (!suggestion) {
+      return 'Ultimo costo cobrado';
+    }
+
+    if (suggestion.has_previous_delivery_for_client_address) {
+      return 'Ultimo costo en esta direccion';
+    }
+
+    if (suggestion.has_previous_delivery_for_client) {
+      return 'Ultimo costo a este cliente';
+    }
+
+    return 'Ultimo costo cobrado';
+  }
+
+  getDeliveryReferenceAmount(): number {
+    const suggestion = this.deliveryFeeSuggestion();
+    if (!suggestion) {
+      return 0;
+    }
+
+    if (suggestion.has_previous_delivery_for_client_address) {
+      return suggestion.last_delivery_fee_final_for_client_address;
+    }
+
+    if (suggestion.has_previous_delivery_for_client) {
+      return suggestion.last_delivery_fee_final_for_client;
+    }
+
+    return 0;
+  }
+
+  hasDeliveryHistory(): boolean {
+    const suggestion = this.deliveryFeeSuggestion();
+    return Boolean(
+      suggestion?.has_previous_delivery_for_client_address
+      || suggestion?.has_previous_delivery_for_client
+    );
+  }
+
   private quoteKey(index: number): string {
     const serviceId = this.form.controls.items.at(index).controls.serviceId.value ?? 'new';
     return `${index}-${serviceId}`;
+  }
+
+  private requestDeliveryFeeSuggestion(options?: {
+    clientId?: number | null;
+    clientAddressId?: number | null;
+    deliveryZoneId?: number | null;
+    syncFinalAmount?: boolean;
+  }): void {
+    const clientId = options?.clientId ?? this.form.controls.clientId.value;
+    const clientAddressId = options?.clientAddressId ?? this.form.controls.clientAddressId.value;
+    const deliveryZoneId = options?.deliveryZoneId ?? this.form.controls.deliveryZoneId.value;
+
+    if (!clientId) {
+      this.clearDeliverySuggestionState();
+      return;
+    }
+
+    this.deliveryFeeSuggestionLoading.set(true);
+    this.deliveryFeeSuggestionError.set('');
+
+    this.facade.getDeliveryFeeSuggestion({
+      client_id: clientId,
+      client_address_id: clientAddressId,
+      delivery_zone_id: deliveryZoneId
+    }).pipe(
+      finalize(() => this.deliveryFeeSuggestionLoading.set(false)),
+      catchError(() => {
+        this.deliveryFeeSuggestion.set(null);
+        this.deliveryFeeSuggestionError.set('No fue posible obtener la sugerencia de delivery.');
+        return of(null);
+      })
+    ).subscribe((suggestion) => {
+      if (!suggestion) {
+        return;
+      }
+
+      this.deliveryFeeSuggestion.set(suggestion);
+
+      const patch: Partial<{
+        deliverySuggestedAmount: number;
+        deliveryFinalAmount: number;
+        deliveryOverrideReason: string;
+      }> = {
+        deliverySuggestedAmount: suggestion.delivery_fee_suggested_by_zone
+      };
+
+      if (options?.syncFinalAmount) {
+        patch.deliveryFinalAmount = suggestion.initial_delivery_fee_final;
+        patch.deliveryOverrideReason = '';
+      }
+
+      this.form.patchValue(patch, { emitEvent: false });
+      this.recalculateTotals();
+    });
+  }
+
+  private clearDeliverySuggestionState(): void {
+    this.deliveryFeeSuggestion.set(null);
+    this.deliveryFeeSuggestionLoading.set(false);
+    this.deliveryFeeSuggestionError.set('');
+    this.form.patchValue({
+      deliverySuggestedAmount: 0,
+      deliveryFinalAmount: this.isEditMode ? this.form.controls.deliveryFinalAmount.value : 0,
+      deliveryOverrideReason: this.isEditMode ? this.form.controls.deliveryOverrideReason.value : ''
+    }, { emitEvent: false });
+    this.recalculateTotals();
   }
 }

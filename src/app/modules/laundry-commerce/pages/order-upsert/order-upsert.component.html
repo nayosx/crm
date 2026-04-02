@@ -102,6 +102,20 @@
                 [readonly]="true"
                 styleClass="w-full"
               />
+              @if (deliveryFeeSuggestionLoading()) {
+                <small class="field-hint">Consultando sugerencia de delivery...</small>
+              } @else if (deliveryFeeSuggestionError()) {
+                <small class="field-hint field-hint--error">{{ deliveryFeeSuggestionError() }}</small>
+              }
+              @if (deliveryFeeSuggestion(); as suggestion) {
+                <small class="field-hint">
+                  Precio sugerido por zona:
+                  <strong>{{ suggestion.delivery_fee_suggested_by_zone | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  @if (suggestion.delivery_zone_name) {
+                    · {{ suggestion.delivery_zone_name }}
+                  }
+                </small>
+              }
             </div>
 
             <div class="field">
@@ -112,6 +126,19 @@
                 currency="USD"
                 styleClass="w-full"
               />
+              @if (deliveryFeeSuggestion(); as suggestion) {
+                <small class="field-hint">
+                  {{ getDeliveryReferenceLabel() }}:
+                  <strong>{{ getDeliveryReferenceAmount() | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  @if (!hasDeliveryHistory()) {
+                    · Sin historial previo
+                  }
+                </small>
+                <small class="field-hint">
+                  Valor inicial recomendado:
+                  <strong>{{ suggestion.initial_delivery_fee_final | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </small>
+              }
             </div>
 
             <div class="field">

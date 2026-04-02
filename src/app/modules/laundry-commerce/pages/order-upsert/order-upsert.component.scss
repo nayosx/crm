@@ -25,6 +25,17 @@
   font-weight: 600;
 }
 
+.field-hint {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--text-color-secondary);
+  line-height: 1.4;
+}
+
+.field-hint--error {
+  color: var(--red-500, #ef4444);
+}
+
 .indicator-row {
   display: flex;
   align-items: center;

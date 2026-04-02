@@ -48,6 +48,22 @@ export interface OrderExtraItem {
 
 export interface OrderWeightPricingSnapshot extends WeightPricingQuoteSnapshot {}
 
+export interface DeliveryFeeSuggestion {
+  client_id: number;
+  client_address_id: number | null;
+  delivery_zone_id: number | null;
+  delivery_zone_name: string | null;
+  delivery_zone_price_id: number | null;
+  delivery_fee_suggested_by_zone: number;
+  last_delivery_fee_final_for_client_address: number;
+  last_delivery_fee_final_for_client: number;
+  last_delivery_order_id_for_client_address: number | null;
+  last_delivery_order_id_for_client: number | null;
+  has_previous_delivery_for_client_address: boolean;
+  has_previous_delivery_for_client: boolean;
+  initial_delivery_fee_final: number;
+}
+
 export interface Order {
   id: number;
   client_id?: number | null;

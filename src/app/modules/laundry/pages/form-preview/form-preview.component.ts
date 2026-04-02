@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, ViewEncapsulation, computed, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subscription, forkJoin } from 'rxjs';
+import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of, startWith, switchMap } from 'rxjs';
 import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -21,9 +21,18 @@ import { LaundryServiceExtraType, LaundryServiceResp, LaundryUnitType } from '@s
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
+import { DeliveryFeeSuggestion } from '@modules/laundry-commerce/interfaces/order.interface';
 import { ServicePriceOption } from '@modules/laundry-commerce/interfaces/service-price-option.interface';
 import { LaundryCommercialService } from '@modules/laundry-commerce/interfaces/service.interface';
+import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
+import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
+import {
+  LaundryServiceCommercialDraftPayload as PersistedCommercialDraftPayload,
+  LaundryServiceCommercialDraftsApiService
+} from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
+import { OrdersApiService } from '@modules/laundry-commerce/services/orders-api.service';
 import { ServicesApiService } from '@modules/laundry-commerce/services/services-api.service';
+import { WeightPricingApiService } from '@modules/laundry-commerce/services/weight-pricing-api.service';
 
 type GarmentCategory = NonNullable<LaundryGarmentType['category']>;
 
@@ -40,6 +49,258 @@ type SpecialSection = {
   description: string;
   items: LaundryCommercialService[];
 };
+
+type UiCaptureGarmentItem = {
+  garment_type_id: number;
+  quantity: number;
+  unit_type: LaundryUnitType;
+  unit_price: number | null;
+  notes: string | null;
+};
+
+type UiCaptureExtraItem = {
+  service_extra_type_id: number;
+  quantity: number;
+  unit_price: number | null;
+  notes: string | null;
+};
+
+type UiCaptureCommercialItem = {
+  service_id: number;
+  service_name: string | null;
+  category_name: string | null;
+  quantity: number;
+  selected_price_option_id: number | null;
+  manual_price: number | null;
+  notes: string | null;
+};
+
+type UiCaptureModel = {
+  id?: number | null;
+  client_id: number | null;
+  client_address_id: number | null;
+  scheduled_pickup_at: string | null;
+  status: LaundryServiceResp['status'] | null;
+  service_label: LaundryServiceResp['service_label'] | null;
+  transaction_id: number | null;
+  payment_type_id: number | null;
+  pricing_profile_id: number | null;
+  delivery_zone_id: number | null;
+  weight_lb: number | null;
+  distance_km: number | null;
+  delivery_price_per_km: number | null;
+  delivery_fee_suggested: number | null;
+  delivery_fee_final: number | null;
+  delivery_fee_override_reason: string | null;
+  global_discount_amount: number;
+  global_discount_reason: string | null;
+  notes: string | null;
+  items: UiCaptureGarmentItem[];
+  extras: UiCaptureExtraItem[];
+  weight_pricing_preview: WeightPricingQuoteResponse | null;
+  commercial_capture_pending: UiCaptureCommercialItem[];
+};
+
+type LaundryServicePayload = {
+  client_id: number;
+  client_address_id: number;
+  scheduled_pickup_at: string;
+  status: LaundryServiceResp['status'];
+  service_label: LaundryServiceResp['service_label'];
+  transaction_id: number | null;
+  weight_lb: number | null;
+  notes: string | null;
+  items: UiCaptureGarmentItem[];
+  extras: UiCaptureExtraItem[];
+};
+
+type OrderPayload = {
+  client_id: number;
+  client_address_id: number;
+  pricing_profile_id: number;
+  payment_type_id: number;
+  delivery_zone_id: number | null;
+  delivery_fee_final: number | null;
+  delivery_fee_override_reason: string | null;
+  status: string;
+  global_discount_amount: number;
+  global_discount_reason: string | null;
+  notes: string | null;
+  items: Array<{
+    service_id: number;
+    quantity: number;
+    selected_price_option_id?: number | null;
+    suggested_unit_price: number;
+    recommended_unit_price?: number | null;
+    final_unit_price: number;
+    weight_lb?: number | null;
+    notes?: string | null;
+  }>;
+  extras: Array<{
+    extra_id: number;
+    quantity: number;
+    suggested_unit_price: number;
+    final_unit_price: number;
+    notes?: string | null;
+  }>;
+};
+
+type CommercialDraftPayload = {
+  payload: {
+    ui_model: UiCaptureModel;
+    laundry_service_payload: LaundryServicePayload | null;
+    order_payload: OrderPayload | null;
+    validations: {
+      laundry_service: string[];
+      order: string[];
+    };
+  };
+  laundry_service_id: number | null;
+  is_confirmed: boolean;
+  confirmed_at: string | null;
+  charged_by_user_id: number | null;
+};
+
+type PersistedCommercialDraftRecord = {
+  id: number;
+  payload: {
+    ui_model?: UiCaptureModel;
+    laundry_service_payload?: LaundryServicePayload | null;
+    order_payload?: OrderPayload | null;
+    validations?: {
+      laundry_service?: string[];
+      order?: string[];
+    };
+  } | Record<string, unknown>;
+  laundry_service_id: number | null;
+  is_confirmed: boolean;
+  confirmed_at: string | null;
+  charged_by_user_id: number | null;
+};
+
+function asNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function asNullableNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function asNullableText(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function mapToLaundryServicePayload(uiModel: UiCaptureModel): LaundryServicePayload {
+  return {
+    client_id: uiModel.client_id as number,
+    client_address_id: uiModel.client_address_id as number,
+    scheduled_pickup_at: uiModel.scheduled_pickup_at as string,
+    status: uiModel.status as LaundryServiceResp['status'],
+    service_label: uiModel.service_label as LaundryServiceResp['service_label'],
+    transaction_id: uiModel.transaction_id ?? null,
+    weight_lb: uiModel.weight_lb,
+    notes: uiModel.notes,
+    items: uiModel.items,
+    extras: uiModel.extras
+  };
+}
+
+function mapToOrderPayload(uiModel: UiCaptureModel): OrderPayload {
+  const weightItem = uiModel.weight_pricing_preview?.service_id
+    ? [{
+        service_id: uiModel.weight_pricing_preview.service_id,
+        quantity: 1,
+        suggested_unit_price: asNumber(
+          uiModel.weight_pricing_preview.recommended_price ?? uiModel.weight_pricing_preview.final_price
+        ),
+        recommended_unit_price: asNullableNumber(uiModel.weight_pricing_preview.recommended_price),
+        final_unit_price: asNumber(
+          uiModel.weight_pricing_preview.final_price ?? uiModel.weight_pricing_preview.recommended_price
+        ),
+        weight_lb: uiModel.weight_lb,
+        notes: uiModel.notes
+      }]
+    : [];
+
+  const commercialItems = uiModel.commercial_capture_pending.map((item) => ({
+    service_id: item.service_id,
+    quantity: item.quantity,
+    selected_price_option_id: item.selected_price_option_id,
+    suggested_unit_price: asNumber(item.manual_price),
+    final_unit_price: asNumber(item.manual_price),
+    notes: item.notes
+  }));
+
+  return {
+    client_id: uiModel.client_id as number,
+    client_address_id: uiModel.client_address_id as number,
+    pricing_profile_id: uiModel.pricing_profile_id as number,
+    payment_type_id: uiModel.payment_type_id as number,
+    delivery_zone_id: uiModel.delivery_zone_id ?? null,
+    delivery_fee_final: uiModel.delivery_fee_final,
+    delivery_fee_override_reason: uiModel.delivery_fee_override_reason,
+    status: uiModel.status ?? 'PENDING',
+    global_discount_amount: uiModel.global_discount_amount,
+    global_discount_reason: uiModel.global_discount_reason,
+    notes: uiModel.notes,
+    items: [...weightItem, ...commercialItems],
+    extras: uiModel.extras.map((extra) => ({
+      extra_id: extra.service_extra_type_id,
+      quantity: extra.quantity,
+      suggested_unit_price: asNumber(extra.unit_price),
+      final_unit_price: asNumber(extra.unit_price),
+      notes: extra.notes
+    }))
+  };
+}
+
+function validateLaundryServicePayload(uiModel: UiCaptureModel): string[] {
+  const errors: string[] = [];
+
+  if (!uiModel.client_id) errors.push('client_id es requerido para laundry service');
+  if (!uiModel.client_address_id) errors.push('client_address_id es requerido para laundry service');
+  if (!uiModel.scheduled_pickup_at) errors.push('scheduled_pickup_at es requerido para laundry service');
+  if (!uiModel.status) errors.push('status es requerido para laundry service');
+  if (!uiModel.service_label) errors.push('service_label es requerido para laundry service');
+
+  return errors;
+}
+
+function validateOrderPayload(uiModel: UiCaptureModel): string[] {
+  const errors: string[] = [];
+
+  if (!uiModel.client_id) errors.push('client_id es requerido para order');
+  if (!uiModel.client_address_id) errors.push('client_address_id es requerido para order');
+  if (!uiModel.pricing_profile_id) errors.push('pricing_profile_id es requerido para order');
+  if (!uiModel.payment_type_id) errors.push('payment_type_id es requerido para order');
+  if (!uiModel.status) errors.push('status es requerido para order');
+
+  const hasCommercialItems = uiModel.commercial_capture_pending.some((item) => item.quantity > 0 && item.service_id);
+  const hasWeightItem = Boolean(
+    uiModel.weight_pricing_preview?.service_id
+    && uiModel.weight_lb
+    && asNullableNumber(uiModel.weight_pricing_preview.final_price ?? uiModel.weight_pricing_preview.recommended_price)
+  );
+
+  if (uiModel.weight_lb && uiModel.weight_lb > 0 && uiModel.weight_pricing_preview && !hasWeightItem) {
+    errors.push(
+      'falta construir el item comercial de lavado por peso para /v2/orders con service_id, weight_lb y final_unit_price'
+    );
+  }
+
+  if (!hasCommercialItems && !hasWeightItem && !uiModel.extras.length) {
+    errors.push('order requiere al menos un item o extra comercial');
+  }
+
+  return errors;
+}
 
 @Component({
   selector: 'app-laundry-form-preview',
@@ -67,6 +328,7 @@ type SpecialSection = {
 })
 export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
+  readonly savingDraft = signal(false);
   readonly isMobile = signal(this.checkIsMobile());
   readonly payloadDialogVisible = signal(false);
   readonly specialPriceDialogVisible = signal(false);
@@ -77,11 +339,28 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly garmentTypes = signal<LaundryGarmentType[]>([]);
   readonly extraTypes = signal<LaundryServiceExtraType[]>([]);
   readonly commercialServices = signal<LaundryCommercialService[]>([]);
+  readonly pricingProfiles = signal<WeightPricingProfile[]>([]);
   readonly garmentSections = signal<GarmentSection[]>([]);
   readonly specialSections = signal<SpecialSection[]>([]);
   readonly mainAccordionValues = signal<number[]>([]);
   readonly activeSpecialService = signal<LaundryCommercialService | null>(null);
+  readonly weightQuote = signal<WeightPricingQuoteResponse | null>(null);
+  readonly weightQuoteLoading = signal(false);
+  readonly weightQuoteError = signal<string | null>(null);
+  readonly deliveryFeeSuggestion = signal<DeliveryFeeSuggestion | null>(null);
+  readonly deliveryFeeSuggestionLoading = signal(false);
+  readonly deliveryFeeSuggestionError = signal<string | null>(null);
+  readonly deliveryPricePerKm = signal(0);
+  readonly deliveryPricePerKmLoading = signal(false);
+  readonly deliveryPricePerKmError = signal<string | null>(null);
+  readonly deliveryManualMode = signal(false);
+  readonly savedDraftId = signal<number | null>(null);
+  readonly draftSaveMessage = signal<string | null>(null);
+  readonly draftSaveError = signal<string | null>(null);
+  readonly copyDetailMessage = signal<string | null>(null);
   private formSelectionSubscription?: Subscription;
+  private weightQuoteSubscription?: Subscription;
+  private deliveryDistanceSubscription?: Subscription;
 
   readonly categoryOrder: GarmentCategory[] = ['CLOTHING', 'BEDDING', 'FOOTWEAR', 'PLUSH', 'RUG', 'HOUSEHOLD'];
   readonly categoryLabels: Record<GarmentCategory, { label: string; description: string }> = {
@@ -123,11 +402,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly form: FormGroup;
   readonly specialSectionOrder: Array<{ key: string; label: string; description: string }> = [
     {
-      key: 'home-volume',
-      label: 'Hogar y volumen',
-      description: 'Piezas grandes o de alto volumen para captura comercial separada.'
-    },
-    {
       key: 'formal-wear',
       label: 'Ropa Formal',
       description: 'Prendas delicadas o de evento con precio fijo sugerido.'
@@ -149,8 +423,9 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     }
   ];
 
-  readonly payloadPreview = computed(() => this.buildPreviewPayload());
+  readonly payloadPreview = computed(() => this.buildPayloadPreview());
   readonly selectedItemsCount = signal(0);
+  readonly weightBasedService = computed(() => this.commercialServices().find((item) => item.service_type === 'WEIGHT') ?? null);
   private previousSelectedItemsCount = 0;
   private fabPulseTimeoutId: number | null = null;
 
@@ -160,10 +435,19 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     private readonly laundryService: LaundryService,
     private readonly garmentTypesService: LaundryGarmentTypesService,
     private readonly extraTypesService: LaundryServiceExtraTypesService,
-    private readonly servicesApi: ServicesApiService
+    private readonly globalSettingsApi: GlobalSettingsApiService,
+    private readonly commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
+    private readonly ordersApi: OrdersApiService,
+    private readonly servicesApi: ServicesApiService,
+    private readonly weightPricingApi: WeightPricingApiService
   ) {
     this.form = this.fb.group({
       weight_lb: [null as number | null],
+      pricing_profile_id: [null as number | null],
+      distance_km: [null as number | null],
+      delivery_fee_suggested: [0],
+      delivery_fee_final: [0],
+      delivery_fee_override_reason: [''],
       notes: [''],
       garments: this.fb.group({}),
       extras: this.fb.group({}),
@@ -187,22 +471,31 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       service: this.laundryService.getById(id),
       garmentTypes: this.garmentTypesService.getAll(),
       extraTypes: this.extraTypesService.getAll(),
-      commercialServices: this.servicesApi.list({ is_active: true })
+      commercialServices: this.servicesApi.list({ is_active: true }),
+      pricingProfiles: this.weightPricingApi.listProfiles({ page: 1, per_page: 200, is_active: true })
     }).subscribe({
-      next: ({ service, garmentTypes, extraTypes, commercialServices }) => {
+      next: ({ service, garmentTypes, extraTypes, commercialServices, pricingProfiles }) => {
         const activeGarmentTypes = garmentTypes.filter((item) => item.active !== false);
         const activeExtraTypes = extraTypes.filter((item) => item.active !== false);
         const activeCommercialServices = commercialServices.items.filter((item) => item.is_active !== false);
+        const activeProfiles = pricingProfiles.items.filter((item) => item.is_active !== false);
 
         this.service.set(service);
         this.garmentTypes.set(activeGarmentTypes);
         this.extraTypes.set(activeExtraTypes);
         this.commercialServices.set(activeCommercialServices);
+        this.pricingProfiles.set(activeProfiles);
         this.buildForm(service, activeGarmentTypes, activeExtraTypes);
+        this.setDefaultPricingProfile(activeCommercialServices, activeProfiles);
         this.garmentSections.set(this.buildGarmentSections(activeGarmentTypes));
         this.specialSections.set(this.buildSpecialSections(activeCommercialServices));
         this.mainAccordionValues.set(this.getDefaultMainAccordionValues());
         this.bindSelectionTracking();
+        this.bindWeightQuoteTracking();
+        this.bindDeliveryDistanceTracking();
+        this.loadDeliveryPricePerKm();
+        this.loadDeliveryFeeSuggestion(service);
+        this.loadExistingDraft(service.id ?? null);
         this.refreshSelectedItemsState();
         this.loading.set(false);
       },
@@ -220,6 +513,8 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.formSelectionSubscription?.unsubscribe();
+    this.weightQuoteSubscription?.unsubscribe();
+    this.deliveryDistanceSubscription?.unsubscribe();
     if (this.fabPulseTimeoutId) {
       clearTimeout(this.fabPulseTimeoutId);
     }
@@ -239,6 +534,13 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
 
   get specialItemSelectorGroup(): FormGroup {
     return this.form.get('special_item_selector') as FormGroup;
+  }
+
+  get pricingProfileOptions(): Array<{ label: string; value: number }> {
+    return this.pricingProfiles().map((profile) => ({
+      label: profile.name,
+      value: profile.id
+    }));
   }
 
   garmentKey(id: number): string {
@@ -445,6 +747,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     return `${option.label} - ${this.formatCurrency(this.toNumber(option.suggested_price))}`;
   }
 
+  getSpecialPriceOptionName(option: ServicePriceOption): string {
+    return option.label;
+  }
+
   getSpecialPriceOptionsForSelect(service: LaundryCommercialService): Array<{ label: string; value: number }> {
     return this.getActivePriceOptions(service).map((option) => ({
       label: this.getSpecialPriceOptionLabel(option),
@@ -470,7 +776,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
 
     const optionId = this.toNullableNumber(group.get('selected_price_option_id')?.value);
     const option = this.resolvePriceOption(service, optionId);
-    return option ? this.getSpecialPriceOptionLabel(option) : this.getSuggestedPriceLabel(service);
+    return option ? this.getSpecialPriceOptionName(option) : this.getSuggestedPriceLabel(service);
   }
 
   getSelectedGarments(): Array<{ name: string; quantity: number; emoji: string }> {
@@ -483,33 +789,151 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       .filter((item) => item.quantity > 0);
   }
 
-  getSelectedSpecialItems(): Array<{ name: string; quantity: number; priceLabel: string; emoji: string }> {
+  getSelectedSpecialItems(): Array<{ name: string; quantity: number; priceLabel: string; emoji: string; unitPrice: number; subtotal: number }> {
     return this.specialItemsArray.controls
       .map((control) => {
         const group = control as FormGroup;
         const service = this.findCommercialService(group.get('service_id')?.value);
+        const quantity = this.toNumber(group.get('quantity')?.value);
+        const unitPrice = this.toNumber(group.get('manual_price')?.value);
         return {
           name: String(group.get('service_name')?.value ?? 'Servicio especial'),
           emoji: service ? this.getSpecialServiceEmoji(service) : '⭐',
-          quantity: this.toNumber(group.get('quantity')?.value),
-          priceLabel: this.getSpecialItemPriceLabel(group, service)
+          quantity,
+          priceLabel: this.getSpecialItemPriceLabel(group, service),
+          unitPrice,
+          subtotal: this.calculateSubtotal(quantity, unitPrice)
         };
       })
       .filter((item) => item.quantity > 0);
   }
 
-  getSelectedExtras(): Array<{ name: string; quantity: number; emoji: string }> {
+  getSelectedExtras(): Array<{ name: string; quantity: number; emoji: string; unitPrice: number; subtotal: number }> {
     return this.extraTypes()
       .map((type) => ({
         name: type.name,
         emoji: this.getExtraEmoji(type),
-        quantity: this.toNumber(this.getExtraGroup(type.id).get('quantity')?.value)
+        quantity: this.toNumber(this.getExtraGroup(type.id).get('quantity')?.value),
+        unitPrice: this.toNumber(this.getExtraGroup(type.id).get('unit_price')?.value),
+        subtotal: this.getExtraSubtotal(type.id)
       }))
       .filter((item) => item.quantity > 0);
   }
 
   getSelectedItemsCount(): number {
-    return this.getSelectedGarments().length + this.getSelectedSpecialItems().length + this.getSelectedExtras().length;
+    return this.getSelectedGarments().length
+      + this.getSelectedSpecialItems().length
+      + this.getSelectedExtras().length
+      + (this.getWeightQuotePrice() > 0 ? 1 : 0)
+      + (this.getDeliveryFeeFinal() > 0 ? 1 : 0);
+  }
+
+  getWeightQuotePrice(): number {
+    return this.toNumber(this.weightQuote()?.final_price ?? this.weightQuote()?.recommended_price);
+  }
+
+  hasWeightQuote(): boolean {
+    return this.getWeightQuotePrice() > 0;
+  }
+
+  getDistanceKm(): number {
+    return this.toNumber(this.form.get('distance_km')?.value);
+  }
+
+  getDeliveryFeeFinal(): number {
+    return this.toNumber(this.form.get('delivery_fee_final')?.value);
+  }
+
+  getDeliveryFeeSuggested(): number {
+    return this.toNumber(this.form.get('delivery_fee_suggested')?.value);
+  }
+
+  hasDeliveryFee(): boolean {
+    return this.getDeliveryFeeFinal() > 0;
+  }
+
+  getDeliveryReferenceLabel(): string {
+    const suggestion = this.deliveryFeeSuggestion();
+    if (!suggestion) {
+      return 'Ultimo costo cobrado';
+    }
+
+    if (suggestion.has_previous_delivery_for_client_address) {
+      return 'Ultimo costo en esta direccion';
+    }
+
+    if (suggestion.has_previous_delivery_for_client) {
+      return 'Ultimo costo a este cliente';
+    }
+
+    return 'Ultimo costo cobrado';
+  }
+
+  getDeliveryReferenceAmount(): number {
+    const suggestion = this.deliveryFeeSuggestion();
+    if (!suggestion) {
+      return 0;
+    }
+
+    if (suggestion.has_previous_delivery_for_client_address) {
+      return suggestion.last_delivery_fee_final_for_client_address;
+    }
+
+    if (suggestion.has_previous_delivery_for_client) {
+      return suggestion.last_delivery_fee_final_for_client;
+    }
+
+    return 0;
+  }
+
+  hasDeliveryHistory(): boolean {
+    const suggestion = this.deliveryFeeSuggestion();
+    return Boolean(
+      suggestion?.has_previous_delivery_for_client_address
+      || suggestion?.has_previous_delivery_for_client
+    );
+  }
+
+  hasDeliveryOverride(): boolean {
+    return Math.abs(this.getDeliveryFeeFinal() - this.getDeliveryFeeSuggested()) >= 0.01;
+  }
+
+  onDeliveryFeeFinalInput(value: unknown): void {
+    const amount = this.toNullableNumber(value);
+
+    if (!amount || amount <= 0) {
+      this.deliveryManualMode.set(false);
+      this.form.get('distance_km')?.enable({ emitEvent: false });
+      const distanceKm = this.getDistanceKm();
+      if (distanceKm > 0 && this.deliveryPricePerKm() > 0) {
+        this.form.patchValue({
+          delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm()),
+          delivery_fee_override_reason: 'Calculado por distancia'
+        }, { emitEvent: false });
+      } else {
+        this.form.patchValue({
+          delivery_fee_final: 0,
+          delivery_fee_override_reason: ''
+        }, { emitEvent: false });
+      }
+      this.refreshSelectedItemsState();
+      return;
+    }
+
+    this.deliveryManualMode.set(true);
+    this.form.get('distance_km')?.disable({ emitEvent: false });
+    this.form.patchValue({
+      delivery_fee_override_reason: 'Precio manual de delivery'
+    }, { emitEvent: false });
+    this.refreshSelectedItemsState();
+  }
+
+  getGrandDraftTotal(): number {
+    return this.getGarmentDraftTotal()
+      + this.getSpecialItemsDraftTotal()
+      + this.getExtrasSubtotal()
+      + this.getWeightQuotePrice()
+      + this.getDeliveryFeeFinal();
   }
 
   getPickupDateText(): string {
@@ -537,6 +961,66 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     );
   }
 
+  saveDraft(): void {
+    const draftPayload = this.buildPayloadPreview();
+    const isUpdate = Boolean(this.savedDraftId());
+    this.savingDraft.set(true);
+    this.draftSaveError.set(null);
+    this.draftSaveMessage.set(null);
+
+    const request = this.savedDraftId()
+      ? this.commercialDraftsApi.update(this.savedDraftId()!, draftPayload as Partial<PersistedCommercialDraftPayload>)
+      : this.commercialDraftsApi.create(draftPayload as PersistedCommercialDraftPayload);
+
+    request.pipe(
+      finalize(() => this.savingDraft.set(false)),
+      catchError(() => {
+        this.draftSaveError.set('No fue posible guardar el borrador comercial.');
+        return of(null);
+      })
+    ).subscribe((draft) => {
+      if (!draft) {
+        return;
+      }
+
+      this.savedDraftId.set(draft.id);
+      this.draftSaveMessage.set(
+        isUpdate ? `Borrador actualizado #${draft.id}` : `Borrador guardado #${draft.id}`
+      );
+    });
+  }
+
+  async copyServiceDetail(): Promise<void> {
+    const text = this.buildCopyableServiceDetail();
+    if (!text) {
+      this.copyDetailMessage.set('No hay detalle de servicio para copiar.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copyDetailMessage.set('Detalle de servicio copiado.');
+    } catch {
+      this.copyDetailMessage.set('No fue posible copiar el detalle de servicio.');
+    }
+  }
+
+  private setDefaultPricingProfile(
+    services: LaundryCommercialService[],
+    profiles: WeightPricingProfile[]
+  ): void {
+    const weightService = services.find((item) => item.service_type === 'WEIGHT');
+    const defaultProfile = profiles.find((profile) => profile.service_id === weightService?.id)
+      ?? profiles.find((profile) => profile.service_id == null)
+      ?? profiles[0];
+
+    if (defaultProfile) {
+      this.form.patchValue({
+        pricing_profile_id: defaultProfile.id
+      }, { emitEvent: false });
+    }
+  }
+
   private buildForm(
     service: LaundryServiceResp,
     garmentTypes: LaundryGarmentType[],
@@ -544,6 +1028,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   ): void {
     this.form.patchValue({
       weight_lb: service.weight_lb ?? null,
+      distance_km: null,
+      delivery_fee_suggested: 0,
+      delivery_fee_final: 0,
+      delivery_fee_override_reason: '',
       notes: service.notes ?? ''
     });
 
@@ -688,8 +1176,11 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     return this.commercialServices().find((item) => item.id === serviceId) ?? null;
   }
 
-  private buildPreviewPayload(): Record<string, unknown> {
+  private buildUiCaptureModel(): UiCaptureModel {
     const service = this.service();
+    const paymentTypeId = service?.transaction && 'payment_type_id' in service.transaction
+      ? asNullableNumber(service.transaction.payment_type_id)
+      : null;
     const garmentItems = this.garmentTypes()
       .map((type) => {
         const group = this.getGarmentGroup(type.id);
@@ -740,19 +1231,86 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       .filter((item) => item.quantity > 0);
 
     return {
-      id: service?.id,
-      client_id: service?.client_id,
-      client_address_id: service?.client_address_id,
-      scheduled_pickup_at: service?.scheduled_pickup_at,
-      status: service?.status,
-      service_label: service?.service_label,
+      id: service?.id ?? null,
+      client_id: service?.client_id ?? null,
+      client_address_id: service?.client_address_id ?? null,
+      scheduled_pickup_at: service?.scheduled_pickup_at ?? null,
+      status: service?.status ?? null,
+      service_label: service?.service_label ?? null,
       transaction_id: service?.transaction_id ?? null,
+      payment_type_id: paymentTypeId,
       weight_lb: this.toNullableNumber(this.form.get('weight_lb')?.value),
+      delivery_zone_id: this.deliveryFeeSuggestion()?.delivery_zone_id ?? null,
+      pricing_profile_id: this.toNullableNumber(this.form.get('pricing_profile_id')?.value),
+      distance_km: this.toNullableNumber(this.form.get('distance_km')?.value),
+      delivery_price_per_km: this.deliveryPricePerKm() || null,
+      delivery_fee_suggested: this.toNullableNumber(this.form.get('delivery_fee_suggested')?.value),
+      delivery_fee_final: this.toNullableNumber(this.form.get('delivery_fee_final')?.value),
+      delivery_fee_override_reason: this.toNullableText(this.form.get('delivery_fee_override_reason')?.value),
+      global_discount_amount: 0,
+      global_discount_reason: null,
       notes: this.toNullableText(this.form.get('notes')?.value),
       items: garmentItems,
       extras: extraItems,
+      weight_pricing_preview: this.weightQuote(),
       commercial_capture_pending: specialItems
     };
+  }
+
+  private buildPayloadPreview(): CommercialDraftPayload {
+    const uiModel = this.buildUiCaptureModel();
+    const laundryErrors = validateLaundryServicePayload(uiModel);
+    const orderErrors = validateOrderPayload(uiModel);
+
+    return {
+      payload: {
+        ui_model: uiModel,
+        laundry_service_payload: laundryErrors.length ? null : mapToLaundryServicePayload(uiModel),
+        order_payload: orderErrors.length ? null : mapToOrderPayload(uiModel),
+        validations: {
+          laundry_service: laundryErrors,
+          order: orderErrors
+        }
+      },
+      laundry_service_id: uiModel.id ?? null,
+      is_confirmed: false,
+      confirmed_at: null,
+      charged_by_user_id: null
+    };
+  }
+
+  private buildCopyableServiceDetail(): string {
+    const lines: string[] = [];
+
+    lines.push(`Total a pagar: ${this.formatCurrency(this.getGrandDraftTotal())}`);
+
+    if (this.hasWeightQuote()) {
+      lines.push(
+        `⚖️ ${this.weightBasedService()?.name || 'Lavado por peso'} - ${this.form.get('weight_lb')?.value || 0} lb - ${this.formatCurrency(this.getWeightQuotePrice())}`
+      );
+    }
+
+    if (this.hasDeliveryFee()) {
+      if (this.deliveryManualMode()) {
+        lines.push(`🚚 Delivery - ${this.formatCurrency(this.getDeliveryFeeFinal())}`);
+      } else {
+        lines.push(`🚚 Delivery - ${this.getDistanceKm()} km x ${this.formatCurrency(this.deliveryPricePerKm())} = ${this.formatCurrency(this.getDeliveryFeeFinal())}`);
+      }
+    }
+
+    if (this.getSelectedSpecialItems().length) {
+      this.getSelectedSpecialItems().forEach((item) => {
+        lines.push(`${item.emoji} ${item.name} - ${item.quantity} x ${this.formatCurrency(item.unitPrice)} · ${item.priceLabel}`);
+      });
+    }
+
+    if (this.getSelectedExtras().length) {
+      this.getSelectedExtras().forEach((item) => {
+        lines.push(`${item.emoji} ${item.name} - ${item.quantity} x ${this.formatCurrency(item.unitPrice)}`);
+      });
+    }
+
+    return lines.join('\n').trim();
   }
 
   private calculateSubtotal(quantity: unknown, unitPrice: unknown): number {
@@ -785,9 +1343,83 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     }).format(value);
   }
 
+  private roundCurrency(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+  }
+
   private bindSelectionTracking(): void {
     this.formSelectionSubscription?.unsubscribe();
     this.formSelectionSubscription = this.form.valueChanges.subscribe(() => this.refreshSelectedItemsState());
+  }
+
+  private bindWeightQuoteTracking(): void {
+    this.weightQuoteSubscription?.unsubscribe();
+    this.weightQuoteSubscription = this.form.valueChanges.pipe(
+      startWith(this.form.getRawValue()),
+      debounceTime(350),
+      distinctUntilChanged((previous, current) =>
+        previous.weight_lb === current.weight_lb && previous.pricing_profile_id === current.pricing_profile_id
+      ),
+      switchMap((value) => {
+        const weightLb = this.toNullableNumber(value.weight_lb);
+        const profileId = this.toNullableNumber(value.pricing_profile_id);
+
+        if (!weightLb || weightLb <= 0 || !profileId) {
+          this.weightQuote.set(null);
+          this.weightQuoteError.set(null);
+          this.weightQuoteLoading.set(false);
+          return of(null);
+        }
+
+        this.weightQuoteLoading.set(true);
+        this.weightQuoteError.set(null);
+
+        return this.weightPricingApi.quote({
+          profile_id: profileId,
+          weight_lb: weightLb
+        }).pipe(
+          catchError(() => {
+            this.weightQuoteError.set('No fue posible calcular el precio por peso.');
+            return of(null);
+          })
+        );
+      })
+    ).subscribe((quote) => {
+      this.weightQuoteLoading.set(false);
+      this.weightQuote.set(quote);
+      this.refreshSelectedItemsState();
+    });
+  }
+
+  private bindDeliveryDistanceTracking(): void {
+    this.deliveryDistanceSubscription?.unsubscribe();
+    this.deliveryDistanceSubscription = this.form.valueChanges.pipe(
+      startWith(this.form.getRawValue()),
+      debounceTime(150),
+      distinctUntilChanged((previous, current) => previous.distance_km === current.distance_km)
+    ).subscribe((value) => {
+      if (this.deliveryManualMode()) {
+        return;
+      }
+
+      const distanceKm = this.toNullableNumber(value.distance_km);
+      const pricePerKm = this.deliveryPricePerKm();
+
+      if (!distanceKm || distanceKm <= 0 || pricePerKm <= 0) {
+        this.form.patchValue({
+          delivery_fee_final: 0,
+          delivery_fee_override_reason: ''
+        }, { emitEvent: false });
+        this.refreshSelectedItemsState();
+        return;
+      }
+
+      this.form.patchValue({
+        delivery_fee_final: this.roundCurrency(distanceKm * pricePerKm),
+        delivery_fee_override_reason: 'Calculado por distancia'
+      }, { emitEvent: false });
+      this.refreshSelectedItemsState();
+    });
   }
 
   private refreshSelectedItemsState(): void {
@@ -799,6 +1431,173 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     }
 
     this.previousSelectedItemsCount = currentCount;
+  }
+
+  private loadDeliveryFeeSuggestion(service: LaundryServiceResp): void {
+    if (!service.client_id) {
+      this.deliveryFeeSuggestion.set(null);
+      this.deliveryFeeSuggestionError.set(null);
+      return;
+    }
+
+    this.deliveryFeeSuggestionLoading.set(true);
+    this.deliveryFeeSuggestionError.set(null);
+
+    this.ordersApi.getDeliveryFeeSuggestion({
+      client_id: service.client_id,
+      client_address_id: service.client_address_id ?? null
+    }).pipe(
+      catchError(() => {
+        this.deliveryFeeSuggestion.set(null);
+        this.deliveryFeeSuggestionError.set('No fue posible cargar la referencia de delivery.');
+        return of(null);
+      })
+    ).subscribe((suggestion) => {
+      this.deliveryFeeSuggestionLoading.set(false);
+
+      if (!suggestion) {
+        return;
+      }
+
+      this.deliveryFeeSuggestion.set(suggestion);
+      this.deliveryManualMode.set(false);
+      this.form.get('distance_km')?.enable({ emitEvent: false });
+      this.form.patchValue({
+        delivery_fee_suggested: suggestion.delivery_fee_suggested_by_zone,
+        delivery_fee_final: suggestion.initial_delivery_fee_final,
+        delivery_fee_override_reason: ''
+      }, { emitEvent: false });
+      this.refreshSelectedItemsState();
+    });
+  }
+
+  private loadDeliveryPricePerKm(): void {
+    this.deliveryPricePerKmLoading.set(true);
+    this.deliveryPricePerKmError.set(null);
+
+    this.globalSettingsApi.getDeliveryPricePerKm().pipe(
+      catchError(() => {
+        this.deliveryPricePerKm.set(0);
+        this.deliveryPricePerKmError.set('No fue posible cargar el precio por km.');
+        return of(0);
+      })
+    ).subscribe((value) => {
+      this.deliveryPricePerKmLoading.set(false);
+      this.deliveryPricePerKm.set(this.roundCurrency(value));
+
+      if (this.deliveryManualMode()) {
+        return;
+      }
+
+      const distanceKm = this.getDistanceKm();
+      if (distanceKm > 0 && this.deliveryPricePerKm() > 0) {
+        this.form.patchValue({
+          delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm()),
+          delivery_fee_override_reason: 'Calculado por distancia'
+        }, { emitEvent: false });
+        this.refreshSelectedItemsState();
+      }
+    });
+  }
+
+  private loadExistingDraft(laundryServiceId: number | null): void {
+    if (!laundryServiceId) {
+      return;
+    }
+
+    this.commercialDraftsApi.list({
+      laundry_service_id: laundryServiceId,
+      page: 1,
+      per_page: 1
+    }).pipe(
+      catchError(() => of({ items: [], total: 0, page: 1, per_page: 1, pages: 0 }))
+    ).subscribe((response) => {
+      const draft = (response.items?.[0] ?? null) as PersistedCommercialDraftRecord | null;
+      if (!draft) {
+        return;
+      }
+
+      this.savedDraftId.set(draft.id);
+      this.applyDraftToForm(draft);
+    });
+  }
+
+  private applyDraftToForm(draft: PersistedCommercialDraftRecord): void {
+    const payload = draft.payload;
+    const uiModel = payload && typeof payload === 'object' && 'ui_model' in payload
+      ? (payload.ui_model as UiCaptureModel | undefined)
+      : undefined;
+
+    if (!uiModel) {
+      return;
+    }
+
+    this.form.patchValue({
+      weight_lb: uiModel.weight_lb,
+      pricing_profile_id: uiModel.pricing_profile_id,
+      distance_km: uiModel.distance_km,
+      delivery_fee_suggested: uiModel.delivery_fee_suggested ?? 0,
+      delivery_fee_final: uiModel.delivery_fee_final ?? 0,
+      delivery_fee_override_reason: uiModel.delivery_fee_override_reason ?? '',
+      notes: uiModel.notes ?? ''
+    }, { emitEvent: false });
+
+    this.weightQuote.set(uiModel.weight_pricing_preview ?? null);
+    this.deliveryManualMode.set(Boolean(
+      uiModel.delivery_fee_final
+      && uiModel.delivery_fee_final > 0
+      && (!uiModel.distance_km || uiModel.distance_km <= 0)
+    ));
+
+    if (this.deliveryManualMode()) {
+      this.form.get('distance_km')?.disable({ emitEvent: false });
+    } else {
+      this.form.get('distance_km')?.enable({ emitEvent: false });
+    }
+
+    uiModel.items.forEach((item) => {
+      const group = this.getGarmentGroup(item.garment_type_id);
+      if (!group) {
+        return;
+      }
+
+      group.patchValue({
+        quantity: item.quantity,
+        unit_type: item.unit_type,
+        unit_price: item.unit_price,
+        notes: item.notes ?? ''
+      }, { emitEvent: false });
+    });
+
+    uiModel.extras.forEach((extra) => {
+      const group = this.getExtraGroup(extra.service_extra_type_id);
+      if (!group) {
+        return;
+      }
+
+      group.patchValue({
+        quantity: extra.quantity,
+        unit_price: extra.unit_price,
+        notes: extra.notes ?? ''
+      }, { emitEvent: false });
+    });
+
+    this.specialItemsArray.clear();
+    uiModel.commercial_capture_pending.forEach((item) => {
+      const service = this.findCommercialService(item.service_id);
+      if (!service) {
+        return;
+      }
+
+      const group = this.createSpecialItemGroup(service, item.selected_price_option_id, item.quantity);
+      group.patchValue({
+        manual_price: item.manual_price,
+        notes: item.notes ?? ''
+      }, { emitEvent: false });
+      this.specialItemsArray.push(group);
+    });
+
+    this.refreshSelectedItemsState();
   }
 
   private triggerFabPulse(): void {
