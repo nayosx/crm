@@ -79,8 +79,7 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
   }
 
   openDetail(item: LaundryServiceCompact): void {
-    this.router.navigate(['/laundry', item.id, 'detail'], {
-      queryParams: { status: 'PENDING' },
+    this.router.navigate(['/laundry', item.id, 'form-preview'], {
       state: {
         backTo: ['/laundry', 'pending']
       }

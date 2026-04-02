@@ -19,4 +19,5 @@ export const ROUTE_PATH = {
     USERS: 'users',
 
     LAUNDRY: 'laundry',
+    LAUNDRY_COMMERCE: 'commerce'
 }

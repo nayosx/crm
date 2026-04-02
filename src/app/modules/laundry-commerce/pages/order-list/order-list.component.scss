@@ -1,0 +1,15 @@
+.commerce-page {
+  padding: 1.25rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.field-label {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+}

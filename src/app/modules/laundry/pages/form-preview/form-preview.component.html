@@ -1,0 +1,501 @@
+<section class="proposal-page">
+  <header class="proposal-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+    <div class="u-flex-min-w-0">
+      <p class="proposal-kicker">Pantalla 2</p>
+      <h1 class="proposal-title">
+        <app-back-button [fallbackRoute]="'/laundry/pending'" />
+        Captura operativa de lavanderia
+      </h1>
+      <p class="proposal-subtitle">
+        Propuesta basada en el flujo del documento: datos generales arriba, acordeones por bloque y preparacion de piezas especiales para futura integracion comercial.
+      </p>
+    </div>
+
+    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+      <button
+        pButton
+        type="button"
+        label="Ver payload"
+        icon="pi pi-code"
+        severity="secondary"
+        [disabled]="loading()"
+        (click)="payloadDialogVisible.set(true)"
+      ></button>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p-card>
+      <p class="m-0">{{ errorMessage() }}</p>
+    </p-card>
+  } @else if (loading()) {
+    <div class="proposal-loading">
+      <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+    </div>
+  } @else if (service()) {
+    <div class="o-grid o-grid--cols-12 o-grid--gap-4">
+      <section class="o-grid__item o-grid__item--span-12 o-grid__item--lg-span-8">
+        <form [formGroup]="form" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+          <p-card>
+            <ng-template pTemplate="header">
+              <div class="proposal-card__header">
+                <div>
+                  <p class="proposal-card__eyebrow">Resumen superior</p>
+                  <h2 class="proposal-card__title">{{ getClientName() }}</h2>
+                  <p class="proposal-card__caption">Direccion, fecha y tipo visibles antes de comenzar la captura operativa.</p>
+                </div>
+                <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                  <p-tag [value]="service()!.status" severity="warn"></p-tag>
+                  <p-tag [value]="getServiceLabel()" [severity]="service()!.service_label === 'EXPRESS' ? 'danger' : 'secondary'"></p-tag>
+                </div>
+              </div>
+            </ng-template>
+
+            <div class="o-grid o-grid--cols-12 o-grid--gap-3">
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
+                <label class="proposal-label">Cliente</label>
+                <input pInputText [value]="getClientName()" readonly>
+              </div>
+
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
+                <label class="proposal-label">Direccion</label>
+                <input pInputText [value]="getAddressText()" readonly>
+              </div>
+
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
+                <label class="proposal-label">Fecha de recoleccion</label>
+                <input pInputText [value]="getPickupDateText()" readonly>
+              </div>
+
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
+                <label class="proposal-label">Tipo de servicio</label>
+                <input pInputText [value]="getServiceLabel()" readonly>
+              </div>
+            </div>
+          </p-card>
+
+          <p-card>
+            <ng-template pTemplate="header">
+              <div class="proposal-card__header">
+                <div>
+                  <p class="proposal-card__eyebrow">Datos generales</p>
+                  <h2 class="proposal-card__title">Peso y observaciones</h2>
+                  <p class="proposal-card__caption">Estos campos quedan arriba de los acordeones, como propone el flujo.</p>
+                </div>
+              </div>
+            </ng-template>
+
+            <div class="o-grid o-grid--cols-12 o-grid--gap-3">
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-4">
+                <label class="proposal-label">Peso total (lb)</label>
+                <p-inputnumber
+                  formControlName="weight_lb"
+                  inputId="weight_lb"
+                  [useGrouping]="false"
+                  [min]="0"
+                  [minFractionDigits]="0"
+                  [maxFractionDigits]="2"
+                  styleClass="w-full"
+                />
+              </div>
+
+              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-8">
+                <label class="proposal-label">Observaciones generales</label>
+                <textarea
+                  pTextarea
+                  formControlName="notes"
+                  rows="4"
+                  class="w-full"
+                  placeholder="Cliente solicita cuidado especial, mezcla separada o notas generales..."
+                ></textarea>
+              </div>
+            </div>
+          </p-card>
+
+          <p-card>
+            <ng-template pTemplate="header">
+              <div class="proposal-card__header">
+                <div>
+                  <p class="proposal-card__eyebrow">Bloques operativos</p>
+                  <h2 class="proposal-card__title">Captura por acordeones</h2>
+                  <p class="proposal-card__caption">Persistimos prendas y extras; piezas especiales se preparan en UI para futura integracion comercial.</p>
+                </div>
+              </div>
+            </ng-template>
+
+            <p-accordion [multiple]="true" [value]="mainAccordionValues()" (valueChange)="onMainAccordionValueChange($event)">
+              <p-accordion-panel [value]="0">
+                <p-accordion-header>
+                  <div class="proposal-accordion-header">
+                  <div>
+                    <strong>1. Prendas por conteo</strong>
+                    <span>{{ getGarmentSelectedCount() }} items activos · {{ getGarmentQuantityCount() }} piezas</span>
+                  </div>
+                  <strong>{{ getGarmentDraftTotal() | currency }}</strong>
+                </div>
+                </p-accordion-header>
+                <p-accordion-content>
+                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                    @for (section of garmentSections(); track section.key) {
+                      <section class="proposal-section">
+                        <div class="proposal-section__header">
+                          <div>
+                            <h3 class="proposal-section__title">{{ getCategoryEmoji(section.key) }} {{ section.label }}</h3>
+                            <p class="proposal-section__copy">{{ section.description }}</p>
+                          </div>
+                          <p-tag [value]="getCategoryBadge(section) + ' piezas'" severity="info"></p-tag>
+                        </div>
+
+                        <div class="proposal-lines">
+                          @for (type of section.items; track type.id) {
+                            <div class="proposal-line" [formGroup]="getGarmentGroup(type.id)">
+                              <div class="proposal-line__row o-grid o-grid--cols-12 o-grid--gap-2">
+                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-9 proposal-line__row-main">
+                                  <button
+                                    type="button"
+                                    class="proposal-line__name proposal-line__name-button"
+                                    [pTooltip]="isMobile() ? type.name : ''"
+                                    tooltipPosition="top"
+                                    tooltipEvent="focus"
+                                  >
+                                    {{ getGarmentEmoji(type) }} {{ isMobile() ? (type.name | truncate:15:'...') : type.name }}
+                                  </button>
+                                </div>
+
+                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3 proposal-line__row-qty">
+                                  <p-inputnumber
+                                    formControlName="quantity"
+                                    [useGrouping]="false"
+                                    [min]="0"
+                                    inputStyleClass="proposal-qty-input"
+                                    styleClass="proposal-qty"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </section>
+                    }
+                  </div>
+                </p-accordion-content>
+              </p-accordion-panel>
+
+              @for (section of specialSections(); track section.key) {
+                <p-accordion-panel [value]="$index + 1">
+                  <p-accordion-header>
+                    <div class="proposal-accordion-header">
+                      <div>
+                        <strong>{{ $index + 2 }}. {{ section.label }}</strong>
+                        <span>{{ section.items.length }} servicios · {{ getSpecialSectionBadge(section) }} piezas</span>
+                      </div>
+                      <strong>{{ getSpecialItemsBySection(section).length }} activos</strong>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <p class="proposal-banner">
+                      Esta seccion se captura en UI y aparece en el payload preview como <code>commercial_capture_pending</code>. No se integra todavia al <code>PUT /v2/laundry_services/:id</code>.
+                    </p>
+
+                    <section class="proposal-section">
+                      <div class="proposal-section__header">
+                        <div>
+                          <h3 class="proposal-section__title">{{ section.label }}</h3>
+                          <p class="proposal-section__copy">{{ section.description }}</p>
+                        </div>
+                        <p-tag [value]="getSpecialSectionBadge(section) + ' piezas'" severity="contrast"></p-tag>
+                      </div>
+
+                      <div class="proposal-chip-grid">
+                        @for (service of section.items; track service.id) {
+                          <button
+                            pButton
+                            type="button"
+                            class="proposal-service-chip"
+                            severity="secondary"
+                            (click)="addSpecialItem(service)"
+                          >
+                            <span class="proposal-service-chip__title">{{ getSpecialServiceEmoji(service) }} {{ service.name }}</span>
+                            <span class="proposal-service-chip__meta">{{ getSuggestedPriceLabel(service) }}</span>
+                          </button>
+                        }
+                      </div>
+
+                      @if (getSpecialItemsBySection(section).length) {
+                        <div class="proposal-lines">
+                          @for (special of getSpecialItemsBySection(section); track special.index) {
+                            <div class="proposal-line proposal-line--special" [formGroup]="special.group">
+                              <div class="proposal-line__title">
+                                <div>
+                                  <div class="proposal-line__name">{{ getSpecialServiceEmoji(special.service!) }} {{ special.group.get('service_name')?.value }}</div>
+                                  <div class="proposal-line__meta">{{ getSpecialItemPriceLabel(special.group, special.service) }}</div>
+                                </div>
+
+                                <button
+                                  pButton
+                                  type="button"
+                                  icon="pi pi-trash"
+                                  severity="danger"
+                                  text
+                                  (click)="removeSpecialItem(special.index)"
+                                ></button>
+                              </div>
+
+                              <div class="o-grid o-grid--cols-12 o-grid--gap-2">
+                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
+                                  <label class="proposal-label">Cantidad</label>
+                                  <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="0" styleClass="w-full" />
+                                </div>
+
+                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-5">
+                                  <label class="proposal-label">Precio manual</label>
+                                  <p-inputnumber formControlName="manual_price" mode="currency" currency="USD" [min]="0" styleClass="w-full" />
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="proposal-empty">Aun no hay piezas especiales agregadas en esta categoria.</p>
+                      }
+                    </section>
+                  </p-accordion-content>
+                </p-accordion-panel>
+              }
+
+              <p-accordion-panel [value]="specialSections().length + 1">
+                <p-accordion-header>
+                  <div class="proposal-accordion-header">
+                    <div>
+                      <strong>{{ specialSections().length + 2 }}. Extras</strong>
+                      <span>{{ getExtrasSelectedCount() }} extras activos · {{ getExtrasBadge() }} aplicaciones</span>
+                    </div>
+                    <strong>{{ getExtrasSubtotal() | currency }}</strong>
+                  </div>
+                </p-accordion-header>
+                <p-accordion-content>
+                  <div class="proposal-lines">
+                    @for (extra of extraTypes(); track extra.id) {
+                      <div class="proposal-line" [formGroup]="getExtraGroup(extra.id)">
+                        <div class="proposal-line__title">
+                          <div>
+                            <div class="proposal-line__name">{{ getExtraEmoji(extra) }} {{ extra.name }}</div>
+                            <div class="proposal-line__meta">Precio por unidad: {{ extra.default_unit_price ?? 0 | currency }}</div>
+                          </div>
+                          <strong class="proposal-line__subtotal">{{ getExtraSubtotal(extra.id) | currency }}</strong>
+                        </div>
+
+                        <div class="o-grid o-grid--cols-12 o-grid--gap-2">
+                          <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-4">
+                            <label class="proposal-label">Cantidad</label>
+                            <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="0" styleClass="w-full" />
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </p-accordion-content>
+              </p-accordion-panel>
+            </p-accordion>
+          </p-card>
+        </form>
+      </section>
+
+      <aside class="o-grid__item o-grid__item--span-12 o-grid__item--lg-span-4">
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+          <p-card>
+            <ng-template pTemplate="header">
+              <div class="proposal-card__header">
+                <div>
+                  <p class="proposal-card__eyebrow">Resumen</p>
+                  <h2 class="proposal-card__title">Estado actual del formulario</h2>
+                </div>
+              </div>
+            </ng-template>
+
+            <div class="proposal-summary">
+              <div>
+                <span>Peso capturado</span>
+                <strong>{{ form.get('weight_lb')?.value || 0 }} lb</strong>
+              </div>
+              <div>
+                <span>Prendas por conteo</span>
+                <strong>{{ getGarmentDraftTotal() | currency }}</strong>
+              </div>
+              <div>
+                <span>Extras</span>
+                <strong>{{ getExtrasSubtotal() | currency }}</strong>
+              </div>
+              <div>
+                <span>Piezas especiales UI</span>
+                <strong>{{ getSpecialItemsDraftTotal() | currency }}</strong>
+              </div>
+              <div class="proposal-summary__total">
+                <span>Persistible hoy</span>
+                <strong>{{ getGarmentDraftTotal() + getExtrasSubtotal() | currency }}</strong>
+              </div>
+            </div>
+          </p-card>
+
+          <p-card>
+            <ng-template pTemplate="header">
+              <div class="proposal-card__header">
+                <div>
+                  <p class="proposal-card__eyebrow">Decisiones</p>
+                  <h2 class="proposal-card__title">Que cambia frente a la version anterior</h2>
+                </div>
+              </div>
+            </ng-template>
+
+            <ul class="proposal-notes">
+              <li>La pantalla deja de depender de dialogos por categoria y pasa a acordeones inline.</li>
+              <li>Peso y observaciones quedan arriba, visibles siempre durante la captura.</li>
+              <li>Prendas y extras ahora exponen cantidad, precio y observaciones por fila.</li>
+              <li>La seccion comercial existe desde ya, pero queda marcada como pendiente de persistencia.</li>
+            </ul>
+          </p-card>
+        </div>
+      </aside>
+    </div>
+
+    <button
+      pButton
+      type="button"
+      icon="pi pi-list"
+      class="proposal-fab proposal-fab-button"
+      [class.proposal-fab--pulse]="fabPulse()"
+      [pTooltip]="'Seleccionados (' + selectedItemsCount() + ')'"
+      tooltipPosition="left"
+      (click)="selectedItemsDialogVisible.set(true)"
+    ></button>
+    <span class="proposal-fab-count" [class.proposal-fab-count--pulse]="fabPulse()">{{ selectedItemsCount() }}</span>
+  }
+
+  <p-dialog
+    header="Seleccionar precio para servicio especial"
+    [modal]="true"
+    [visible]="specialPriceDialogVisible()"
+    (visibleChange)="specialPriceDialogVisible.set($event)"
+    [style]="{ width: '34rem', maxWidth: 'calc(100vw - 2rem)' }"
+    (onHide)="closeSpecialPriceDialog()"
+  >
+    @if (activeSpecialService(); as specialService) {
+      <div [formGroup]="specialItemSelectorGroup" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        <div>
+          <p class="proposal-card__eyebrow">Servicio</p>
+          <h3 class="proposal-section__title m-0">{{ specialService.name }}</h3>
+        </div>
+
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+          <label class="proposal-label">Precio</label>
+          <p-select
+            formControlName="selected_price_option_id"
+            [options]="getSpecialPriceOptionsForSelect(specialService)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Selecciona un precio"
+            class="w-full"
+          ></p-select>
+        </div>
+
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+          <label class="proposal-label">Cantidad</label>
+          <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="1" styleClass="w-full" />
+        </div>
+
+        <p class="proposal-banner">Seleccion actual: {{ getSelectedSpecialPriceLabel() }}</p>
+
+        <div class="u-d-flex u-d-flex-justify-end u-d-flex-gap-2">
+          <button pButton type="button" label="Cancelar" severity="secondary" (click)="closeSpecialPriceDialog()"></button>
+          <button pButton type="button" label="Agregar" (click)="confirmSpecialItemSelection()"></button>
+        </div>
+      </div>
+    }
+  </p-dialog>
+
+  <p-dialog
+    header="Elementos seleccionados"
+    [modal]="true"
+    [visible]="selectedItemsDialogVisible()"
+    (visibleChange)="selectedItemsDialogVisible.set($event)"
+    [style]="{ width: '38rem', maxWidth: 'calc(100vw - 2rem)' }"
+    (onHide)="selectedItemsDialogVisible.set(false)"
+  >
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+      @if (!getSelectedItemsCount()) {
+        <p class="proposal-empty">Aun no hay elementos con cantidad mayor a cero.</p>
+      } @else {
+        @if (getSelectedGarments().length) {
+          <section class="proposal-section">
+            <div class="proposal-section__header">
+              <h3 class="proposal-section__title">Prendas por conteo</h3>
+              <p-tag [value]="getSelectedGarments().length + ' items'" severity="info"></p-tag>
+            </div>
+            <div class="proposal-lines">
+              @for (item of getSelectedGarments(); track item.name) {
+                <div class="proposal-line">
+                  <div class="proposal-line__title">
+                    <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
+                    <strong>{{ item.quantity }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (getSelectedSpecialItems().length) {
+          <section class="proposal-section">
+            <div class="proposal-section__header">
+              <h3 class="proposal-section__title">Piezas especiales</h3>
+              <p-tag [value]="getSelectedSpecialItems().length + ' items'" severity="contrast"></p-tag>
+            </div>
+            <div class="proposal-lines">
+              @for (item of getSelectedSpecialItems(); track item.name + item.priceLabel) {
+                <div class="proposal-line">
+                  <div class="proposal-line__title">
+                    <div>
+                      <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
+                      <div class="proposal-line__meta">{{ item.priceLabel }}</div>
+                    </div>
+                    <strong>{{ item.quantity }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (getSelectedExtras().length) {
+          <section class="proposal-section">
+            <div class="proposal-section__header">
+              <h3 class="proposal-section__title">Extras</h3>
+              <p-tag [value]="getSelectedExtras().length + ' items'" severity="success"></p-tag>
+            </div>
+            <div class="proposal-lines">
+              @for (item of getSelectedExtras(); track item.name) {
+                <div class="proposal-line">
+                  <div class="proposal-line__title">
+                    <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
+                    <strong>{{ item.quantity }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Payload propuesto para Pantalla 2"
+    [modal]="true"
+    [visible]="payloadDialogVisible()"
+    (visibleChange)="payloadDialogVisible.set($event)"
+    [style]="{ width: '56rem', maxWidth: 'calc(100vw - 2rem)' }"
+    (onHide)="payloadDialogVisible.set(false)"
+  >
+    <pre class="proposal-payload">{{ payloadPreview() | json }}</pre>
+  </p-dialog>
+</section>

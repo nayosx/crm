@@ -1,3 +1,5 @@
+export type PaymentSurchargeType = 'PERCENT' | 'FIXED' | 'NONE';
+
 export interface Transaction {
   id: number;
   user_id: number;
@@ -11,7 +13,12 @@ export interface Transaction {
   updated_at: string;
 
   payment_type_name?: string;
+  payment_type_code?: string;
+  payment_surcharge_type?: PaymentSurchargeType | null;
+  payment_surcharge_value?: string | null;
   category_name?: string;
+  client_name?: string | null;
+  user_name?: string | null;
 }
 
 export interface TransactionFull {
@@ -37,8 +44,15 @@ export interface TransactionCategory {
 
 export interface PaymentType {
   id: number;
+  code?: string;
   name: string;
   description: string | null;
+  surcharge_type?: PaymentSurchargeType | null;
+  surcharge_value?: string | null;
+  is_active?: boolean;
+  sort_order?: number | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PaginatedTransactions {

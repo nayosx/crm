@@ -1,0 +1,12 @@
+<p-select
+  [formControl]="control"
+  [options]="extras"
+  optionLabel="name"
+  optionValue="id"
+  placeholder="Selecciona extra"
+  [filter]="true"
+  filterBy="name,code"
+  appendTo="body"
+  styleClass="w-full"
+  (onChange)="onSelected($event.value)"
+/>

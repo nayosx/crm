@@ -87,4 +87,34 @@ export class TransactionComponent {
   onCreate(): void {
     this.router.navigate(['/transactions/create']);
   }
+
+  getPaymentTypeIcon(paymentTypeName?: string | null): string {
+    const normalized = this.normalizePaymentTypeName(paymentTypeName);
+
+    if (normalized.includes('efectivo') || normalized.includes('cash')) {
+      return 'pi pi-wallet';
+    }
+
+    if (normalized.includes('transferencia') || normalized.includes('transfer') || normalized.includes('banco')) {
+      return 'pi pi-building-columns';
+    }
+
+    if (normalized.includes('tarjeta') || normalized.includes('credit') || normalized.includes('debit') || normalized.includes('card')) {
+      return 'pi pi-credit-card';
+    }
+
+    return 'pi pi-wallet';
+  }
+
+  getPaymentTypeTitle(paymentTypeName?: string | null): string {
+    return paymentTypeName?.trim() || 'Forma de pago';
+  }
+
+  private normalizePaymentTypeName(paymentTypeName?: string | null): string {
+    return (paymentTypeName || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
 }

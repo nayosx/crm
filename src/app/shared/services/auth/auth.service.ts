@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '@env/environment';
 import { LoginResponse } from '@shared/interfaces/auth.interface';
+import { PaymentTypeService } from '@shared/services/transaction/payment-type.service';
 import { Observable, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { KEYSTORE } from '@core/keystore';
@@ -13,7 +14,11 @@ import { KEYSTORE } from '@core/keystore';
 export class AuthService {
   private readonly baseUrl = `${environment.API}/auth`;
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private paymentTypeService: PaymentTypeService
+  ) {}
 
   login(username: string, password: string): Observable<LoginResponse> {
     const body = { username, password };
@@ -71,8 +76,7 @@ export class AuthService {
   }
 
   clearTokens(): void {
-    sessionStorage.removeItem(KEYSTORE.token);
-    sessionStorage.removeItem(KEYSTORE.refreshToken);
-    sessionStorage.removeItem(KEYSTORE.user);
+    sessionStorage.clear();
+    this.paymentTypeService.clearCache();
   }
 }

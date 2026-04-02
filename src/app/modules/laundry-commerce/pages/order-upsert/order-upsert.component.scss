@@ -1,0 +1,46 @@
+.commerce-page {
+  padding: 1.25rem;
+}
+
+.commerce-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+.commerce-main,
+.commerce-sidebar {
+  min-width: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+
+.field-label {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+}
+
+.indicator-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+}
+
+@media screen and (min-width: 1200px) {
+  .commerce-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(20rem, 28rem);
+    align-items: start;
+  }
+
+  .commerce-sidebar {
+    position: sticky;
+    top: 1rem;
+  }
+}

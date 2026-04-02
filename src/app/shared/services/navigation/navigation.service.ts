@@ -88,6 +88,68 @@ export class NavigationService {
           label: 'Listos para entrega',
           icon: 'pi pi-truck',
           routerLink: ['/laundry', 'delivery']
+        },
+        {
+          id: 'laundry-commerce',
+          label: 'Comercial',
+          icon: 'pi pi-shop',
+          items: [
+            {
+              id: 'laundry-commerce-orders',
+              label: 'Pedidos comerciales',
+              icon: 'pi pi-shopping-cart',
+              routerLink: ['/laundry', 'commerce', 'orders']
+            },
+            {
+              id: 'laundry-commerce-categories',
+              label: 'Categorias',
+              icon: 'pi pi-tags',
+              routerLink: ['/laundry', 'commerce', 'categories'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-services',
+              label: 'Servicios comerciales',
+              icon: 'pi pi-briefcase',
+              routerLink: ['/laundry', 'commerce', 'services'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-price-options',
+              label: 'Precios sugeridos',
+              icon: 'pi pi-dollar',
+              routerLink: ['/laundry', 'commerce', 'price-options'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-extras',
+              label: 'Extras comerciales',
+              icon: 'pi pi-plus-circle',
+              routerLink: ['/laundry', 'commerce', 'extras'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-delivery-zones',
+              label: 'Zonas delivery',
+              icon: 'pi pi-map',
+              routerLink: ['/laundry', 'commerce', 'delivery-zones'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-weight-profiles',
+              label: 'Perfiles por peso',
+              icon: 'pi pi-sliders-h',
+              routerLink: ['/laundry', 'commerce', 'weight-pricing', 'profiles'],
+              includeInShortcuts: false
+            },
+            {
+              id: 'laundry-commerce-weight-tiers',
+              label: 'Tiers por perfil',
+              icon: 'pi pi-sort-amount-up',
+              routerLink: ['/laundry', 'commerce', 'weight-pricing', 'tiers'],
+              includeInShortcuts: false
+            }
+          ]
         }
       ]
     }

@@ -1,0 +1,82 @@
+<p-toast />
+
+<section class="catalog-page">
+  <p-toolbar>
+    <ng-template pTemplate="start">
+      <div>
+        <h1 class="m-0">Catálogo de precios sugeridos</h1>
+        <p class="mt-2 mb-0 text-600">Define atajos de precio por servicio para cobro rápido en caja.</p>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="end">
+      <button pButton type="button" icon="pi pi-plus" label="Nuevo precio" (click)="openCreate()"></button>
+    </ng-template>
+  </p-toolbar>
+
+  <p-table class="mt-4" [value]="options()" [loading]="loading()" responsiveLayout="scroll">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Servicio</th>
+        <th>Etiqueta</th>
+        <th>Precio</th>
+        <th>Rango cantidad</th>
+        <th>Default</th>
+        <th>Activo</th>
+        <th></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-option>
+      <tr>
+        <td>{{ serviceName(option.service_id) }}</td>
+        <td>{{ option.label }}</td>
+        <td>{{ option.suggested_price | currency:'USD':'symbol':'1.2-2' }}</td>
+        <td>{{ option.min_quantity || 0 }} - {{ option.max_quantity || '∞' }}</td>
+        <td>{{ option.is_default ? 'Sí' : 'No' }}</td>
+        <td>{{ option.is_active ? 'Activo' : 'Inactivo' }}</td>
+        <td class="text-right">
+          <button pButton type="button" size="small" label="Editar" (click)="openEdit(option)"></button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <p-drawer
+    header="{{ editingId() ? 'Editar precio sugerido' : 'Nuevo precio sugerido' }}"
+    position="right"
+    [modal]="true"
+    [visible]="drawerVisible()"
+    (visibleChange)="drawerVisible.set($event)"
+  >
+    <form class="drawer-form" [formGroup]="form">
+      <div>
+        <label class="field-label">Servicio</label>
+        <p-select [options]="services()" optionLabel="name" optionValue="id" formControlName="serviceId" appendTo="body" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Etiqueta</label>
+        <input pInputText formControlName="label" class="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Precio sugerido</label>
+        <p-inputnumber formControlName="suggestedPrice" mode="currency" currency="USD" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Cantidad mínima</label>
+        <p-inputnumber formControlName="minQuantity" [useGrouping]="false" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Cantidad máxima</label>
+        <p-inputnumber formControlName="maxQuantity" [useGrouping]="false" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Predeterminado</label>
+        <p-select [options]="[{label:'Sí', value:true},{label:'No', value:false}]" optionLabel="label" optionValue="value" formControlName="isDefault" appendTo="body" styleClass="w-full" />
+      </div>
+      <div>
+        <label class="field-label">Estado</label>
+        <p-select [options]="[{label:'Activo', value:true},{label:'Inactivo', value:false}]" optionLabel="label" optionValue="value" formControlName="isActive" appendTo="body" styleClass="w-full" />
+      </div>
+      <button pButton type="button" label="Guardar" icon="pi pi-save" [loading]="saving()" (click)="save()"></button>
+    </form>
+  </p-drawer>
+</section>

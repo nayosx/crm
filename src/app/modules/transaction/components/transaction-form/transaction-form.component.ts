@@ -1,12 +1,15 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { animate, state, style, transition, trigger } from '@angular/animations';
 import { Transaction, TransactionCategory, PaymentType } from '@shared/interfaces/transaction.interface';
 import { Client } from '@shared/interfaces/client.interface';
 import { ClientListComponent } from '@shared/components/client-list/client-list.component';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
 import { EditorModule } from 'primeng/editor';
 import { SelectButtonModule } from 'primeng/selectbutton';
@@ -19,18 +22,50 @@ import { Router } from '@angular/router';
   selector: 'app-transaction-form',
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     ClientListComponent,
     SelectModule,
     InputTextModule,
     ButtonModule,
+    CardModule,
+    DividerModule,
     TagModule,
     EditorModule,
     SelectButtonModule,
-    DialogModule
+    DialogModule,
+    CurrencyPipe
   ],
-  templateUrl: './transaction-form.component.html'
+  templateUrl: './transaction-form.component.html',
+  styleUrl: './transaction-form.component.scss',
+  animations: [
+    trigger('customerPriceReveal', [
+      state('base', style({
+        transform: 'scale(1)',
+        boxShadow: '0 0 0 rgba(0, 0, 0, 0)'
+      })),
+      state('extra', style({
+        transform: 'scale(1)',
+        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)'
+      })),
+      transition('base => extra', [
+        style({
+          transform: 'scale(0.96)',
+          boxShadow: '0 0 0 rgba(0, 0, 0, 0)'
+        }),
+        animate('280ms cubic-bezier(0.2, 0.8, 0.2, 1)', style({
+          transform: 'scale(1.03)',
+          boxShadow: '0 16px 34px rgba(0, 0, 0, 0.16)'
+        })),
+        animate('180ms ease-out', style({
+          transform: 'scale(1)',
+          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)'
+        }))
+      ]),
+      transition('extra => base', [
+        animate('180ms ease-out')
+      ])
+    ])
+  ]
 })
 export class TransactionFormComponent implements OnInit {
   @Input() transaction: Transaction | null = null;
@@ -96,6 +131,60 @@ export class TransactionFormComponent implements OnInit {
     });
   }
 
+  get selectedPaymentType(): PaymentType | undefined {
+    const paymentTypeId = Number(this.form?.get('payment_type_id')?.value);
+    return this.paymentTypes.find((item) => item.id === paymentTypeId);
+  }
+
+  get baseAmount(): number {
+    const rawAmount = this.form?.get('amount')?.value;
+    const parsed = Number(rawAmount);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  get surchargeTypeLabel(): string {
+    const surchargeType = this.selectedPaymentType?.surcharge_type;
+
+    if (surchargeType === 'FIXED') {
+      return 'Monto fijo';
+    }
+
+    if (surchargeType === 'PERCENT') {
+      return 'Porcentaje';
+    }
+
+    return 'Sin recargo';
+  }
+
+  get surchargeValue(): number {
+    const rawValue = Number(this.selectedPaymentType?.surcharge_value ?? 0);
+    return Number.isFinite(rawValue) ? rawValue : 0;
+  }
+
+  get surchargeAmount(): number {
+    if (!this.selectedPaymentType) {
+      return 0;
+    }
+
+    if (this.selectedPaymentType.surcharge_type === 'FIXED') {
+      return this.roundCurrency(this.surchargeValue);
+    }
+
+    if (this.selectedPaymentType.surcharge_type === 'PERCENT') {
+      return this.roundCurrency(this.baseAmount * (this.surchargeValue / 100));
+    }
+
+    return 0;
+  }
+
+  get totalToCharge(): number {
+    return this.roundCurrency(this.baseAmount + this.surchargeAmount);
+  }
+
+  get customerPriceAnimationState(): 'base' | 'extra' {
+    return this.surchargeAmount > 0 ? 'extra' : 'base';
+  }
+
   updateValidators(type: 'IN' | 'OUT'): void {
     const categoryControl = this.form.get('category_id');
     const clientControl = this.form.get('client_id');
@@ -141,10 +230,12 @@ export class TransactionFormComponent implements OnInit {
       formValue.user_id = this.userId;
 
       this.onSubmit.emit(formValue);
-
-      console.log('Form submitted:', formValue);
     } else {
       this.form.markAllAsTouched();
     }
+  }
+
+  private roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
   }
 }

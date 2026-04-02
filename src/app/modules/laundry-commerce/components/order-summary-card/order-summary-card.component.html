@@ -1,0 +1,28 @@
+<p-card header="Resumen de cobro">
+  <div class="summary-row">
+    <span>Subtotal items</span>
+    <strong>{{ totals.subtotalItems | currency:'USD':'symbol':'1.2-2' }}</strong>
+  </div>
+
+  <div class="summary-row">
+    <span>Subtotal extras</span>
+    <strong>{{ totals.subtotalExtras | currency:'USD':'symbol':'1.2-2' }}</strong>
+  </div>
+
+  <div class="summary-row">
+    <span>Delivery</span>
+    <strong>{{ totals.delivery | currency:'USD':'symbol':'1.2-2' }}</strong>
+  </div>
+
+  <div class="summary-row summary-row-discount">
+    <span>Descuento global</span>
+    <strong>-{{ totals.globalDiscount | currency:'USD':'symbol':'1.2-2' }}</strong>
+  </div>
+
+  <p-divider />
+
+  <div class="summary-row summary-row-total">
+    <span>Total final</span>
+    <strong>{{ totals.totalFinal | currency:'USD':'symbol':'1.2-2' }}</strong>
+  </div>
+</p-card>

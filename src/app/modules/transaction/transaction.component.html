@@ -34,15 +34,10 @@
             <p-tag [value]="t.transaction_type" [severity]="t.transaction_type === 'IN' ? 'success' : 'danger'"></p-tag>
           </td>
           <td>
-            <ng-container [ngSwitch]="t.payment_type_name">
-              <div class="flex justify-content-start align-items-center gap-2">
-                <i *ngSwitchCase="'efectivo'" class="pi pi-money-bill" title="Efectivo"></i>
-                <i *ngSwitchCase="'transferencia'" class="pi pi-building-columns" title="Transferencia"></i>
-                <i *ngSwitchCase="'tarjeta de credito'" class="pi pi-credit-card" title="Tarjeta de crédito"></i>
-                <span *ngSwitchDefault>{{ t.payment_type_name }}</span>
-                <span>{{ t.amount | currency }}</span>
-              </div>
-            </ng-container>          
+            <div class="flex justify-content-start align-items-center gap-2">
+              <i [class]="getPaymentTypeIcon(t.payment_type_name)" [title]="getPaymentTypeTitle(t.payment_type_name)"></i>
+              <span>{{ t.amount | currency }}</span>
+            </div>
           </td>
           <td>{{ t.client_name || t.category_name || '-'}} </td>
         </tr>
