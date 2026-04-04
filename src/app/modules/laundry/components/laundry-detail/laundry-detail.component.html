@@ -44,6 +44,234 @@
     </p-card>
   </div>
 
+  <div class="px-4 pt-4">
+    <p-card class="border-round shadow-2">
+      <div class="flex flex-column gap-3">
+        <div class="flex flex-column md:flex-row md:align-items-center md:justify-content-between gap-3">
+          <div>
+            <div class="text-sm text-color-secondary">Delivery</div>
+            <h3 class="m-0">Captura de datos de envio</h3>
+          </div>
+
+          <button
+            pButton
+            type="button"
+            label="Guardar delivery"
+            icon="pi pi-save"
+            [loading]="savingDraft"
+            (click)="saveDeliveryDraft()"
+          ></button>
+        </div>
+
+        @if (draftStatusMessage) {
+          <div class="text-sm text-color-secondary">{{ draftStatusMessage }}</div>
+        }
+
+        @if (draftSaveMessage) {
+          <div class="text-sm text-green-600">{{ draftSaveMessage }}</div>
+        }
+
+        @if (draftSaveError) {
+          <div class="text-sm text-red-500">{{ draftSaveError }}</div>
+        }
+
+        <form [formGroup]="deliveryForm" class="grid">
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Distancia (km)</label>
+            <p-inputnumber
+              formControlName="distance_km"
+              [useGrouping]="false"
+              [min]="0"
+              [minFractionDigits]="0"
+              [maxFractionDigits]="2"
+              styleClass="w-full"
+            />
+            <div class="text-sm text-color-secondary mt-2">
+              @if (deliveryManualMode) {
+                Calculo por km deshabilitado por precio manual.
+              } @else if (deliveryPricePerKm > 0) {
+                {{ deliveryPricePerKm | currency }} por km
+              } @else if (deliveryPricePerKmError) {
+                {{ deliveryPricePerKmError }}
+              } @else {
+                Sin precio por km disponible.
+              }
+            </div>
+          </div>
+
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Delivery final</label>
+            <p-inputnumber
+              formControlName="delivery_fee_final"
+              mode="currency"
+              currency="USD"
+              [min]="0"
+              styleClass="w-full"
+              (onInput)="onDeliveryFeeFinalInput($event.value)"
+            />
+            <div class="text-sm text-color-secondary mt-2">
+              @if (deliveryManualMode) {
+                Precio manual activo. Limpia este campo para volver al calculo por km.
+              } @else {
+                Se calcula en base a la distancia capturada.
+              }
+            </div>
+          </div>
+
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Motivo</label>
+            <input pInputText formControlName="delivery_fee_override_reason" class="w-full" />
+            <div class="text-sm text-color-secondary mt-2">
+              @if (deliveryManualMode) {
+                Este valor se guarda en el draft comercial del servicio.
+              } @else if (getDistanceKm() > 0 && deliveryPricePerKm > 0) {
+                {{ getDistanceKm() }} km x {{ deliveryPricePerKm | currency }}
+              } @else {
+                Aun no hay calculo activo.
+              }
+            </div>
+          </div>
+        </form>
+      </div>
+    </p-card>
+  </div>
+
+  @if (uiModel) {
+    <div class="px-4 pt-4">
+      <p-card class="border-round shadow-2">
+        <div class="flex flex-column gap-4">
+          <div>
+            <div class="text-sm text-color-secondary">Resumen</div>
+            <h3 class="m-0">Estado actual del formulario</h3>
+          </div>
+
+          <div class="grid">
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Peso capturado</div>
+              <div class="font-medium">{{ uiModel.weight_lb ?? 0 }} lb</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Lavado por peso</div>
+              <div class="font-medium">{{ getWeightQuotePrice() | currency }}</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Delivery</div>
+              <div class="font-medium">{{ getDeliveryFeeFinal() | currency }}</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Prendas por conteo</div>
+              <div class="font-medium">{{ getGarmentQuantityCount() }} unidades</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Extras</div>
+              <div class="font-medium">{{ getExtrasSubtotal() | currency }}</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Piezas especiales</div>
+              <div class="font-medium">{{ getSpecialItemsDraftTotal() | currency }}</div>
+            </div>
+            <div class="col-12">
+              <div class="surface-200 border-round p-3 text-center">
+                <div class="text-sm text-color-secondary">Total estimado actual</div>
+                <div class="text-xl font-semibold">{{ getGrandDraftTotal() | currency }}</div>
+              </div>
+            </div>
+          </div>
+
+          @if (hasWeightQuote()) {
+            <section>
+              <h4 class="mt-0 mb-2">Precio por peso</h4>
+              <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                <div>
+                  <div class="font-medium">⚖️ Lavado y secado por peso</div>
+                  <div class="text-sm text-color-secondary">
+                    {{ uiModel.weight_lb ?? 0 }} lb
+                    @if (uiModel.weight_pricing_preview?.profile_name) {
+                      · {{ uiModel.weight_pricing_preview?.profile_name }}
+                    }
+                  </div>
+                </div>
+                <strong>{{ getWeightQuotePrice() | currency }}</strong>
+              </div>
+            </section>
+          }
+
+          @if (getDeliveryFeeFinal() > 0) {
+            <section>
+              <h4 class="mt-0 mb-2">Delivery</h4>
+              <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                <div>
+                  <div class="font-medium">🚚 Costo de envio</div>
+                  <div class="text-sm text-color-secondary">
+                    @if (deliveryManualMode) {
+                      Precio manual
+                    } @else {
+                      {{ getDistanceKm() }} km x {{ deliveryPricePerKm | currency }}
+                    }
+                  </div>
+                </div>
+                <strong>{{ getDeliveryFeeFinal() | currency }}</strong>
+              </div>
+            </section>
+          }
+
+          @if (getSelectedSpecialItems().length) {
+            <section>
+              <h4 class="mt-0 mb-2">Piezas especiales</h4>
+              <div class="flex flex-column gap-2">
+                @for (item of getSelectedSpecialItems(); track item.name + item.quantity + item.unitPrice) {
+                  <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                    <div>
+                      <div class="font-medium">⭐ {{ item.name }}</div>
+                      <div class="text-sm text-color-secondary">{{ item.quantity }} x {{ item.unitPrice | currency }}</div>
+                      @if (item.categoryName) {
+                        <div class="text-sm text-color-secondary">{{ item.categoryName }}</div>
+                      }
+                    </div>
+                    <strong>{{ item.subtotal | currency }}</strong>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          @if (getSelectedExtras().length) {
+            <section>
+              <h4 class="mt-0 mb-2">Extras</h4>
+              <div class="flex flex-column gap-2">
+                @for (item of getSelectedExtras(); track item.name + item.quantity) {
+                  <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                    <div>
+                      <div class="font-medium">➕ {{ item.name }}</div>
+                      <div class="text-sm text-color-secondary">{{ item.quantity }} x {{ item.unitPrice | currency }}</div>
+                    </div>
+                    <strong>{{ item.subtotal | currency }}</strong>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          @if (getSelectedGarments().length) {
+            <section>
+              <h4 class="mt-0 mb-2">Prendas por conteo</h4>
+              <div class="flex flex-column gap-2">
+                @for (item of getSelectedGarments(); track item.name + item.quantity) {
+                  <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                    <div>
+                      <div class="font-medium">🧺 {{ item.name }}</div>
+                      <div class="text-sm text-color-secondary">{{ item.quantity }} {{ item.unitLabel }}</div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      </p-card>
+    </div>
+  }
+
   @if (data.items?.length) {
     <div class="px-4 pt-4">
       <h3 class="mb-2">Prendas</h3>

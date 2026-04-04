@@ -21,16 +21,12 @@ import { LaundryServiceExtraType, LaundryServiceResp, LaundryUnitType } from '@s
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
-import { DeliveryFeeSuggestion } from '@modules/laundry-commerce/interfaces/order.interface';
 import { ServicePriceOption } from '@modules/laundry-commerce/interfaces/service-price-option.interface';
 import { LaundryCommercialService } from '@modules/laundry-commerce/interfaces/service.interface';
 import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
-import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import {
-  LaundryServiceCommercialDraftPayload as PersistedCommercialDraftPayload,
   LaundryServiceCommercialDraftsApiService
 } from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
-import { OrdersApiService } from '@modules/laundry-commerce/services/orders-api.service';
 import { ServicesApiService } from '@modules/laundry-commerce/services/services-api.service';
 import { WeightPricingApiService } from '@modules/laundry-commerce/services/weight-pricing-api.service';
 
@@ -347,20 +343,14 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly weightQuote = signal<WeightPricingQuoteResponse | null>(null);
   readonly weightQuoteLoading = signal(false);
   readonly weightQuoteError = signal<string | null>(null);
-  readonly deliveryFeeSuggestion = signal<DeliveryFeeSuggestion | null>(null);
-  readonly deliveryFeeSuggestionLoading = signal(false);
-  readonly deliveryFeeSuggestionError = signal<string | null>(null);
+  readonly deliveryZoneId = signal<number | null>(null);
   readonly deliveryPricePerKm = signal(0);
-  readonly deliveryPricePerKmLoading = signal(false);
-  readonly deliveryPricePerKmError = signal<string | null>(null);
-  readonly deliveryManualMode = signal(false);
   readonly savedDraftId = signal<number | null>(null);
   readonly draftSaveMessage = signal<string | null>(null);
   readonly draftSaveError = signal<string | null>(null);
   readonly copyDetailMessage = signal<string | null>(null);
   private formSelectionSubscription?: Subscription;
   private weightQuoteSubscription?: Subscription;
-  private deliveryDistanceSubscription?: Subscription;
 
   readonly categoryOrder: GarmentCategory[] = ['CLOTHING', 'BEDDING', 'FOOTWEAR', 'PLUSH', 'RUG', 'HOUSEHOLD'];
   readonly categoryLabels: Record<GarmentCategory, { label: string; description: string }> = {
@@ -435,9 +425,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     private readonly laundryService: LaundryService,
     private readonly garmentTypesService: LaundryGarmentTypesService,
     private readonly extraTypesService: LaundryServiceExtraTypesService,
-    private readonly globalSettingsApi: GlobalSettingsApiService,
     private readonly commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
-    private readonly ordersApi: OrdersApiService,
     private readonly servicesApi: ServicesApiService,
     private readonly weightPricingApi: WeightPricingApiService
   ) {
@@ -492,9 +480,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         this.mainAccordionValues.set(this.getDefaultMainAccordionValues());
         this.bindSelectionTracking();
         this.bindWeightQuoteTracking();
-        this.bindDeliveryDistanceTracking();
-        this.loadDeliveryPricePerKm();
-        this.loadDeliveryFeeSuggestion(service);
         this.loadExistingDraft(service.id ?? null);
         this.refreshSelectedItemsState();
         this.loading.set(false);
@@ -514,7 +499,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.formSelectionSubscription?.unsubscribe();
     this.weightQuoteSubscription?.unsubscribe();
-    this.deliveryDistanceSubscription?.unsubscribe();
     if (this.fabPulseTimeoutId) {
       clearTimeout(this.fabPulseTimeoutId);
     }
@@ -823,9 +807,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   getSelectedItemsCount(): number {
     return this.getSelectedGarments().length
       + this.getSelectedSpecialItems().length
-      + this.getSelectedExtras().length
-      + (this.getWeightQuotePrice() > 0 ? 1 : 0)
-      + (this.getDeliveryFeeFinal() > 0 ? 1 : 0);
+      + this.getSelectedExtras().length;
   }
 
   getWeightQuotePrice(): number {
@@ -836,104 +818,11 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     return this.getWeightQuotePrice() > 0;
   }
 
-  getDistanceKm(): number {
-    return this.toNumber(this.form.get('distance_km')?.value);
-  }
-
-  getDeliveryFeeFinal(): number {
-    return this.toNumber(this.form.get('delivery_fee_final')?.value);
-  }
-
-  getDeliveryFeeSuggested(): number {
-    return this.toNumber(this.form.get('delivery_fee_suggested')?.value);
-  }
-
-  hasDeliveryFee(): boolean {
-    return this.getDeliveryFeeFinal() > 0;
-  }
-
-  getDeliveryReferenceLabel(): string {
-    const suggestion = this.deliveryFeeSuggestion();
-    if (!suggestion) {
-      return 'Ultimo costo cobrado';
-    }
-
-    if (suggestion.has_previous_delivery_for_client_address) {
-      return 'Ultimo costo en esta direccion';
-    }
-
-    if (suggestion.has_previous_delivery_for_client) {
-      return 'Ultimo costo a este cliente';
-    }
-
-    return 'Ultimo costo cobrado';
-  }
-
-  getDeliveryReferenceAmount(): number {
-    const suggestion = this.deliveryFeeSuggestion();
-    if (!suggestion) {
-      return 0;
-    }
-
-    if (suggestion.has_previous_delivery_for_client_address) {
-      return suggestion.last_delivery_fee_final_for_client_address;
-    }
-
-    if (suggestion.has_previous_delivery_for_client) {
-      return suggestion.last_delivery_fee_final_for_client;
-    }
-
-    return 0;
-  }
-
-  hasDeliveryHistory(): boolean {
-    const suggestion = this.deliveryFeeSuggestion();
-    return Boolean(
-      suggestion?.has_previous_delivery_for_client_address
-      || suggestion?.has_previous_delivery_for_client
-    );
-  }
-
-  hasDeliveryOverride(): boolean {
-    return Math.abs(this.getDeliveryFeeFinal() - this.getDeliveryFeeSuggested()) >= 0.01;
-  }
-
-  onDeliveryFeeFinalInput(value: unknown): void {
-    const amount = this.toNullableNumber(value);
-
-    if (!amount || amount <= 0) {
-      this.deliveryManualMode.set(false);
-      this.form.get('distance_km')?.enable({ emitEvent: false });
-      const distanceKm = this.getDistanceKm();
-      if (distanceKm > 0 && this.deliveryPricePerKm() > 0) {
-        this.form.patchValue({
-          delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm()),
-          delivery_fee_override_reason: 'Calculado por distancia'
-        }, { emitEvent: false });
-      } else {
-        this.form.patchValue({
-          delivery_fee_final: 0,
-          delivery_fee_override_reason: ''
-        }, { emitEvent: false });
-      }
-      this.refreshSelectedItemsState();
-      return;
-    }
-
-    this.deliveryManualMode.set(true);
-    this.form.get('distance_km')?.disable({ emitEvent: false });
-    this.form.patchValue({
-      delivery_fee_override_reason: 'Precio manual de delivery'
-    }, { emitEvent: false });
-    this.refreshSelectedItemsState();
-  }
-
   getGrandDraftTotal(): number {
     return this.getGarmentDraftTotal()
       + this.getSpecialItemsDraftTotal()
       + this.getExtrasSubtotal()
-      + this.getWeightQuotePrice()
-      + this.getDeliveryFeeFinal();
+      + this.getWeightQuotePrice();
   }
 
   getPickupDateText(): string {
@@ -1244,7 +1133,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       transaction_id: service?.transaction_id ?? null,
       payment_type_id: paymentTypeId,
       weight_lb: this.toNullableNumber(this.form.get('weight_lb')?.value),
-      delivery_zone_id: this.deliveryFeeSuggestion()?.delivery_zone_id ?? null,
+      delivery_zone_id: this.deliveryZoneId(),
       pricing_profile_id: this.toNullableNumber(this.form.get('pricing_profile_id')?.value),
       distance_km: this.toNullableNumber(this.form.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm() || null,
@@ -1292,14 +1181,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       lines.push(
         `⚖️ ${this.weightBasedService()?.name || 'Lavado por peso'} - ${this.form.get('weight_lb')?.value || 0} lb - ${this.formatCurrency(this.getWeightQuotePrice())}`
       );
-    }
-
-    if (this.hasDeliveryFee()) {
-      if (this.deliveryManualMode()) {
-        lines.push(`🚚 Delivery - ${this.formatCurrency(this.getDeliveryFeeFinal())}`);
-      } else {
-        lines.push(`🚚 Delivery - ${this.getDistanceKm()} km x ${this.formatCurrency(this.deliveryPricePerKm())} = ${this.formatCurrency(this.getDeliveryFeeFinal())}`);
-      }
     }
 
     if (this.getSelectedSpecialItems().length) {
@@ -1395,37 +1276,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     });
   }
 
-  private bindDeliveryDistanceTracking(): void {
-    this.deliveryDistanceSubscription?.unsubscribe();
-    this.deliveryDistanceSubscription = this.form.valueChanges.pipe(
-      startWith(this.form.getRawValue()),
-      debounceTime(150),
-      distinctUntilChanged((previous, current) => previous.distance_km === current.distance_km)
-    ).subscribe((value) => {
-      if (this.deliveryManualMode()) {
-        return;
-      }
-
-      const distanceKm = this.toNullableNumber(value.distance_km);
-      const pricePerKm = this.deliveryPricePerKm();
-
-      if (!distanceKm || distanceKm <= 0 || pricePerKm <= 0) {
-        this.form.patchValue({
-          delivery_fee_final: 0,
-          delivery_fee_override_reason: ''
-        }, { emitEvent: false });
-        this.refreshSelectedItemsState();
-        return;
-      }
-
-      this.form.patchValue({
-        delivery_fee_final: this.roundCurrency(distanceKm * pricePerKm),
-        delivery_fee_override_reason: 'Calculado por distancia'
-      }, { emitEvent: false });
-      this.refreshSelectedItemsState();
-    });
-  }
-
   private refreshSelectedItemsState(): void {
     const currentCount = this.getSelectedItemsCount();
     this.selectedItemsCount.set(currentCount);
@@ -1435,73 +1285,6 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     }
 
     this.previousSelectedItemsCount = currentCount;
-  }
-
-  private loadDeliveryFeeSuggestion(service: LaundryServiceResp): void {
-    if (!service.client_id) {
-      this.deliveryFeeSuggestion.set(null);
-      this.deliveryFeeSuggestionError.set(null);
-      return;
-    }
-
-    this.deliveryFeeSuggestionLoading.set(true);
-    this.deliveryFeeSuggestionError.set(null);
-
-    this.ordersApi.getDeliveryFeeSuggestion({
-      client_id: service.client_id,
-      client_address_id: service.client_address_id ?? null
-    }).pipe(
-      catchError(() => {
-        this.deliveryFeeSuggestion.set(null);
-        this.deliveryFeeSuggestionError.set('No fue posible cargar la referencia de delivery.');
-        return of(null);
-      })
-    ).subscribe((suggestion) => {
-      this.deliveryFeeSuggestionLoading.set(false);
-
-      if (!suggestion) {
-        return;
-      }
-
-      this.deliveryFeeSuggestion.set(suggestion);
-      this.deliveryManualMode.set(false);
-      this.form.get('distance_km')?.enable({ emitEvent: false });
-      this.form.patchValue({
-        delivery_fee_suggested: suggestion.delivery_fee_suggested_by_zone,
-        delivery_fee_final: suggestion.initial_delivery_fee_final,
-        delivery_fee_override_reason: ''
-      }, { emitEvent: false });
-      this.refreshSelectedItemsState();
-    });
-  }
-
-  private loadDeliveryPricePerKm(): void {
-    this.deliveryPricePerKmLoading.set(true);
-    this.deliveryPricePerKmError.set(null);
-
-    this.globalSettingsApi.getDeliveryPricePerKm().pipe(
-      catchError(() => {
-        this.deliveryPricePerKm.set(0);
-        this.deliveryPricePerKmError.set('No fue posible cargar el precio por km.');
-        return of(0);
-      })
-    ).subscribe((value) => {
-      this.deliveryPricePerKmLoading.set(false);
-      this.deliveryPricePerKm.set(this.roundCurrency(value));
-
-      if (this.deliveryManualMode()) {
-        return;
-      }
-
-      const distanceKm = this.getDistanceKm();
-      if (distanceKm > 0 && this.deliveryPricePerKm() > 0) {
-        this.form.patchValue({
-          delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm()),
-          delivery_fee_override_reason: 'Calculado por distancia'
-        }, { emitEvent: false });
-        this.refreshSelectedItemsState();
-      }
-    });
   }
 
   private loadExistingDraft(laundryServiceId: number | null): void {
@@ -1542,18 +1325,9 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       notes: uiModel.notes ?? ''
     }, { emitEvent: false });
 
+    this.deliveryZoneId.set(uiModel.delivery_zone_id ?? null);
+    this.deliveryPricePerKm.set(this.toNumber(uiModel.delivery_price_per_km));
     this.weightQuote.set(uiModel.weight_pricing_preview ?? null);
-    this.deliveryManualMode.set(Boolean(
-      uiModel.delivery_fee_final
-      && uiModel.delivery_fee_final > 0
-      && (!uiModel.distance_km || uiModel.distance_km <= 0)
-    ));
-
-    if (this.deliveryManualMode()) {
-      this.form.get('distance_km')?.disable({ emitEvent: false });
-    } else {
-      this.form.get('distance_km')?.enable({ emitEvent: false });
-    }
 
     uiModel.items.forEach((item) => {
       const group = this.getGarmentGroup(item.garment_type_id);

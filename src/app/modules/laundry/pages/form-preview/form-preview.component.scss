@@ -8,6 +8,18 @@
   --proposal-line-bg: color-mix(in srgb, var(--surface-100, var(--surface-card)) 92%, var(--primary-color) 8%);
 }
 
+.proposal-header {
+  position: sticky;
+  top: 1rem;
+  z-index: 20;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-card) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--proposal-card-border);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
 .proposal-header,
 .proposal-card__header,
 .proposal-accordion-header,
@@ -61,6 +73,12 @@
   display: flex;
   justify-content: center;
   padding: 4rem 1rem;
+}
+
+@media (max-width: 767px) {
+  .proposal-header {
+    padding-bottom: 0.75rem;
+  }
 }
 
 .proposal-section,

@@ -6,9 +6,6 @@
         <app-back-button [fallbackRoute]="'/laundry/pending'" />
         Captura operativa de lavanderia
       </h1>
-      <p class="proposal-subtitle">
-        Propuesta basada en el flujo del documento: datos generales arriba, acordeones por bloque y preparacion de piezas especiales para futura integracion comercial.
-      </p>
     </div>
 
     <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
@@ -20,15 +17,6 @@
         [loading]="savingDraft()"
         [disabled]="loading() || savingDraft()"
         (click)="saveDraft()"
-      ></button>
-      <button
-        pButton
-        type="button"
-        label="Ver payload"
-        icon="pi pi-code"
-        severity="secondary"
-        [disabled]="loading()"
-        (click)="payloadDialogVisible.set(true)"
       ></button>
     </div>
   </header>
@@ -61,7 +49,7 @@
     </div>
   } @else if (service()) {
     <div class="o-grid o-grid--cols-12 o-grid--gap-4">
-      <section class="o-grid__item o-grid__item--span-12 o-grid__item--lg-span-8">
+      <section class="o-grid__item o-grid__item--span-12">
         <form [formGroup]="form" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
           <p-card>
             <ng-template pTemplate="header">
@@ -69,7 +57,6 @@
                 <div>
                   <p class="proposal-card__eyebrow">Resumen superior</p>
                   <h2 class="proposal-card__title">{{ getClientName() }}</h2>
-                  <p class="proposal-card__caption">Direccion, fecha y tipo visibles antes de comenzar la captura operativa.</p>
                 </div>
                 <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
                   <p-tag [value]="service()!.status" severity="warn"></p-tag>
@@ -106,8 +93,8 @@
               <div class="proposal-card__header">
                 <div>
                   <p class="proposal-card__eyebrow">Datos generales</p>
-                  <h2 class="proposal-card__title">Peso, delivery y observaciones</h2>
-                  <p class="proposal-card__caption">Estos campos quedan arriba de los acordeones, como propone el flujo.</p>
+                  <h2 class="proposal-card__title">Peso y observaciones</h2>
+                  <p class="proposal-card__caption">Aqui dejamos la captura operativa principal antes de los acordeones.</p>
                 </div>
               </div>
             </ng-template>
@@ -126,115 +113,6 @@
                 />
               </div>
 
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                <label class="proposal-label">Perfil pricing por peso</label>
-                <p-select
-                  formControlName="pricing_profile_id"
-                  [options]="pricingProfileOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Selecciona un perfil"
-                  class="w-full"
-                ></p-select>
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                <label class="proposal-label">Lavado por peso</label>
-                @if (weightQuoteLoading()) {
-                  <div class="proposal-inline-note">Calculando precio por libra...</div>
-                } @else if (hasWeightQuote()) {
-                  <div class="proposal-weight-price">
-                    <strong>{{ getWeightQuotePrice() | currency }}</strong>
-                    <span>{{ weightBasedService()?.name || 'Servicio por peso' }}</span>
-                  </div>
-                } @else if (weightQuoteError()) {
-                  <div class="proposal-inline-note">{{ weightQuoteError() }}</div>
-                } @else {
-                  <div class="proposal-inline-note">Ingresa peso y perfil para calcular en tiempo real.</div>
-                }
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                <label class="proposal-label">Distancia (km)</label>
-                <p-inputnumber
-                  formControlName="distance_km"
-                  [useGrouping]="false"
-                  [min]="0"
-                  [minFractionDigits]="0"
-                  [maxFractionDigits]="2"
-                  styleClass="w-full"
-                />
-                @if (deliveryPricePerKmLoading()) {
-                  <div class="proposal-inline-note">Cargando precio por km...</div>
-                } @else if (deliveryPricePerKmError()) {
-                  <div class="proposal-inline-note">{{ deliveryPricePerKmError() }}</div>
-                } @else if (deliveryManualMode()) {
-                  <div class="proposal-inline-note">Calculo por km deshabilitado por precio manual.</div>
-                } @else {
-                  <div class="proposal-inline-note">{{ deliveryPricePerKm() | currency }} por km</div>
-                }
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                <label class="proposal-label">Delivery final</label>
-                <p-inputnumber
-                  formControlName="delivery_fee_final"
-                  mode="currency"
-                  currency="USD"
-                  [min]="0"
-                  (onInput)="onDeliveryFeeFinalInput($event.value)"
-                  styleClass="w-full"
-                />
-                <div class="proposal-inline-note">
-                  @if (deliveryManualMode()) {
-                    Precio manual activo. Limpia este campo para volver al calculo por km.
-                  } @else {
-                    Puedes escribir un precio manual si no deseas usar el calculo por distancia.
-                  }
-                </div>
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">Precio sugerido por zona</label>
-                @if (deliveryFeeSuggestionLoading()) {
-                  <div class="proposal-inline-note">Consultando sugerencia de delivery...</div>
-                } @else if (deliveryFeeSuggestionError()) {
-                  <div class="proposal-inline-note">{{ deliveryFeeSuggestionError() }}</div>
-                } @else {
-                  <div class="proposal-inline-note">Sin referencia de zona disponible.</div>
-                }
-                @if (deliveryFeeSuggestion(); as suggestion) {
-                  <div class="proposal-inline-note">
-                    {{ suggestion.delivery_fee_suggested_by_zone | currency }}
-                    @if (suggestion.delivery_zone_name) {
-                      · {{ suggestion.delivery_zone_name }}
-                    }
-                  </div>
-                }
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">{{ getDeliveryReferenceLabel() }}</label>
-                <div class="proposal-inline-note">
-                  {{ getDeliveryReferenceAmount() | currency }}
-                  @if (!hasDeliveryHistory()) {
-                    · Sin historial previo
-                  }
-                </div>
-              </div>
-
-              @if (hasDeliveryOverride()) {
-                <div class="o-grid__item o-grid__item--span-12">
-                  <label class="proposal-label">Motivo del override de delivery</label>
-                  <input
-                    pInputText
-                    formControlName="delivery_fee_override_reason"
-                    class="w-full"
-                    placeholder="Ejemplo: costo historico del cliente"
-                  />
-                </div>
-              }
-
               <div class="o-grid__item o-grid__item--span-12">
                 <label class="proposal-label">Observaciones generales</label>
                 <textarea
@@ -247,9 +125,6 @@
               </div>
             </div>
 
-            @if (weightQuote()?.business_reason) {
-              <p class="proposal-banner proposal-banner--spaced">{{ weightQuote()!.business_reason }}</p>
-            }
           </p-card>
 
           <p-card>
@@ -438,156 +313,6 @@
         </form>
       </section>
 
-      <aside class="o-grid__item o-grid__item--span-12 o-grid__item--lg-span-4">
-        <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-          <p-card>
-            <ng-template pTemplate="header">
-              <div class="proposal-card__header">
-                <div>
-                  <p class="proposal-card__eyebrow">Resumen</p>
-                  <h2 class="proposal-card__title">Estado actual del formulario</h2>
-                </div>
-              </div>
-            </ng-template>
-
-            <div class="proposal-summary">
-              <div>
-                <span>Peso capturado</span>
-                <strong>{{ form.get('weight_lb')?.value || 0 }} lb</strong>
-              </div>
-              <div>
-                <span>Prendas por conteo</span>
-                <strong>{{ getGarmentQuantityCount() }} unidades</strong>
-              </div>
-              <div>
-                <span>Lavado por peso</span>
-                <strong>{{ getWeightQuotePrice() | currency }}</strong>
-              </div>
-              <div>
-                <span>Delivery</span>
-                <strong>{{ getDeliveryFeeFinal() | currency }}</strong>
-              </div>
-              <div>
-                <span>Extras</span>
-                <strong>{{ getExtrasSubtotal() | currency }}</strong>
-              </div>
-              <div>
-                <span>Piezas especiales UI</span>
-                <strong>{{ getSpecialItemsDraftTotal() | currency }}</strong>
-              </div>
-              <div class="proposal-summary__total">
-                <span>Total estimado actual</span>
-                <strong>{{ getGrandDraftTotal() | currency }}</strong>
-              </div>
-            </div>
-
-            @if (getSelectedItemsCount()) {
-              <div class="proposal-summary-details">
-                <div class="proposal-summary-details__header u-mb-8">
-                  <span>Detalle capturado</span>
-                  <p-tag [value]="selectedItemsCount() + ' items'" severity="secondary"></p-tag>
-                </div>
-
-                <div class="proposal-summary-details__toolbar">
-                  <h3 class="proposal-summary-group__title">Detalle de servicio</h3>
-                  <button
-                    pButton
-                    type="button"
-                    icon="pi pi-copy"
-                    label="Copiar"
-                    severity="secondary"
-                    text
-                    (click)="copyServiceDetail()"
-                  ></button>
-                </div>
-
-                @if (hasWeightQuote()) {
-                  <section class="proposal-summary-group">
-                    <h3 class="proposal-summary-group__title">Precio por peso</h3>
-                    <div class="proposal-summary-item">
-                      <div>
-                        <div class="proposal-line__name">⚖️ {{ weightBasedService()?.name || 'Lavado por peso' }}</div>
-                        <div class="proposal-line__meta">{{ form.get('weight_lb')?.value || 0 }} lb · {{ weightQuote()?.profile_name || 'Sin perfil' }}</div>
-                      </div>
-                      <strong>{{ getWeightQuotePrice() | currency }}</strong>
-                    </div>
-                  </section>
-                }
-
-                @if (hasDeliveryFee()) {
-                  <section class="proposal-summary-group">
-                    <h3 class="proposal-summary-group__title">Delivery</h3>
-                    <div class="proposal-summary-item">
-                      <div>
-                        <div class="proposal-line__name">🚚 Costo de envio</div>
-                        <div class="proposal-line__meta">
-                          @if (deliveryManualMode()) {
-                            
-                          } @else {
-                            {{ getDistanceKm() }} km x {{ deliveryPricePerKm() | currency }}
-                          }
-                        </div>
-                      </div>
-                      <strong>{{ getDeliveryFeeFinal() | currency }}</strong>
-                    </div>
-                  </section>
-                }
-
-                @if (getSelectedSpecialItems().length) {
-                  <section class="proposal-summary-group">
-                    <h3 class="proposal-summary-group__title">Piezas especiales</h3>
-                    <div class="proposal-summary-list">
-                      @for (item of getSelectedSpecialItems(); track item.name + item.priceLabel) {
-                        <div class="proposal-summary-item">
-                          <div>
-                            <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                            <div class="proposal-line__meta">{{ item.quantity }} x {{ item.unitPrice | currency }} · {{ item.priceLabel }}</div>
-                          </div>
-                          <strong>{{ item.subtotal | currency }}</strong>
-                        </div>
-                      }
-                    </div>
-                  </section>
-                }
-
-                @if (getSelectedExtras().length) {
-                  <section class="proposal-summary-group">
-                    <h3 class="proposal-summary-group__title">Extras</h3>
-                    <div class="proposal-summary-list">
-                      @for (item of getSelectedExtras(); track item.name) {
-                        <div class="proposal-summary-item">
-                          <div>
-                            <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                            <div class="proposal-line__meta">{{ item.quantity }} x {{ item.unitPrice | currency }}</div>
-                          </div>
-                          <strong>{{ item.subtotal | currency }}</strong>
-                        </div>
-                      }
-                    </div>
-                  </section>
-                }
-
-                @if (getSelectedGarments().length) {
-                  <section class="proposal-summary-group">
-                    <h3 class="proposal-summary-group__title">Prendas por conteo</h3>
-                    <div class="proposal-summary-list">
-                      @for (item of getSelectedGarments(); track item.name) {
-                        <div class="proposal-summary-item">
-                          <div>
-                            <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                            <div class="proposal-line__meta">{{ item.quantity }} unidades</div>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </section>
-                }
-              </div>
-            }
-          </p-card>
-
-        </div>
-      </aside>
     </div>
 
     <button
@@ -672,52 +397,6 @@
                   </div>
                 </div>
               }
-            </div>
-          </section>
-        }
-
-        @if (hasWeightQuote()) {
-          <section class="proposal-section">
-            <div class="proposal-section__header">
-              <h3 class="proposal-section__title">Precio por peso</h3>
-              <p-tag value="1 item" severity="warn"></p-tag>
-            </div>
-            <div class="proposal-lines">
-              <div class="proposal-line">
-                <div class="proposal-line__title">
-                  <div>
-                    <div class="proposal-line__name">⚖️ {{ weightBasedService()?.name || 'Lavado por peso' }}</div>
-                    <div class="proposal-line__meta">{{ form.get('weight_lb')?.value || 0 }} lb · {{ weightQuote()?.profile_name || 'Sin perfil' }}</div>
-                  </div>
-                  <strong>{{ getWeightQuotePrice() | currency }}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-        }
-
-        @if (hasDeliveryFee()) {
-          <section class="proposal-section">
-            <div class="proposal-section__header">
-              <h3 class="proposal-section__title">Delivery</h3>
-              <p-tag value="1 item" severity="secondary"></p-tag>
-            </div>
-            <div class="proposal-lines">
-              <div class="proposal-line">
-                    <div class="proposal-line__title">
-                      <div>
-                        <div class="proposal-line__name">🚚 Costo de envio</div>
-                        <div class="proposal-line__meta">
-                      @if (deliveryManualMode()) {
-                        
-                      } @else {
-                        {{ getDistanceKm() }} km x {{ deliveryPricePerKm() | currency }}
-                      }
-                        </div>
-                      </div>
-                  <strong>{{ getDeliveryFeeFinal() | currency }}</strong>
-                </div>
-              </div>
             </div>
           </section>
         }
