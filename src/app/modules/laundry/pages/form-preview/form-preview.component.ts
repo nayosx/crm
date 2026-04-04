@@ -962,17 +962,23 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   }
 
   saveDraft(): void {
+    const laundryServiceId = this.service()?.id ?? null;
+    if (!laundryServiceId) {
+      this.draftSaveError.set('No existe laundry_service_id para guardar el borrador.');
+      return;
+    }
+
     const draftPayload = this.buildPayloadPreview();
-    const isUpdate = Boolean(this.savedDraftId());
     this.savingDraft.set(true);
     this.draftSaveError.set(null);
     this.draftSaveMessage.set(null);
 
-    const request = this.savedDraftId()
-      ? this.commercialDraftsApi.update(this.savedDraftId()!, draftPayload as Partial<PersistedCommercialDraftPayload>)
-      : this.commercialDraftsApi.create(draftPayload as PersistedCommercialDraftPayload);
-
-    request.pipe(
+    this.commercialDraftsApi.saveByService(laundryServiceId, {
+      payload: draftPayload.payload,
+      is_confirmed: draftPayload.is_confirmed,
+      confirmed_at: draftPayload.confirmed_at,
+      charged_by_user_id: draftPayload.charged_by_user_id
+    }).pipe(
       finalize(() => this.savingDraft.set(false)),
       catchError(() => {
         this.draftSaveError.set('No fue posible guardar el borrador comercial.');
@@ -984,9 +990,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       }
 
       this.savedDraftId.set(draft.id);
-      this.draftSaveMessage.set(
-        isUpdate ? `Borrador actualizado #${draft.id}` : `Borrador guardado #${draft.id}`
-      );
+      this.draftSaveMessage.set(`Borrador guardado #${draft.id}`);
     });
   }
 
@@ -1505,14 +1509,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.commercialDraftsApi.list({
-      laundry_service_id: laundryServiceId,
-      page: 1,
-      per_page: 1
-    }).pipe(
-      catchError(() => of({ items: [], total: 0, page: 1, per_page: 1, pages: 0 }))
+    this.commercialDraftsApi.getByService(laundryServiceId).pipe(
+      catchError(() => of(null))
     ).subscribe((response) => {
-      const draft = (response.items?.[0] ?? null) as PersistedCommercialDraftRecord | null;
+      const draft = response as PersistedCommercialDraftRecord | null;
       if (!draft) {
         return;
       }

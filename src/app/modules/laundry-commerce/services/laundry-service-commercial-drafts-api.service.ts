@@ -55,6 +55,17 @@ export class LaundryServiceCommercialDraftsApiService {
     return this.http.post<LaundryServiceCommercialDraftRecord>(this.baseUrl, payload);
   }
 
+  getByService(laundryServiceId: number): import('rxjs').Observable<LaundryServiceCommercialDraftRecord> {
+    return this.http.get<LaundryServiceCommercialDraftRecord>(`${this.baseUrl}/by-service/${laundryServiceId}`);
+  }
+
+  saveByService(
+    laundryServiceId: number,
+    payload: Omit<LaundryServiceCommercialDraftPayload, 'laundry_service_id'>
+  ): import('rxjs').Observable<LaundryServiceCommercialDraftRecord> {
+    return this.http.put<LaundryServiceCommercialDraftRecord>(`${this.baseUrl}/by-service/${laundryServiceId}`, payload);
+  }
+
   update(id: number, payload: Partial<LaundryServiceCommercialDraftPayload>): import('rxjs').Observable<LaundryServiceCommercialDraftRecord> {
     return this.http.patch<LaundryServiceCommercialDraftRecord>(`${this.baseUrl}/${id}`, payload);
   }
