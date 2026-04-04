@@ -2,9 +2,9 @@ import { Component, Input, OnDestroy, OnInit, ViewEncapsulation } from '@angular
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, of, startWith } from 'rxjs';
+import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of } from 'rxjs';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
-import { LaundryServiceLog, LaundryServiceResp, LaundryServiceStatus, LaundryUnitType } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceExtraType, LaundryServiceLog, LaundryServiceResp, LaundryServiceStatus, LaundryUnitType } from '@shared/interfaces/laundry-service.interface';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -16,6 +16,7 @@ import { BackButtonComponent } from "@shared/components/back/back-button.compone
 import { DialogModule } from 'primeng/dialog';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
+import { AccordionModule } from 'primeng/accordion';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list.component';
@@ -25,6 +26,8 @@ import { NavigationHistoryService } from '@shared/services/navigation/navigation
 import { DividerModule } from 'primeng/divider';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import {
   LaundryServiceCommercialDraftRecord,
@@ -73,6 +76,8 @@ type DetailUiCaptureModel = {
   weight_lb: number | null;
   distance_km: number | null;
   delivery_price_per_km: number | null;
+  express_service_surcharge: number | null;
+  quoted_service_amount: number | null;
   delivery_fee_suggested: number | null;
   delivery_fee_final: number | null;
   delivery_fee_override_reason: string | null;
@@ -94,6 +99,7 @@ type DetailUiCaptureModel = {
     TagModule,
     ButtonModule,
     ClientDetailComponent,
+    AccordionModule,
     DialogModule,
     ConfirmDialogModule,
     ToastModule,
@@ -101,7 +107,8 @@ type DetailUiCaptureModel = {
     LaundryNoteComponent,
     DividerModule,
     InputNumberModule,
-    InputTextModule
+    InputTextModule,
+    ToggleSwitchModule
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './laundry-detail.component.html',
@@ -114,6 +121,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   data?: LaundryServiceResp;
   draft?: LaundryServiceCommercialDraftRecord | null;
   uiModel: DetailUiCaptureModel | null = null;
+  extraTypes: LaundryServiceExtraType[] = [];
   
   loading = true;
   savingDraft = false;
@@ -135,6 +143,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     private router: Router,
     private fb: FormBuilder,
     private laundryService: LaundryService,
+    private extraTypesService: LaundryServiceExtraTypesService,
     private globalSettingsApi: GlobalSettingsApiService,
     private commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
     private confirmationService: ConfirmationService,
@@ -142,6 +151,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     private navigationHistoryService: NavigationHistoryService
   ) {
     this.deliveryForm = this.fb.group({
+      is_express: [false],
       distance_km: [null as number | null],
       delivery_fee_final: [0],
       delivery_fee_override_reason: ['']
@@ -152,13 +162,18 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) return;
 
-    this.laundryService.getById(id).subscribe({
-      next: (res) => {
-        this.data = res;
-        this.uiModel = this.buildBaseUiModel(res);
+    forkJoin({
+      service: this.laundryService.getById(id),
+      extraTypes: this.extraTypesService.getAll().pipe(catchError(() => of([])))
+    }).subscribe({
+      next: ({ service, extraTypes }) => {
+        this.data = service;
+        this.extraTypes = extraTypes.filter((item) => item.active !== false);
+        this.uiModel = this.buildBaseUiModel(service);
         this.bindDeliveryTracking();
         this.loadDeliveryPricePerKm();
-        this.loadDraftByService(res.id);
+        this.loadExpressServiceSurcharge();
+        this.loadDraftByService(service.id);
         this.loading = false;
       },
       error: () => {
@@ -214,6 +229,14 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     } | null) ?? null;
   }
 
+  getCapturedWeightLb(): number {
+    return this.toNumber(this.uiModel?.weight_lb ?? this.data?.weight_lb);
+  }
+
+  getCurrentServiceLabel(): LaundryServiceResp['service_label'] {
+    return this.uiModel?.service_label ?? this.data?.service_label ?? 'NORMAL';
+  }
+
   getDeliveryFeeFinal(): number {
     return this.toNumber(this.deliveryForm.get('delivery_fee_final')?.value);
   }
@@ -227,7 +250,26 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   getWeightQuotePrice(): number {
+    return this.getQuotedServiceAmount();
+  }
+
+  getBaseWeightQuotePrice(): number {
     return this.toNumber(this.uiModel?.weight_pricing_preview?.final_price ?? this.uiModel?.weight_pricing_preview?.recommended_price);
+  }
+
+  getExpressSurchargeAmount(): number {
+    return this.uiModel?.service_label === 'EXPRESS'
+      ? this.toNumber(this.uiModel?.express_service_surcharge)
+      : 0;
+  }
+
+  getQuotedServiceAmount(): number {
+    const explicitQuotedAmount = this.toNumber(this.uiModel?.quoted_service_amount);
+    if (explicitQuotedAmount > 0) {
+      return explicitQuotedAmount;
+    }
+
+    return this.roundCurrency(this.getBaseWeightQuotePrice() + this.getExpressSurchargeAmount());
   }
 
   getGarmentQuantityCount(): number {
@@ -269,7 +311,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     return (this.uiModel?.extras ?? [])
       .filter((item) => this.toNumber(item.quantity) > 0)
       .map((item) => ({
-        name: item.name || `Extra #${item.service_extra_type_id}`,
+        name: this.resolveExtraName(item),
         quantity: this.toNumber(item.quantity),
         unitPrice: this.toNumber(item.unit_price),
         subtotal: this.toNumber(item.quantity) * this.toNumber(item.unit_price)
@@ -316,6 +358,23 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     this.deliveryForm.patchValue({
       delivery_fee_override_reason: 'Precio manual de delivery'
     }, { emitEvent: false });
+  }
+
+  onExpressToggleChange(checked: boolean): void {
+    if (!this.uiModel) {
+      return;
+    }
+
+    const serviceLabel = checked ? 'EXPRESS' : 'NORMAL';
+    const quotedServiceAmount = checked
+      ? this.roundCurrency(this.getBaseWeightQuotePrice() + this.toNumber(this.uiModel.express_service_surcharge))
+      : this.getBaseWeightQuotePrice();
+
+    this.uiModel = {
+      ...this.uiModel,
+      service_label: serviceLabel,
+      quoted_service_amount: quotedServiceAmount || null
+    };
   }
 
   saveDeliveryDraft(): void {
@@ -461,7 +520,6 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   private bindDeliveryTracking(): void {
     this.deliverySubscription?.unsubscribe();
     this.deliverySubscription = this.deliveryForm.valueChanges.pipe(
-      startWith(this.deliveryForm.getRawValue()),
       debounceTime(150),
       distinctUntilChanged((previous, current) => previous.distance_km === current.distance_km)
     ).subscribe((value) => {
@@ -493,13 +551,27 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       })
     ).subscribe((value) => {
       this.deliveryPricePerKm = this.roundCurrency(this.toNumber(value));
+      this.syncDeliveryFeeFromDistance();
+    });
+  }
 
-      if (!this.deliveryManualMode && this.getDistanceKm() > 0 && this.deliveryPricePerKm > 0) {
-        this.deliveryForm.patchValue({
-          delivery_fee_final: this.roundCurrency(this.getDistanceKm() * this.deliveryPricePerKm),
-          delivery_fee_override_reason: 'Calculado por distancia'
-        }, { emitEvent: false });
+  private loadExpressServiceSurcharge(): void {
+    this.globalSettingsApi.getExpressServiceSurcharge().pipe(
+      catchError(() => of(0))
+    ).subscribe((value) => {
+      const surcharge = this.roundCurrency(this.toNumber(value));
+
+      if (!this.uiModel || this.uiModel.express_service_surcharge != null) {
+        return;
       }
+
+      this.uiModel = {
+        ...this.uiModel,
+        express_service_surcharge: surcharge,
+        quoted_service_amount: this.uiModel.service_label === 'EXPRESS'
+          ? this.roundCurrency(this.getBaseWeightQuotePrice() + surcharge)
+          : this.getBaseWeightQuotePrice() || null
+      };
     });
   }
 
@@ -529,11 +601,16 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       this.uiModel = this.mergeUiModelWithService(nextUiModel);
       this.patchDeliveryFormFromUiModel(this.uiModel);
       this.draftStatusMessage = `Borrador cargado #${draft.id}`;
+
+      if (this.shouldHydrateDraftFromService(nextUiModel, this.uiModel)) {
+        this.persistHydratedDraft();
+      }
     });
   }
 
   private patchDeliveryFormFromUiModel(uiModel: DetailUiCaptureModel | null): void {
     this.deliveryForm.patchValue({
+      is_express: uiModel?.service_label === 'EXPRESS',
       distance_km: uiModel?.distance_km ?? null,
       delivery_fee_final: uiModel?.delivery_fee_final ?? 0,
       delivery_fee_override_reason: uiModel?.delivery_fee_override_reason ?? ''
@@ -551,6 +628,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     }
 
     this.deliveryForm.get('distance_km')?.enable({ emitEvent: false });
+    this.syncDeliveryFeeFromDistance();
   }
 
   private buildBaseUiModel(service: LaundryServiceResp): DetailUiCaptureModel {
@@ -568,6 +646,8 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       weight_lb: service.weight_lb ?? null,
       distance_km: null,
       delivery_price_per_km: null,
+      express_service_surcharge: null,
+      quoted_service_amount: null,
       delivery_fee_suggested: null,
       delivery_fee_final: null,
       delivery_fee_override_reason: null,
@@ -595,9 +675,11 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   private mergeUiModelWithService(uiModel: DetailUiCaptureModel): DetailUiCaptureModel {
-    return {
+    const mergedUiModel = {
       ...this.buildBaseUiModel(this.data as LaundryServiceResp),
       ...uiModel,
+      express_service_surcharge: uiModel.express_service_surcharge ?? this.uiModel?.express_service_surcharge ?? null,
+      quoted_service_amount: uiModel.quoted_service_amount ?? this.uiModel?.quoted_service_amount ?? null,
       items: (uiModel.items ?? []).map((item) => ({
         ...item,
         garment_name: item.garment_name
@@ -606,11 +688,20 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       })),
       extras: (uiModel.extras ?? []).map((extra) => ({
         ...extra,
-        name: extra.name
-          ?? this.data?.extras?.find((serviceExtra) => serviceExtra.service_extra_type_id === extra.service_extra_type_id)?.service_extra_type?.name
-          ?? null
+        name: this.resolveExtraName(extra)
       }))
     };
+
+    if (mergedUiModel.quoted_service_amount == null) {
+      const baseAmount = this.toNumber(mergedUiModel.weight_pricing_preview?.final_price ?? mergedUiModel.weight_pricing_preview?.recommended_price);
+      const surcharge = mergedUiModel.service_label === 'EXPRESS'
+        ? this.toNumber(mergedUiModel.express_service_surcharge)
+        : 0;
+
+      mergedUiModel.quoted_service_amount = this.roundCurrency(baseAmount + surcharge) || null;
+    }
+
+    return mergedUiModel;
   }
 
   private buildCurrentUiModel(): DetailUiCaptureModel {
@@ -620,11 +711,83 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
 
     return {
       ...this.uiModel,
+      service_label: this.deliveryForm.get('is_express')?.value ? 'EXPRESS' : 'NORMAL',
       distance_km: this.toNullableNumber(this.deliveryForm.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm || null,
+      express_service_surcharge: this.toNumber(this.uiModel.express_service_surcharge) || null,
+      quoted_service_amount: this.getQuotedServiceAmount() || null,
       delivery_fee_final: this.toNullableNumber(this.deliveryForm.get('delivery_fee_final')?.value),
       delivery_fee_override_reason: this.toNullableText(this.deliveryForm.get('delivery_fee_override_reason')?.value)
     };
+  }
+
+  private resolveExtraName(extra: Pick<DetailUiCaptureExtraItem, 'service_extra_type_id' | 'name'>): string {
+    return extra.name
+      ?? this.extraTypes.find((item) => item.id === extra.service_extra_type_id)?.name
+      ?? this.data?.extras?.find((serviceExtra) => serviceExtra.service_extra_type_id === extra.service_extra_type_id)?.service_extra_type?.name
+      ?? `Extra #${extra.service_extra_type_id}`;
+  }
+
+  private syncDeliveryFeeFromDistance(): void {
+    if (this.deliveryManualMode) {
+      return;
+    }
+
+    const distanceKm = this.getDistanceKm();
+    if (distanceKm <= 0 || this.deliveryPricePerKm <= 0) {
+      return;
+    }
+
+    this.deliveryForm.patchValue({
+      delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm),
+      delivery_fee_override_reason: 'Calculado por distancia'
+    }, { emitEvent: false });
+  }
+
+  private shouldHydrateDraftFromService(
+    originalDraftUiModel: DetailUiCaptureModel,
+    mergedUiModel: DetailUiCaptureModel
+  ): boolean {
+    return (
+      (originalDraftUiModel.weight_lb == null && mergedUiModel.weight_lb != null)
+      || (originalDraftUiModel.notes == null && mergedUiModel.notes != null)
+      || (originalDraftUiModel.express_service_surcharge == null && mergedUiModel.express_service_surcharge != null)
+      || (originalDraftUiModel.quoted_service_amount == null && mergedUiModel.quoted_service_amount != null)
+    );
+  }
+
+  private persistHydratedDraft(): void {
+    if (!this.data?.id || !this.uiModel || !this.draft) {
+      return;
+    }
+
+    const payload = this.draft.payload && typeof this.draft.payload === 'object'
+      ? { ...this.draft.payload, ui_model: this.uiModel }
+      : {
+          ui_model: this.uiModel,
+          laundry_service_payload: null,
+          order_payload: null,
+          validations: {
+            laundry_service: [],
+            order: []
+          }
+        };
+
+    this.commercialDraftsApi.saveByService(this.data.id, {
+      payload,
+      is_confirmed: this.draft.is_confirmed ?? false,
+      confirmed_at: this.draft.confirmed_at ?? null,
+      charged_by_user_id: this.draft.charged_by_user_id ?? null
+    }).pipe(
+      catchError(() => of(null))
+    ).subscribe((draft) => {
+      if (!draft) {
+        return;
+      }
+
+      this.draft = draft;
+      this.draftStatusMessage = `Borrador cargado #${draft.id} y completado con datos del servicio`;
+    });
   }
 
   private toNumber(value: unknown): number {

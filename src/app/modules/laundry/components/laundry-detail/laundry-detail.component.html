@@ -14,7 +14,7 @@
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Tipo de servicio</div>
-          <p-tag [value]="data.service_label" [severity]="data.service_label === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
+          <p-tag [value]="getCurrentServiceLabel()" [severity]="getCurrentServiceLabel() === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Recolecta</div>
@@ -22,7 +22,7 @@
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Peso</div>
-          <div>{{ data.weight_lb ?? 0 }} lb</div>
+          <div>{{ getCapturedWeightLb() }} lb</div>
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Prendas</div>
@@ -76,6 +76,25 @@
         }
 
         <form [formGroup]="deliveryForm" class="grid">
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Tipo de servicio</label>
+            <div class="flex align-items-center gap-3">
+              <span class="font-medium">Normal</span>
+              <p-toggleswitch
+                formControlName="is_express"
+                (onChange)="onExpressToggleChange($event.checked)"
+              ></p-toggleswitch>
+              <span class="font-medium">Express</span>
+            </div>
+            <div class="text-sm text-color-secondary mt-2">
+              @if (getCurrentServiceLabel() === 'EXPRESS') {
+                Recargo EXPRESS activo: {{ getExpressSurchargeAmount() | currency }}
+              } @else {
+                Sin recargo EXPRESS
+              }
+            </div>
+          </div>
+
           <div class="col-12 md:col-4">
             <label class="block text-sm text-color-secondary mb-2">Distancia (km)</label>
             <p-inputnumber
@@ -148,7 +167,7 @@
           <div class="grid">
             <div class="col-12 md:col-4">
               <div class="text-sm text-color-secondary">Peso capturado</div>
-              <div class="font-medium">{{ uiModel.weight_lb ?? 0 }} lb</div>
+              <div class="font-medium">{{ getCapturedWeightLb() }} lb</div>
             </div>
             <div class="col-12 md:col-4">
               <div class="text-sm text-color-secondary">Lavado por peso</div>
@@ -171,8 +190,8 @@
               <div class="font-medium">{{ getSpecialItemsDraftTotal() | currency }}</div>
             </div>
             <div class="col-12">
-              <div class="surface-200 border-round p-3 text-center">
-                <div class="text-sm text-color-secondary">Total estimado actual</div>
+              <div class="border-round p-3 text-center" style="background: #22c55e; color: #052e16;">
+                <div class="text-sm">Total estimado actual</div>
                 <div class="text-xl font-semibold">{{ getGrandDraftTotal() | currency }}</div>
               </div>
             </div>
@@ -185,11 +204,16 @@
                 <div>
                   <div class="font-medium">⚖️ Lavado y secado por peso</div>
                   <div class="text-sm text-color-secondary">
-                    {{ uiModel.weight_lb ?? 0 }} lb
+                    {{ getCapturedWeightLb() }} lb
                     @if (uiModel.weight_pricing_preview?.profile_name) {
                       · {{ uiModel.weight_pricing_preview?.profile_name }}
                     }
                   </div>
+                  <div class="text-sm text-color-secondary">Precio base por peso: {{ getBaseWeightQuotePrice() | currency }}</div>
+                  @if (getExpressSurchargeAmount() > 0) {
+                    <div class="text-sm text-color-secondary">Recargo EXPRESS: {{ getExpressSurchargeAmount() | currency }}</div>
+                  }
+                  <div class="text-sm text-color-secondary">Precio cotizado del servicio: {{ getQuotedServiceAmount() | currency }}</div>
                 </div>
                 <strong>{{ getWeightQuotePrice() | currency }}</strong>
               </div>
@@ -254,17 +278,28 @@
 
           @if (getSelectedGarments().length) {
             <section>
-              <h4 class="mt-0 mb-2">Prendas por conteo</h4>
-              <div class="flex flex-column gap-2">
-                @for (item of getSelectedGarments(); track item.name + item.quantity) {
-                  <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
-                    <div>
-                      <div class="font-medium">🧺 {{ item.name }}</div>
-                      <div class="text-sm text-color-secondary">{{ item.quantity }} {{ item.unitLabel }}</div>
+              <p-accordion [multiple]="true" [value]="[]">
+                <p-accordion-panel [value]="0">
+                  <p-accordion-header>
+                    <div class="flex justify-content-between align-items-center w-full pr-2">
+                      <span class="font-semibold">Prendas por conteo</span>
+                      <span class="text-sm text-color-secondary">{{ getGarmentQuantityCount() }} unidades</span>
                     </div>
-                  </div>
-                }
-              </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="flex flex-column gap-2 pt-2">
+                      @for (item of getSelectedGarments(); track item.name + item.quantity) {
+                        <div class="flex justify-content-between align-items-start gap-3 surface-100 border-round p-3">
+                          <div>
+                            <div class="font-medium">🧺 {{ item.name }}</div>
+                            <div class="text-sm text-color-secondary">{{ item.quantity }} {{ item.unitLabel }}</div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+              </p-accordion>
             </section>
           }
         </div>

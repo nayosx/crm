@@ -15,4 +15,10 @@ export class GlobalSettingsApiService {
       map((response) => Number(response?.value ?? response?.setting?.value ?? 0))
     );
   }
+
+  getExpressServiceSurcharge(): import('rxjs').Observable<number> {
+    return this.http.get<any>(`${this.baseUrl}/express_service_surcharge`).pipe(
+      map((response) => Number(response?.value ?? response?.setting?.value ?? 0))
+    );
+  }
 }

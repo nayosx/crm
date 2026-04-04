@@ -24,6 +24,7 @@ import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { ServicePriceOption } from '@modules/laundry-commerce/interfaces/service-price-option.interface';
 import { LaundryCommercialService } from '@modules/laundry-commerce/interfaces/service.interface';
 import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
+import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import {
   LaundryServiceCommercialDraftsApiService
 } from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
@@ -85,6 +86,8 @@ type UiCaptureModel = {
   weight_lb: number | null;
   distance_km: number | null;
   delivery_price_per_km: number | null;
+  express_service_surcharge: number | null;
+  quoted_service_amount: number | null;
   delivery_fee_suggested: number | null;
   delivery_fee_final: number | null;
   delivery_fee_override_reason: string | null;
@@ -218,7 +221,9 @@ function mapToOrderPayload(uiModel: UiCaptureModel): OrderPayload {
         ),
         recommended_unit_price: asNullableNumber(uiModel.weight_pricing_preview.recommended_price),
         final_unit_price: asNumber(
-          uiModel.weight_pricing_preview.final_price ?? uiModel.weight_pricing_preview.recommended_price
+          uiModel.quoted_service_amount
+          ?? uiModel.weight_pricing_preview.final_price
+          ?? uiModel.weight_pricing_preview.recommended_price
         ),
         weight_lb: uiModel.weight_lb,
         notes: uiModel.notes
@@ -345,6 +350,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly weightQuoteError = signal<string | null>(null);
   readonly deliveryZoneId = signal<number | null>(null);
   readonly deliveryPricePerKm = signal(0);
+  readonly expressServiceSurcharge = signal(0);
   readonly savedDraftId = signal<number | null>(null);
   readonly draftSaveMessage = signal<string | null>(null);
   readonly draftSaveError = signal<string | null>(null);
@@ -425,6 +431,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     private readonly laundryService: LaundryService,
     private readonly garmentTypesService: LaundryGarmentTypesService,
     private readonly extraTypesService: LaundryServiceExtraTypesService,
+    private readonly globalSettingsApi: GlobalSettingsApiService,
     private readonly commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
     private readonly servicesApi: ServicesApiService,
     private readonly weightPricingApi: WeightPricingApiService
@@ -480,6 +487,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         this.mainAccordionValues.set(this.getDefaultMainAccordionValues());
         this.bindSelectionTracking();
         this.bindWeightQuoteTracking();
+        this.loadExpressServiceSurcharge();
         this.loadExistingDraft(service.id ?? null);
         this.refreshSelectedItemsState();
         this.loading.set(false);
@@ -811,11 +819,25 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   }
 
   getWeightQuotePrice(): number {
+    return this.getQuotedServiceAmount();
+  }
+
+  getBaseWeightQuotePrice(): number {
     return this.toNumber(this.weightQuote()?.final_price ?? this.weightQuote()?.recommended_price);
   }
 
   hasWeightQuote(): boolean {
-    return this.getWeightQuotePrice() > 0;
+    return this.getBaseWeightQuotePrice() > 0;
+  }
+
+  getExpressSurchargeAmount(): number {
+    return this.service()?.service_label === 'EXPRESS'
+      ? this.toNumber(this.expressServiceSurcharge())
+      : 0;
+  }
+
+  getQuotedServiceAmount(): number {
+    return this.roundCurrency(this.getBaseWeightQuotePrice() + this.getExpressSurchargeAmount());
   }
 
   getGrandDraftTotal(): number {
@@ -1137,6 +1159,8 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       pricing_profile_id: this.toNullableNumber(this.form.get('pricing_profile_id')?.value),
       distance_km: this.toNullableNumber(this.form.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm() || null,
+      express_service_surcharge: this.getExpressSurchargeAmount() || null,
+      quoted_service_amount: this.getQuotedServiceAmount() || null,
       delivery_fee_suggested: this.toNullableNumber(this.form.get('delivery_fee_suggested')?.value),
       delivery_fee_final: this.toNullableNumber(this.form.get('delivery_fee_final')?.value),
       delivery_fee_override_reason: this.toNullableText(this.form.get('delivery_fee_override_reason')?.value),
@@ -1316,17 +1340,18 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     }
 
     this.form.patchValue({
-      weight_lb: uiModel.weight_lb,
+      weight_lb: uiModel.weight_lb ?? this.service()?.weight_lb ?? null,
       pricing_profile_id: uiModel.pricing_profile_id,
       distance_km: uiModel.distance_km,
       delivery_fee_suggested: uiModel.delivery_fee_suggested ?? 0,
       delivery_fee_final: uiModel.delivery_fee_final ?? 0,
       delivery_fee_override_reason: uiModel.delivery_fee_override_reason ?? '',
-      notes: uiModel.notes ?? ''
+      notes: uiModel.notes ?? this.service()?.notes ?? ''
     }, { emitEvent: false });
 
     this.deliveryZoneId.set(uiModel.delivery_zone_id ?? null);
     this.deliveryPricePerKm.set(this.toNumber(uiModel.delivery_price_per_km));
+    this.expressServiceSurcharge.set(this.toNumber(uiModel.express_service_surcharge));
     this.weightQuote.set(uiModel.weight_pricing_preview ?? null);
 
     uiModel.items.forEach((item) => {
@@ -1389,6 +1414,19 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         this.fabPulseTimeoutId = null;
       }, 450);
     }, 0);
+  }
+
+  private loadExpressServiceSurcharge(): void {
+    this.globalSettingsApi.getExpressServiceSurcharge().pipe(
+      catchError(() => of(0))
+    ).subscribe((value) => {
+      if (this.expressServiceSurcharge() > 0) {
+        return;
+      }
+
+      this.expressServiceSurcharge.set(this.roundCurrency(this.toNumber(value)));
+      this.refreshSelectedItemsState();
+    });
   }
 
   private checkIsMobile(): boolean {
