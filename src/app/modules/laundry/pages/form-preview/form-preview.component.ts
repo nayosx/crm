@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, ViewChild, ViewEncapsulation, computed, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of, startWith, switchMap } from 'rxjs';
+import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -176,6 +176,7 @@ type PersistedCommercialDraftRecord = {
   is_confirmed: boolean;
   confirmed_at: string | null;
   charged_by_user_id: number | null;
+  quoted_service_amount?: number | string | null;
 };
 
 function asNumber(value: unknown): number {
@@ -368,6 +369,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly weightQuote = signal<WeightPricingQuoteResponse | null>(null);
   readonly weightQuoteLoading = signal(false);
   readonly weightQuoteError = signal<string | null>(null);
+  readonly draftQuotedServiceAmount = signal<number | null>(null);
   readonly deliveryZoneId = signal<number | null>(null);
   readonly deliveryPricePerKm = signal(0);
   readonly expressServiceSurcharge = signal(0);
@@ -444,6 +446,9 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly weightBasedService = computed(() => this.commercialServices().find((item) => item.service_type === 'WEIGHT') ?? null);
   private previousSelectedItemsCount = 0;
   private fabPulseTimeoutId: number | null = null;
+  private weightQuoteLoaderTimeoutId: number | null = null;
+  private weightQuoteLoaderRequestId = 0;
+  private latestWeightQuoteRequestId = 0;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -530,6 +535,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     if (this.fabPulseTimeoutId) {
       clearTimeout(this.fabPulseTimeoutId);
     }
+    this.clearWeightQuoteLoaderTimeout();
   }
 
   get garmentsGroup(): FormGroup {
@@ -843,7 +849,11 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   }
 
   getBaseWeightQuotePrice(): number {
-    return this.toNumber(this.weightQuote()?.final_price ?? this.weightQuote()?.recommended_price);
+    return this.toNumber(
+      this.weightQuote()?.final_price
+      ?? this.draftQuotedServiceAmount()
+      ?? this.weightQuote()?.recommended_price
+    );
   }
 
   hasWeightQuote(): boolean {
@@ -857,6 +867,16 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   }
 
   getQuotedServiceAmount(): number {
+    const backendQuotedAmount = this.toNullableNumber(
+      this.weightQuote()?.final_price
+      ?? this.draftQuotedServiceAmount()
+      ?? this.weightQuote()?.recommended_price
+    );
+
+    if (backendQuotedAmount != null && backendQuotedAmount > 0) {
+      return this.roundCurrency(backendQuotedAmount);
+    }
+
     return this.roundCurrency(this.getBaseWeightQuotePrice() + this.getExpressSurchargeAmount());
   }
 
@@ -1305,27 +1325,73 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
           this.weightQuote.set(null);
           this.weightQuoteError.set(null);
           this.weightQuoteLoading.set(false);
+          this.draftQuotedServiceAmount.set(null);
           return of(null);
         }
 
         this.weightQuoteLoading.set(true);
         this.weightQuoteError.set(null);
+        this.draftQuotedServiceAmount.set(null);
+        const requestId = ++this.latestWeightQuoteRequestId;
+        const loaderRequestId = this.beginWeightQuoteLoader();
 
         return this.weightPricingApi.quote({
           profile_id: profileId,
           weight_lb: weightLb
         }).pipe(
+          map((quote) => ({
+            quote,
+            requestId
+          })),
           catchError(() => {
             this.weightQuoteError.set('No fue posible calcular el precio por peso.');
-            return of(null);
+            return of({
+              quote: null,
+              requestId
+            });
+          }),
+          finalize(() => {
+            this.finishWeightQuoteLoader(loaderRequestId);
           })
         );
       })
-    ).subscribe((quote) => {
+    ).subscribe((response) => {
+      if (!response || response.requestId !== this.latestWeightQuoteRequestId) {
+        return;
+      }
+
       this.weightQuoteLoading.set(false);
-      this.weightQuote.set(quote);
+      this.weightQuote.set(response.quote);
       this.refreshSelectedItemsState();
     });
+  }
+
+  private beginWeightQuoteLoader(): number {
+    const requestId = ++this.weightQuoteLoaderRequestId;
+    this.clearWeightQuoteLoaderTimeout();
+    this.weightQuoteLoaderTimeoutId = window.setTimeout(() => {
+      if (this.weightQuoteLoaderRequestId === requestId) {
+        this.loaderDialog?.open('Consultando precio por peso...');
+      }
+    }, 250);
+
+    return requestId;
+  }
+
+  private finishWeightQuoteLoader(requestId: number): void {
+    if (this.weightQuoteLoaderRequestId !== requestId) {
+      return;
+    }
+
+    this.clearWeightQuoteLoaderTimeout();
+    this.loaderDialog?.close();
+  }
+
+  private clearWeightQuoteLoaderTimeout(): void {
+    if (this.weightQuoteLoaderTimeoutId !== null) {
+      window.clearTimeout(this.weightQuoteLoaderTimeoutId);
+      this.weightQuoteLoaderTimeoutId = null;
+    }
   }
 
   private refreshSelectedItemsState(): void {
@@ -1367,6 +1433,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.latestWeightQuoteRequestId++;
+    this.weightQuoteLoading.set(false);
+    this.finishWeightQuoteLoader(this.weightQuoteLoaderRequestId);
+
     this.form.patchValue({
       weight_lb: uiModel.weight_lb ?? this.service()?.weight_lb ?? null,
       pricing_profile_id: uiModel.pricing_profile_id,
@@ -1381,6 +1451,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     this.deliveryPricePerKm.set(this.toNumber(uiModel.delivery_price_per_km));
     this.expressServiceSurcharge.set(this.toNumber(uiModel.express_service_surcharge));
     this.weightQuote.set(uiModel.weight_pricing_preview ?? null);
+    this.draftQuotedServiceAmount.set(this.resolveDraftQuotedServiceAmount(uiModel, draft.quoted_service_amount));
 
     uiModel.items.forEach((item) => {
       const group = this.getGarmentGroup(item.garment_type_id);
@@ -1425,6 +1496,18 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     });
 
     this.refreshSelectedItemsState();
+  }
+
+  private resolveDraftQuotedServiceAmount(
+    uiModel: UiCaptureModel | null | undefined,
+    topLevelQuotedServiceAmount?: unknown
+  ): number | null {
+    return this.toNullableNumber(
+      uiModel?.weight_pricing_preview?.final_price
+      ?? uiModel?.quoted_service_amount
+      ?? topLevelQuotedServiceAmount
+      ?? uiModel?.weight_pricing_preview?.recommended_price
+    );
   }
 
   private triggerFabPulse(): void {

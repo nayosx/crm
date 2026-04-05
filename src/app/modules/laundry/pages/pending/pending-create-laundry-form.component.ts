@@ -36,6 +36,15 @@ type CreateLaundryPayload = {
       justify-content: flex-start;
     }
 
+    .pending-client-dialog {
+      height: 520px !important;
+      max-height: 520px !important;
+    }
+
+    .pending-client-dialog .p-dialog-content {
+      overflow: auto;
+    }
+
     .pending-create-service-summary {
       border: 1px solid var(--surface-border);
       border-radius: 0.75rem;
@@ -66,7 +75,16 @@ type CreateLaundryPayload = {
   encapsulation: ViewEncapsulation.None
 })
 export class PendingCreateLaundryFormComponent {
-  @Input() submitting = false;
+  @Input()
+  set submitting(value: boolean) {
+    this._submitting = value;
+    this.syncFormDisabledState();
+  }
+
+  get submitting(): boolean {
+    return this._submitting;
+  }
+
   @Output() formSubmit = new EventEmitter<CreateLaundryPayload>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -77,6 +95,7 @@ export class PendingCreateLaundryFormComponent {
   displayNoAddressDialog = false;
   selectedClientName = '';
   selectedAddressText = '';
+  private _submitting = false;
   private clientChangedAnimationTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly fb: FormBuilder) {
@@ -140,6 +159,15 @@ export class PendingCreateLaundryFormComponent {
 
   closeNoAddressDialog(): void {
     this.displayNoAddressDialog = false;
+  }
+
+  private syncFormDisabledState(): void {
+    if (this.submitting) {
+      this.form.disable({ emitEvent: false });
+      return;
+    }
+
+    this.form.enable({ emitEvent: false });
   }
 
   private triggerClientChangedAnimation(): void {

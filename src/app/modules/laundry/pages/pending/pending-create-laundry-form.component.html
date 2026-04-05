@@ -43,7 +43,7 @@
 
   <div class="flex align-items-center justify-content-between gap-2">
     <label class="font-medium">Servicio express</label>
-    <p-toggleswitch formControlName="is_express" [disabled]="submitting"></p-toggleswitch>
+    <p-toggleswitch formControlName="is_express"></p-toggleswitch>
   </div>
 
   <div class="flex justify-content-end gap-2 mt-2">
@@ -57,6 +57,7 @@
   [(visible)]="displayClientDialog"
   [modal]="true"
   [closable]="!submitting"
+  styleClass="pending-client-dialog"
   [style]="{ width: '42rem' }">
   <app-client-list
     [showActions]="false"

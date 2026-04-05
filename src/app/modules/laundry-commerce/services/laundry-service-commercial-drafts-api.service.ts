@@ -18,6 +18,7 @@ export type LaundryServiceCommercialDraftRecord = {
   is_confirmed: boolean;
   confirmed_at: string | null;
   charged_by_user_id: number | null;
+  quoted_service_amount?: number | string | null;
 };
 
 @Injectable({

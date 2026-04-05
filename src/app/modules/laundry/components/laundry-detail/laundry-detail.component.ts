@@ -146,6 +146,8 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   latestNote: LaundryServiceLog | null = null;
   deliveryForm: FormGroup;
   private deliverySubscription?: Subscription;
+  private weightQuoteLoaderTimeoutId: number | null = null;
+  private weightQuoteLoaderRequestId = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -202,6 +204,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.deliverySubscription?.unsubscribe();
+    this.clearWeightQuoteLoaderTimeout();
   }
 
   formatDateTime(datetime: string): string {
@@ -619,6 +622,10 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
           : this.getBaseWeightQuotePrice() || null
       };
 
+      if (this.draft === undefined) {
+        return;
+      }
+
       this.recalculateWeightPricingIfNeeded();
     });
   }
@@ -631,7 +638,9 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       })
     ).subscribe((draft) => {
       if (!draft) {
+        this.draft = null;
         this.patchDeliveryFormFromUiModel(this.uiModel);
+        this.recalculateWeightPricingIfNeeded();
         return;
       }
 
@@ -649,7 +658,6 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       this.uiModel = this.mergeUiModelWithService(nextUiModel);
       this.patchDeliveryFormFromUiModel(this.uiModel);
       this.draftStatusMessage = `Borrador cargado #${draft.id}`;
-      this.recalculateWeightPricingIfNeeded();
 
       if (this.shouldHydrateDraftFromService(nextUiModel, this.uiModel)) {
         this.persistHydratedDraft();
@@ -724,11 +732,12 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   private mergeUiModelWithService(uiModel: DetailUiCaptureModel): DetailUiCaptureModel {
+    const resolvedQuotedServiceAmount = this.resolveDraftQuotedServiceAmount(uiModel, this.draft?.quoted_service_amount);
     const mergedUiModel = {
       ...this.buildBaseUiModel(this.data as LaundryServiceResp),
       ...uiModel,
       express_service_surcharge: uiModel.express_service_surcharge ?? this.uiModel?.express_service_surcharge ?? null,
-      quoted_service_amount: uiModel.quoted_service_amount ?? this.uiModel?.quoted_service_amount ?? null,
+      quoted_service_amount: resolvedQuotedServiceAmount ?? this.uiModel?.quoted_service_amount ?? null,
       items: (uiModel.items ?? []).map((item) => ({
         ...item,
         garment_name: this.resolveGarmentName(item)
@@ -816,11 +825,16 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const loaderRequestId = this.beginWeightQuoteLoader();
+
     this.weightPricingApi.quote({
       profile_id: pricingProfileId,
       weight_lb: weightLb
     }).pipe(
-      catchError(() => of(null))
+      catchError(() => of(null)),
+      finalize(() => {
+        this.finishWeightQuoteLoader(loaderRequestId);
+      })
     ).subscribe((quote) => {
       if (!quote || !this.uiModel) {
         return;
@@ -837,6 +851,46 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
         quoted_service_amount: this.roundCurrency(this.toNumber(quote.final_price ?? quote.recommended_price) + surcharge)
       };
     });
+  }
+
+  private resolveDraftQuotedServiceAmount(
+    uiModel: DetailUiCaptureModel | null | undefined,
+    topLevelQuotedServiceAmount?: unknown
+  ): number | null {
+    return this.toNullableNumber(
+      uiModel?.weight_pricing_preview?.final_price
+      ?? uiModel?.quoted_service_amount
+      ?? topLevelQuotedServiceAmount
+      ?? uiModel?.weight_pricing_preview?.recommended_price
+    );
+  }
+
+  private beginWeightQuoteLoader(): number {
+    const requestId = ++this.weightQuoteLoaderRequestId;
+    this.clearWeightQuoteLoaderTimeout();
+    this.weightQuoteLoaderTimeoutId = window.setTimeout(() => {
+      if (this.weightQuoteLoaderRequestId === requestId) {
+        this.loaderDialog?.open('Consultando precio por peso...');
+      }
+    }, 250);
+
+    return requestId;
+  }
+
+  private finishWeightQuoteLoader(requestId: number): void {
+    if (this.weightQuoteLoaderRequestId !== requestId) {
+      return;
+    }
+
+    this.clearWeightQuoteLoaderTimeout();
+    this.loaderDialog?.close();
+  }
+
+  private clearWeightQuoteLoaderTimeout(): void {
+    if (this.weightQuoteLoaderTimeoutId !== null) {
+      window.clearTimeout(this.weightQuoteLoaderTimeoutId);
+      this.weightQuoteLoaderTimeoutId = null;
+    }
   }
 
   private buildWhatsappSummary(): string {

@@ -95,6 +95,7 @@
 <p-dialog
   header="Crear servicio de lavandería"
   [visible]="createDialogVisible()"
+  (visibleChange)="createDialogVisible.set($event)"
   [modal]="true"
   [closable]="!creating()"
   [style]="{ width: '34rem' }"
@@ -111,6 +112,7 @@
 <p-dialog
   header="Nuevo cliente + dirección + servicio"
   [visible]="createWithClientAddressDialogVisible()"
+  (visibleChange)="createWithClientAddressDialogVisible.set($event)"
   [modal]="true"
   [style]="{ width: '34rem' }"
   (onHide)="closeCreateWithClientAddressDialog()">

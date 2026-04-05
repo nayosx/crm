@@ -1,7 +1,7 @@
 <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3 pt-2">
   <div class="flex flex-column gap-2">
     <label class="font-medium">Cliente</label>
-    <input pInputText type="text" formControlName="client_name" placeholder="Nombre del cliente" [disabled]="saving" />
+    <input pInputText type="text" formControlName="client_name" placeholder="Nombre del cliente" />
     <small *ngIf="form.get('client_name')?.invalid && form.get('client_name')?.touched" class="p-error">
       Debes ingresar el nombre del cliente.
     </small>
@@ -13,8 +13,7 @@
       pInputTextarea
       rows="3"
       formControlName="address_text"
-      placeholder="Col. Centro, casa 123"
-      [disabled]="saving">
+      placeholder="Col. Centro, casa 123">
     </textarea>
     <small *ngIf="form.get('address_text')?.invalid && form.get('address_text')?.touched" class="p-error">
       Debes ingresar la dirección.
@@ -23,7 +22,7 @@
 
   <div class="flex align-items-center justify-content-between gap-2">
     <label class="font-medium">Servicio express</label>
-    <p-toggleswitch formControlName="is_express" [disabled]="saving"></p-toggleswitch>
+    <p-toggleswitch formControlName="is_express"></p-toggleswitch>
   </div>
 
   <div class="flex justify-content-end gap-2 mt-2">

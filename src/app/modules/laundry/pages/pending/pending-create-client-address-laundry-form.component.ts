@@ -73,6 +73,7 @@ export class PendingCreateClientAddressLaundryFormComponent {
     }
 
     this.saving = true;
+    this.form.disable({ emitEvent: false });
     const value = this.form.getRawValue();
     this.loader?.open('Creando cliente...');
 
@@ -94,6 +95,7 @@ export class PendingCreateClientAddressLaundryFormComponent {
       }),
       finalize(() => {
         this.saving = false;
+        this.form.enable({ emitEvent: false });
         this.loader?.close();
       })
     ).subscribe({
