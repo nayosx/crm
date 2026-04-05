@@ -5,7 +5,8 @@ import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { MenuModule } from 'primeng/menu';
-import { AppNavigationItem, NavigationService } from '@shared/services/navigation/navigation.service';
+import { AppNavigationItem } from '@shared/config/app-navigation.config';
+import { NavigationService } from '@shared/services/navigation/navigation.service';
 
 @Component({
   selector: 'app-home',
