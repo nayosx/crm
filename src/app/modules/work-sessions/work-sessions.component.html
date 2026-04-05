@@ -1,0 +1,561 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="work-sessions-page p-3 lg:p-4">
+  <div class="flex align-items-center gap-2 mb-3">
+    <app-back-button [fallbackRoute]="'/home'" />
+    <div>
+      <h2 class="m-0">Control de horas</h2>
+      <p class="m-0 text-color-secondary">Panel visual de jornada, semana, mes e historial.</p>
+    </div>
+  </div>
+
+  <p-toolbar styleClass="work-sessions-toolbar mb-3">
+    <ng-template pTemplate="start">
+      <div class="flex flex-column gap-2">
+        <span class="text-sm text-color-secondary">Meta diaria</span>
+        <strong>{{ dailyTargetLabel }}</strong>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="end">
+      <div class="flex gap-2 flex-wrap justify-content-end">
+        <p-chip label="Semana visual" icon="pi pi-calendar-plus" />
+        <p-chip label="Mes visual" icon="pi pi-calendar" />
+        <p-chip label="Historial filtrable" icon="pi pi-clock" />
+      </div>
+    </ng-template>
+  </p-toolbar>
+
+  <div class="grid mb-3">
+    <div class="col-12 lg:col-7">
+      <p-card styleClass="hero-card h-full">
+        @if (currentSessionLoading()) {
+          <p-skeleton width="12rem" height="1.75rem" styleClass="mb-3" />
+          <p-skeleton width="100%" height="10rem" />
+        } @else {
+          <div class="flex flex-column gap-3">
+            <div class="flex justify-content-between align-items-start gap-3 flex-wrap">
+              <div class="flex flex-column gap-2">
+                <p-tag
+                  [severity]="currentSession()?.status === 'IN_PROGRESS' ? 'info' : 'secondary'"
+                  [value]="currentSession()?.status === 'IN_PROGRESS' ? 'Jornada activa' : 'Sin jornada activa'"
+                />
+                <div>
+                  <h3 class="hero-title m-0">
+                    {{ currentSession()?.status === 'IN_PROGRESS' ? 'Jornada activa' : 'Sin jornada activa' }}
+                  </h3>
+                  <p class="m-0 text-color-secondary">
+                    {{ currentSession()?.status === 'IN_PROGRESS'
+                      ? 'Tu contador sigue en vivo y puedes cerrar la jornada cuando termines.'
+                      : 'Cuando inicies una jornada aquí aparecerá tu progreso del día.' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="timer-shell">
+                <span class="timer-label">Tiempo actual</span>
+                <strong class="timer-value">
+                  {{ currentSession()?.status === 'IN_PROGRESS' ? getLiveDurationLabel() : '00:00:00' }}
+                </strong>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="col-12 md:col-4">
+                <div class="metric-card">
+                  <span class="metric-label">Entrada</span>
+                  <strong>{{ currentSession() ? (currentSession()!.login_time | date:'hh:mm a') : '--' }}</strong>
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="metric-card">
+                  <span class="metric-label">Salida</span>
+                  <strong>{{ currentSession()?.logout_time ? (currentSession()!.logout_time | date:'hh:mm a') : '--' }}</strong>
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="metric-card">
+                  <span class="metric-label">Horas hoy</span>
+                  <strong>{{ formatMinutes(todaySummary().totalMinutes) }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button
+                pButton
+                type="button"
+                label="Iniciar jornada"
+                icon="pi pi-play"
+                [disabled]="currentSessionMutating() || currentSession()?.status === 'IN_PROGRESS'"
+                (click)="startSession()"
+              ></button>
+              <button
+                pButton
+                type="button"
+                severity="danger"
+                label="Finalizar jornada"
+                icon="pi pi-stop"
+                [disabled]="currentSessionMutating() || currentSession()?.status !== 'IN_PROGRESS'"
+                (click)="endSession()"
+              ></button>
+            </div>
+          </div>
+        }
+      </p-card>
+    </div>
+
+    <div class="col-12 lg:col-5">
+      <div class="grid h-full">
+        <div class="col-12 sm:col-6 lg:col-12 xl:col-6">
+          <p-card styleClass="summary-card h-full">
+            <span class="summary-eyebrow">Resumen de hoy</span>
+            <h3 class="m-0">{{ formatMinutes(todaySummary().totalMinutes) }}</h3>
+            <p class="m-0 text-color-secondary">Trabajadas hoy</p>
+            <p-tag [severity]="getTodayProgressSeverity()" [value]="getTodayProgressLabel()" />
+          </p-card>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-12 xl:col-6">
+          <p-card styleClass="summary-card h-full">
+            <span class="summary-eyebrow">Semana actual</span>
+            <h3 class="m-0">{{ formatMinutes(weekSummary().totalMinutes) }}</h3>
+            <p class="m-0 text-color-secondary">{{ getWeekEventCountLabel() }}</p>
+            <p-tag severity="success" [value]="'Extra: ' + formatMinutes(weekSummary().extraMinutes)" />
+          </p-card>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (currentSessionError()) {
+    <p-message severity="error" [text]="currentSessionError()!" styleClass="mb-3" />
+  }
+
+  <p-tabView [activeIndex]="activeTabIndex()" (activeIndexChange)="activeTabIndex.set($event)">
+    <p-tabPanel header="Mi jornada">
+      <div class="grid">
+        <div class="col-12 lg:col-4">
+          <p-card styleClass="info-panel h-full">
+            <span class="summary-eyebrow">Meta diaria</span>
+            <h3>{{ dailyTargetLabel }}</h3>
+            <p class="text-color-secondary">
+              El sistema toma como referencia una jornada estándar de 9 horas y 30 minutos.
+            </p>
+            <p-divider />
+            <div class="flex flex-column gap-2">
+              <div class="flex justify-content-between">
+                <span>Extra</span>
+                <strong>{{ formatMinutes(todaySummary().extraMinutes) }}</strong>
+              </div>
+              <div class="flex justify-content-between">
+                <span>Faltante</span>
+                <strong>{{ formatMinutes(todaySummary().missingMinutes) }}</strong>
+              </div>
+              <div class="flex justify-content-between">
+                <span>Sesiones hoy</span>
+                <strong>{{ todaySummary().sessionsCount }}</strong>
+              </div>
+            </div>
+          </p-card>
+        </div>
+        <div class="col-12 lg:col-8">
+          <p-card styleClass="info-panel h-full">
+            <div class="flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <div>
+                <h3 class="m-0">Actividad del día</h3>
+                <p class="m-0 text-color-secondary">Detalle rápido de las jornadas registradas hoy.</p>
+              </div>
+              <p-tag [severity]="getTodayProgressSeverity()" [value]="getTodayProgressLabel()" />
+            </div>
+
+            @if (!todaySessions().length) {
+              <p-message severity="info" text="Todavía no hay jornadas registradas hoy." />
+            } @else {
+              <div class="timeline-list">
+                @for (session of todaySessions(); track session.id) {
+                  <div class="timeline-item">
+                    <div class="timeline-hour">
+                      <strong>{{ session.login_time | date:'hh:mm a' }}</strong>
+                      <span>{{ session.logout_time ? (session.logout_time | date:'hh:mm a') : 'En curso' }}</span>
+                    </div>
+                    <div class="timeline-detail">
+                      <p-tag [severity]="getSessionTagSeverity(session.status)" [value]="getSessionStatusLabel(session.status)" />
+                      <span>{{ toDisplaySession(session).durationLabel }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </p-card>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="Semana">
+      @if (calendarError()) {
+        <p-message severity="error" [text]="calendarError()!" styleClass="mb-3" />
+      }
+
+      <div class="grid">
+        <div class="col-12 xl:col-8">
+          <p-card styleClass="calendar-card">
+            @if (calendarLoading()) {
+              <p-skeleton width="100%" height="24rem" />
+            } @else {
+              <full-calendar [options]="weekCalendarOptions()"></full-calendar>
+            }
+          </p-card>
+        </div>
+
+        <div class="col-12 xl:col-4">
+          <div class="grid">
+            @for (day of weekSummaries(); track day.date) {
+              <div class="col-12 md:col-6 xl:col-12">
+                <p-card styleClass="day-card h-full" (click)="openDayDetail(day.date)">
+                  <div class="flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <h4 class="m-0">{{ day.label }}</h4>
+                      <p class="m-0 text-color-secondary">{{ day.startTime ?? 'Sin entrada' }}</p>
+                    </div>
+                    <p-tag [severity]="getStatusSeverity(day.status)" [value]="day.status"></p-tag>
+                  </div>
+                  <p-divider />
+                  <div class="flex flex-column gap-2">
+                    <div class="flex justify-content-between">
+                      <span>Total</span>
+                      <strong>{{ formatMinutes(day.totalMinutes) }}</strong>
+                    </div>
+                    <div class="flex justify-content-between">
+                      <span>Salida</span>
+                      <strong>{{ day.endTime ?? '--' }}</strong>
+                    </div>
+                    <div class="flex justify-content-between">
+                      <span>Diferencia</span>
+                      <strong>
+                        {{ day.extraMinutes ? '+' + formatMinutes(day.extraMinutes) : '-' + formatMinutes(day.missingMinutes) }}
+                      </strong>
+                    </div>
+                  </div>
+                </p-card>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="Mes">
+      @if (calendarError()) {
+        <p-message severity="error" [text]="calendarError()!" styleClass="mb-3" />
+      }
+
+      <div class="grid">
+        <div class="col-12 xl:col-9">
+          <p-card styleClass="calendar-card">
+            @if (calendarLoading()) {
+              <p-skeleton width="100%" height="28rem" />
+            } @else {
+              <full-calendar [options]="monthCalendarOptions()"></full-calendar>
+            }
+          </p-card>
+        </div>
+        <div class="col-12 xl:col-3">
+          <p-card styleClass="legend-card">
+            <h4 class="mt-0">Lectura rápida</h4>
+            <div class="legend-item">
+              <span class="legend-dot legend-blue"></span>
+              <span>Jornada activa</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot legend-green"></span>
+              <span>Meta alcanzada</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot legend-amber"></span>
+              <span>Jornada corta</span>
+            </div>
+            <p-divider />
+            <div class="flex flex-column gap-2">
+              <div class="flex justify-content-between">
+                <span>Horas del mes</span>
+                <strong>{{ formatMinutes(monthSummary().totalMinutes) }}</strong>
+              </div>
+              <div class="flex justify-content-between">
+                <span>Horas extra</span>
+                <strong>{{ formatMinutes(monthSummary().extraMinutes) }}</strong>
+              </div>
+              <div class="flex justify-content-between">
+                <span>Horas faltantes</span>
+                <strong>{{ formatMinutes(monthSummary().missingMinutes) }}</strong>
+              </div>
+            </div>
+          </p-card>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="Historial">
+      <p-card styleClass="filter-card mb-3">
+        <div class="grid">
+          <div class="col-12 md:col-4">
+            <label class="filter-label">Desde</label>
+            <p-datepicker
+              inputId="history-start"
+              [ngModel]="historyStartDate()"
+              (ngModelChange)="setHistoryStartDate($event)"
+              [showIcon]="true"
+              appendTo="body"
+              dateFormat="yy-mm-dd"
+            />
+          </div>
+          <div class="col-12 md:col-4">
+            <label class="filter-label">Hasta</label>
+            <p-datepicker
+              inputId="history-end"
+              [ngModel]="historyEndDate()"
+              (ngModelChange)="setHistoryEndDate($event)"
+              [showIcon]="true"
+              appendTo="body"
+              dateFormat="yy-mm-dd"
+            />
+          </div>
+          @if (isAdmin()) {
+            <div class="col-12 md:col-4">
+              <label class="filter-label">Usuario</label>
+              <p-dropdown
+                [options]="users()"
+                optionLabel="name"
+                optionValue="id"
+                [showClear]="true"
+                appendTo="body"
+                [ngModel]="historyUserId()"
+                (ngModelChange)="historyUserId.set($event)"
+                placeholder="Todos"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="flex justify-content-end mt-3">
+          <button pButton type="button" label="Aplicar filtros" icon="pi pi-filter" (click)="loadHistory()"></button>
+        </div>
+      </p-card>
+
+      @if (historyError()) {
+        <p-message severity="error" [text]="historyError()!" styleClass="mb-3" />
+      }
+
+      <p-card>
+        <p-table [value]="historyRows()" [loading]="historyLoading()" responsiveLayout="scroll">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>ID</th>
+              <th>Fecha</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Estado</th>
+              <th>Comentarios</th>
+              <th>Duración</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              <td>{{ row.id }}</td>
+              <td>{{ row.dateLabel }}</td>
+              <td>{{ row.loginLabel ?? '--' }}</td>
+              <td>{{ row.logoutLabel ?? '--' }}</td>
+              <td><p-tag [severity]="getSessionTagSeverity(row.status)" [value]="getSessionStatusLabel(row.status)" /></td>
+              <td>{{ row.comments || 'Sin comentarios' }}</td>
+              <td>{{ row.durationLabel }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="7">No hay jornadas para el filtro seleccionado.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </p-tabPanel>
+
+    <p-tabPanel header="Reporte">
+      <p-card styleClass="filter-card mb-3">
+        <div class="grid">
+          <div class="col-12 md:col-4">
+            <label class="filter-label">Desde</label>
+            <p-datepicker
+              [ngModel]="reportStartDate()"
+              (ngModelChange)="setReportStartDate($event)"
+              [showIcon]="true"
+              appendTo="body"
+              dateFormat="yy-mm-dd"
+            />
+          </div>
+          <div class="col-12 md:col-4">
+            <label class="filter-label">Hasta</label>
+            <p-datepicker
+              [ngModel]="reportEndDate()"
+              (ngModelChange)="setReportEndDate($event)"
+              [showIcon]="true"
+              appendTo="body"
+              dateFormat="yy-mm-dd"
+            />
+          </div>
+          <div class="col-12 md:col-4 flex align-items-end justify-content-end gap-2">
+            <button pButton type="button" label="Actualizar" icon="pi pi-sync" (click)="loadReport()"></button>
+            <button pButton type="button" severity="contrast" label="CSV" icon="pi pi-download" (click)="downloadCsv()"></button>
+          </div>
+        </div>
+      </p-card>
+
+      <div class="grid mb-3">
+        @for (kpi of reportKpis(); track kpi.label) {
+          <div class="col-12 sm:col-6 xl:col-3">
+            <p-card styleClass="summary-card h-full">
+              <span class="summary-eyebrow">{{ kpi.label }}</span>
+              <h3 class="m-0">{{ kpi.value }}</h3>
+            </p-card>
+          </div>
+        }
+      </div>
+
+      @if (reportError()) {
+        <p-message severity="error" [text]="reportError()!" styleClass="mb-3" />
+      }
+
+      <p-card>
+        <p-table [value]="reportRows()" [loading]="reportLoading()" responsiveLayout="scroll">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Usuario</th>
+              <th>Total sesiones</th>
+              <th>Total duración</th>
+              <th>Horas extra</th>
+              <th>Horas faltantes</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              <td>{{ row.nombre_usuario }}</td>
+              <td>{{ row.total_sesiones }}</td>
+              <td>{{ row.total_duracion }}</td>
+              <td>{{ row.total_extra }}</td>
+              <td>{{ row.total_faltante }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5">No hay datos para ese rango.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </p-tabPanel>
+
+    @if (isAdmin()) {
+      <p-tabPanel header="Cierre manual">
+        <p-card styleClass="admin-card">
+          @if (usersError()) {
+            <p-message severity="error" [text]="usersError()!" styleClass="mb-3" />
+          }
+
+          <div class="grid">
+            <div class="col-12 md:col-5">
+              <label class="filter-label">Usuario</label>
+              <p-dropdown
+                [options]="users()"
+                optionLabel="name"
+                optionValue="id"
+                [loading]="usersLoading()"
+                appendTo="body"
+                [ngModel]="forceCloseUserId()"
+                (ngModelChange)="forceCloseUserId.set($event)"
+                placeholder="Selecciona un usuario"
+              />
+            </div>
+            <div class="col-12 md:col-7">
+              <label class="filter-label">Comentario</label>
+              <textarea
+                pInputTextarea
+                rows="5"
+                class="w-full"
+                [ngModel]="forceCloseComments()"
+                (ngModelChange)="forceCloseComments.set($event)"
+                placeholder="Cierre manual por olvido de marcación"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-content-end mt-3">
+            <button
+              pButton
+              type="button"
+              severity="danger"
+              label="Cerrar jornada"
+              icon="pi pi-lock"
+              [loading]="forceCloseLoading()"
+              (click)="confirmForceClose()"
+            ></button>
+          </div>
+        </p-card>
+      </p-tabPanel>
+    }
+  </p-tabView>
+</section>
+
+<p-dialog
+  header="Detalle del día"
+  [visible]="dayDetailVisible()"
+  [modal]="true"
+  [style]="{ width: 'min(95vw, 42rem)' }"
+  (visibleChange)="dayDetailVisible.set($event)"
+>
+  @if (selectedDaySummary()) {
+    <div class="flex flex-column gap-3">
+      <div class="flex justify-content-between align-items-center gap-2">
+        <div>
+          <h3 class="m-0">{{ selectedDaySummary()!.label }}</h3>
+          <p class="m-0 text-color-secondary">{{ formatMinutes(selectedDaySummary()!.totalMinutes) }} trabajadas</p>
+        </div>
+        <p-tag
+          [severity]="getStatusSeverity(selectedDaySummary()!.status)"
+          [value]="selectedDaySummary()!.status"
+        />
+      </div>
+
+      <div class="grid">
+        <div class="col-6">
+          <div class="metric-card">
+            <span class="metric-label">Extra</span>
+            <strong>{{ formatMinutes(selectedDaySummary()!.extraMinutes) }}</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="metric-card">
+            <span class="metric-label">Faltante</span>
+            <strong>{{ formatMinutes(selectedDaySummary()!.missingMinutes) }}</strong>
+          </div>
+        </div>
+      </div>
+
+      @if (!selectedDaySessions().length) {
+        <p-message severity="info" text="No hubo jornadas ese día." />
+      } @else {
+        <div class="timeline-list">
+          @for (session of selectedDaySessions(); track session.id) {
+            <div class="timeline-item">
+              <div class="timeline-hour">
+                <strong>{{ session.login_time | date:'hh:mm a' }}</strong>
+                <span>{{ session.logout_time ? (session.logout_time | date:'hh:mm a') : 'Activa' }}</span>
+              </div>
+              <div class="timeline-detail">
+                <p-tag [severity]="getSessionTagSeverity(session.status)" [value]="getSessionStatusLabel(session.status)" />
+                <span>{{ toDisplaySession(session).durationLabel }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</p-dialog>

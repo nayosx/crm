@@ -1,0 +1,173 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="work-sessions-page p-3 lg:p-4 surface-ground">
+  <div class="flex align-items-center gap-2 mb-3">
+    <app-back-button [fallbackRoute]="'/home'" />
+    <div>
+      <h2 class="m-0">Administración de jornadas</h2>
+      <p class="m-0 text-color-secondary">Historial global, reporte resumido y cierre manual.</p>
+    </div>
+  </div>
+
+  <p-toolbar styleClass="work-sessions-toolbar mb-3">
+    <ng-template pTemplate="start">
+      <div class="flex flex-column gap-2">
+        <span class="text-sm text-color-secondary">Vista administrativa</span>
+        <strong>Control y seguimiento</strong>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="end">
+      <div class="flex gap-2 flex-wrap justify-content-end align-items-center">
+        <button
+          pButton
+          type="button"
+          size="small"
+          severity="contrast"
+          label="Descargar CSV"
+          icon="pi pi-download"
+          (click)="downloadCsv()"
+        ></button>
+        <p-chip label="Historial global" icon="pi pi-history" />
+        <p-chip label="Reporte" icon="pi pi-chart-bar" />
+        <p-chip label="Cierre manual" icon="pi pi-lock" />
+      </div>
+    </ng-template>
+  </p-toolbar>
+
+  @if (!isAdmin()) {
+    <p-message severity="warn" text="Esta vista está pensada para perfiles administrativos." />
+  } @else {
+    <div class="grid mb-3">
+      @for (kpi of adminKpis(); track kpi.label) {
+        <div class="col-12 sm:col-6 xl:col-3">
+          <p-card styleClass="summary-card h-full">
+            <span class="summary-eyebrow">{{ kpi.label }}</span>
+            <h3 class="m-0">{{ kpi.value }}</h3>
+          </p-card>
+        </div>
+      }
+    </div>
+
+    <p-tabView [activeIndex]="activeTabIndex()" (activeIndexChange)="activeTabIndex.set($event)">
+      <p-tabPanel header="Historial">
+        <p-card styleClass="filter-card mb-3">
+          <div class="grid">
+            <div class="col-12 md:col-3">
+              <label class="filter-label">Desde</label>
+              <p-datepicker [ngModel]="historyStartDate()" (ngModelChange)="setHistoryStartDate($event)" [showIcon]="true" appendTo="body" dateFormat="yy-mm-dd" />
+            </div>
+            <div class="col-12 md:col-3">
+              <label class="filter-label">Hasta</label>
+              <p-datepicker [ngModel]="historyEndDate()" (ngModelChange)="setHistoryEndDate($event)" [showIcon]="true" appendTo="body" dateFormat="yy-mm-dd" />
+            </div>
+            <div class="col-12 md:col-3">
+              <label class="filter-label">Usuario</label>
+              <p-dropdown [options]="users()" optionLabel="name" optionValue="id" [showClear]="true" appendTo="body" [ngModel]="historyUserId()" (ngModelChange)="historyUserId.set($event)" placeholder="Todos" />
+            </div>
+            <div class="col-12 md:col-3 flex align-items-end justify-content-end gap-2">
+              <button pButton type="button" label="Aplicar filtros" icon="pi pi-filter" (click)="applyAdminFilters()"></button>
+              <button pButton type="button" severity="contrast" label="CSV" icon="pi pi-download" (click)="downloadCsv()"></button>
+            </div>
+          </div>
+        </p-card>
+
+        @if (historyError()) {
+          <p-message severity="error" [text]="historyError()!" styleClass="mb-3" />
+        }
+
+        <p-card>
+          <p-table [value]="historyRows()" [loading]="historyLoading()" responsiveLayout="scroll">
+            <ng-template pTemplate="header">
+              <tr><th>ID</th><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Comentarios</th><th>Duración</th></tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-row>
+              <tr>
+                <td>{{ row.id }}</td>
+                <td>{{ row.dateLabel }}</td>
+                <td>{{ row.loginLabel ?? '--' }}</td>
+                <td>{{ row.logoutLabel ?? '--' }}</td>
+                <td><p-tag [severity]="getSessionTagSeverity(row.status)" [value]="getSessionStatusLabel(row.status)" /></td>
+                <td>{{ row.comments || 'Sin comentarios' }}</td>
+                <td>{{ row.durationLabel }}</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr><td colspan="7">No hay jornadas para el filtro seleccionado.</td></tr>
+            </ng-template>
+          </p-table>
+        </p-card>
+      </p-tabPanel>
+
+      <p-tabPanel header="Reporte">
+        <p-card styleClass="filter-card mb-3">
+          <div class="grid">
+            <div class="col-12 md:col-4">
+              <label class="filter-label">Desde</label>
+              <p-datepicker [ngModel]="reportStartDate()" (ngModelChange)="setReportStartDate($event)" [showIcon]="true" appendTo="body" dateFormat="yy-mm-dd" />
+            </div>
+            <div class="col-12 md:col-4">
+              <label class="filter-label">Hasta</label>
+              <p-datepicker [ngModel]="reportEndDate()" (ngModelChange)="setReportEndDate($event)" [showIcon]="true" appendTo="body" dateFormat="yy-mm-dd" />
+            </div>
+            <div class="col-12 md:col-4">
+              <label class="filter-label">Usuario</label>
+              <p-dropdown [options]="users()" optionLabel="name" optionValue="id" [showClear]="true" appendTo="body" [ngModel]="reportUserId()" (ngModelChange)="reportUserId.set($event)" placeholder="Todos" />
+            </div>
+            <div class="col-12 flex justify-content-end gap-2">
+              <button pButton type="button" label="Actualizar" icon="pi pi-sync" (click)="loadReport()"></button>
+              <button pButton type="button" severity="contrast" label="CSV" icon="pi pi-download" (click)="downloadCsv()"></button>
+            </div>
+          </div>
+        </p-card>
+
+        @if (reportError()) {
+          <p-message severity="error" [text]="reportError()!" styleClass="mb-3" />
+        }
+
+        <p-card>
+          <p-table [value]="reportRows()" [loading]="reportLoading()" responsiveLayout="scroll">
+            <ng-template pTemplate="header">
+              <tr><th>Usuario</th><th>Total sesiones</th><th>Total duración</th><th>Horas extra</th><th>Horas faltantes</th></tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-row>
+              <tr>
+                <td>{{ row.nombre_usuario }}</td>
+                <td>{{ row.total_sesiones }}</td>
+                <td>{{ row.total_duracion }}</td>
+                <td>{{ row.total_extra }}</td>
+                <td>{{ row.total_faltante }}</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr><td colspan="5">No hay datos para ese rango.</td></tr>
+            </ng-template>
+          </p-table>
+        </p-card>
+      </p-tabPanel>
+
+      <p-tabPanel header="Cierre manual">
+        <p-card styleClass="admin-card">
+          @if (usersError()) {
+            <p-message severity="error" [text]="usersError()!" styleClass="mb-3" />
+          }
+
+          <div class="grid">
+            <div class="col-12 md:col-5">
+              <label class="filter-label">Usuario</label>
+              <p-dropdown [options]="users()" optionLabel="name" optionValue="id" [loading]="usersLoading()" appendTo="body" [ngModel]="forceCloseUserId()" (ngModelChange)="forceCloseUserId.set($event)" placeholder="Selecciona un usuario" />
+            </div>
+            <div class="col-12 md:col-7">
+              <label class="filter-label">Comentario</label>
+              <textarea pInputTextarea rows="5" class="w-full" [ngModel]="forceCloseComments()" (ngModelChange)="forceCloseComments.set($event)" placeholder="Cierre manual por olvido de marcación"></textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-content-end mt-3">
+            <button pButton type="button" severity="danger" label="Cerrar jornada" icon="pi pi-lock" [loading]="forceCloseLoading()" (click)="confirmForceClose()"></button>
+          </div>
+        </p-card>
+      </p-tabPanel>
+    </p-tabView>
+  }
+</section>

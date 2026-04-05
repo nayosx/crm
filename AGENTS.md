@@ -2,6 +2,8 @@
 
 ## Proyecto
 - Aplicacion CRM en Angular.
+- El proyecto usa Angular + PrimeNG + `node_modules/drstyles` como base visual y de componentes.
+- Revisar y respetar la documentacion disponible en `node_modules/drstyles` cuando se trabajen pantallas, estilos o patrones visuales.
 - Priorizar cambios pequenos, claros y alineados con la estructura existente del proyecto.
 - Antes de tocar logica compartida, revisar si impacta `sidebar`, `home`, navegacion o modulos de lavanderia.
 
@@ -21,3 +23,5 @@
 
 ## Notas permanentes
 - Agregar aqui decisiones, restricciones o acuerdos del proyecto que deban leerse siempre antes de trabajar.
+- Toda accion de UI que dispare procesos async visibles para el usuario, como llamadas API, sockets, cambios de estado o sincronizaciones, debe mostrar feedback de carga claro.
+- Si la accion impacta estado critico del negocio o puede provocar dobles clics y estados inconsistentes, usar `LoaderDialogComponent` o un patron equivalente de bloqueo temporal mientras termina la operacion.

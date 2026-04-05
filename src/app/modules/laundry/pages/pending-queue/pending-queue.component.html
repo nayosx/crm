@@ -38,7 +38,7 @@
         <div class="queue-item__top u-flex-min-w-0 u-mobile-wrap flex align-items-start justify-content-between gap-3">
           <div class="u-flex-min-w-0 u-flex-1-auto">
             <p class="m-0 text-sm text-color-secondary">#{{ item.id }}</p>
-            <h3 class="m-0 mt-2 text-lg u-text-break">{{ item.client?.name || texts.unnamedClient }}</h3>
+            <h3 class="m-0 mt-2 text-lg u-text-break">{{ item.client.name || texts.unnamedClient }}</h3>
           </div>
 
           <div class="queue-item__tags u-mobile-full flex flex-wrap gap-2">
@@ -63,7 +63,7 @@
           <div class="queue-item__meta text-sm text-color-secondary flex align-items-start gap-2">
             <i class="pi pi-id-card mt-1" aria-hidden="true"></i>
             <div class="u-flex-min-w-0 u-flex-1-auto">
-              <p class="m-0 u-text-break">{{ item.created_by_user?.name || texts.systemUser }}</p>
+              <p class="m-0 u-text-break">{{ item.created_by_user.name || texts.systemUser }}</p>
             </div>
           </div>
         </div>

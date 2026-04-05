@@ -17,6 +17,8 @@ export const ROUTE_PATH = {
     SERVICES_TASK: 'service-tasks',
 
     USERS: 'users',
+    WORK_SESSIONS: 'work-sessions',
+    WORK_SESSIONS_ADMIN: 'work-sessions-admin',
 
     LAUNDRY: 'laundry',
     LAUNDRY_COMMERCE: 'commerce'

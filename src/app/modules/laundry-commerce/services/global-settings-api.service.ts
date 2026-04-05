@@ -21,4 +21,10 @@ export class GlobalSettingsApiService {
       map((response) => Number(response?.value ?? response?.setting?.value ?? 0))
     );
   }
+
+  getWorkSessionDailyTargetTime(): import('rxjs').Observable<string> {
+    return this.http.get<any>(`${this.baseUrl}/work_session_daily_target_time`).pipe(
+      map((response) => String(response?.value ?? response?.setting?.value ?? '09:00:00'))
+    );
+  }
 }

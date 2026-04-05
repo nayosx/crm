@@ -103,6 +103,16 @@ export const routes: Routes = [
                 ]
             },
             {
+                path: ROUTE_PATH.WORK_SESSIONS,
+                loadComponent: () =>
+                    import('./modules/work-sessions/work-sessions-user.component').then(m => m.WorkSessionsUserComponent)
+            },
+            {
+                path: ROUTE_PATH.WORK_SESSIONS_ADMIN,
+                loadComponent: () =>
+                    import('./modules/work-sessions/work-sessions-admin.component').then(m => m.WorkSessionsAdminComponent)
+            },
+            {
                 path: ROUTE_PATH.LAUNDRY,
                 children: [
                     {

@@ -35,6 +35,25 @@ export const APP_NAVIGATION_TREE: AppNavigationItem[] = [
     routerLink: ['/users']
   },
   {
+    id: 'work-sessions',
+    label: 'Jornadas',
+    icon: 'pi pi-clock',
+    items: [
+      {
+        id: 'work-sessions-self',
+        label: 'Mi jornada',
+        icon: 'pi pi-user',
+        routerLink: ['/work-sessions']
+      },
+      {
+        id: 'work-sessions-admin',
+        label: 'Administrar jornadas',
+        icon: 'pi pi-briefcase',
+        routerLink: ['/work-sessions-admin']
+      }
+    ]
+  },
+  {
     id: 'laundry',
     label: 'Lavanderia',
     items: [
