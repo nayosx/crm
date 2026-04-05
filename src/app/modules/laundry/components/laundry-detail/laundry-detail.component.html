@@ -26,11 +26,11 @@
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Prendas</div>
-          <div>{{ itemCount }}</div>
+          <div>{{ getCapturedGarmentCount() }}</div>
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Extras</div>
-          <div>{{ extraCount }}</div>
+          <div>{{ getCapturedExtraCount() }}</div>
         </div>
       </div>
 
@@ -59,6 +59,7 @@
             label="Guardar delivery"
             icon="pi pi-save"
             [loading]="savingDraft"
+            [disabled]="savingDraft"
             (click)="saveDeliveryDraft()"
           ></button>
         </div>
@@ -137,19 +138,6 @@
             </div>
           </div>
 
-          <div class="col-12 md:col-4">
-            <label class="block text-sm text-color-secondary mb-2">Motivo</label>
-            <input pInputText formControlName="delivery_fee_override_reason" class="w-full" />
-            <div class="text-sm text-color-secondary mt-2">
-              @if (deliveryManualMode) {
-                Este valor se guarda en el draft comercial del servicio.
-              } @else if (getDistanceKm() > 0 && deliveryPricePerKm > 0) {
-                {{ getDistanceKm() }} km x {{ deliveryPricePerKm | currency }}
-              } @else {
-                Aun no hay calculo activo.
-              }
-            </div>
-          </div>
         </form>
       </div>
     </p-card>
@@ -159,10 +147,25 @@
     <div class="px-4 pt-4">
       <p-card class="border-round shadow-2">
         <div class="flex flex-column gap-4">
-          <div>
-            <div class="text-sm text-color-secondary">Resumen</div>
-            <h3 class="m-0">Estado actual del formulario</h3>
+          <div class="flex flex-column md:flex-row md:align-items-center md:justify-content-between gap-3">
+            <div>
+              <div class="text-sm text-color-secondary">Resumen</div>
+              <h3 class="m-0">Estado actual del formulario</h3>
+            </div>
+
+            <button
+              pButton
+              type="button"
+              icon="pi pi-copy"
+              label="Copiar WhatsApp"
+              severity="secondary"
+              (click)="copyWhatsappSummary()"
+            ></button>
           </div>
+
+          @if (copySummaryMessage) {
+            <div class="text-sm text-color-secondary">{{ copySummaryMessage }}</div>
+          }
 
           <div class="grid">
             <div class="col-12 md:col-4">
@@ -347,26 +350,6 @@
     </div>
   }
 
-  <div class="px-4 pt-4">
-    <h3 class="mb-2">Totales</h3>
-    <p-card class="border-round shadow-2">
-      <div class="grid">
-        <div class="col-12 md:col-4">
-          <div class="text-sm text-color-secondary">Prendas</div>
-          <div>{{ data.items_total ?? 0 | currency }}</div>
-        </div>
-        <div class="col-12 md:col-4">
-          <div class="text-sm text-color-secondary">Extras</div>
-          <div>{{ data.extras_total ?? 0 | currency }}</div>
-        </div>
-        <div class="col-12 md:col-4">
-          <div class="text-sm text-color-secondary">Total general</div>
-          <div class="font-semibold">{{ data.grand_total ?? 0 | currency }}</div>
-        </div>
-      </div>
-    </p-card>
-  </div>
-
   @if (transactionDetail) {
     <div class="px-4 pt-4">
       <h3 class="mb-2">Detalle de entrega</h3>
@@ -405,6 +388,8 @@
       (cancel)="onCancelNotes()">
     </app-laundry-note>
   </p-dialog>
+
+  <app-loader-dialog></app-loader-dialog>
 } @else {
   <p class="px-4 py-4">No se encontró información.</p>
 }

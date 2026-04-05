@@ -1,102 +1,106 @@
-<section class="queue-page">
-  <header class="queue-header">
-    <div class="queue-header__copy">
-      <p class="queue-kicker">{{ texts.kicker }}</p>
-      <h1 class="queue-title">
-        <app-back-button [fallbackRoute]="'/laundry'" />
-        {{ texts.title }}
-      </h1>
-      <p class="queue-subtitle">{{ texts.subtitle }}</p>
+<div class="queue-header u-flex-min-w-0 u-mobile-stack-left flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
+  <div class="queue-header__copy u-flex-min-w-0 u-mobile-full-left flex flex-column gap-2">
+    <div class="flex align-items-center gap-2">
+      <app-back-button [fallbackRoute]="'/laundry'" />
+      <i class="pi pi-sort-alt text-yellow-600 text-xl"></i>
+      <h2 class="m-0">{{ texts.title }}</h2>
     </div>
+  </div>
 
-    <div class="queue-header__status">
+  <div class="queue-header__status u-flex-min-w-0 u-mobile-wrap-start flex align-items-center gap-2">
+      <p-tag [value]="total().toString()" severity="warn"></p-tag>
+      <p-tag *ngIf="updatingStatus()" value="Actualizando servicio..." severity="contrast"></p-tag>
       <p-tag
         [value]="(connected$ | async) ? connectionTexts.connected : connectionTexts.disconnected"
         [severity]="(connected$ | async) ? 'success' : 'danger'"
       ></p-tag>
       <p-tag *ngIf="reconnecting$ | async" [value]="connectionTexts.reconnecting" severity="warn"></p-tag>
-    </div>
-  </header>
+  </div>
+</div>
 
+<div class="queue-message px-4 py-3">
   <p-message *ngIf="errorMessage()" severity="error" [text]="errorMessage() ?? ''"></p-message>
+</div>
 
-  <p-card styleClass="queue-card">
-    <ng-template pTemplate="header">
-      <div class="queue-card__header">
-        <div>
-          <p class="queue-card__eyebrow">{{ texts.totalEyebrow }}</p>
-          <h2 class="queue-card__title">{{ texts.totalTitle }}</h2>
-        </div>
+<div *ngIf="loading()" class="queue-loading-shell px-4 pb-4">
+  <div class="flex justify-content-center py-6 border-round-xl surface-card shadow-2">
+    <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+  </div>
+</div>
 
-        <p-tag [value]="total().toString()" severity="warn"></p-tag>
-      </div>
-    </ng-template>
-
-    <div *ngIf="loading()" class="queue-loading">
-      <p-progress-spinner strokeWidth="4"></p-progress-spinner>
-    </div>
-
-    <p-dataView
-      *ngIf="!loading()"
-      [value]="items()"
-      layout="list"
+<div *ngIf="!loading()" class="queue-list-shell px-4 pb-4">
+  <div class="row">
+    <div
+      *ngFor="let item of items(); trackBy: trackByLaundryId"
+      [class]="getItemColumnClass()"
     >
-      <ng-template #list let-items>
-        <div class="queue-list">
-          <article
-            *ngFor="let item of items; trackBy: trackByLaundryId"
-            class="queue-item"
-          >
-            <div class="queue-item__top">
-              <div>
-                <p class="queue-item__id">#{{ item.id }}</p>
-                <h3 class="queue-item__client">{{ item.client?.name || texts.unnamedClient }}</h3>
-              </div>
+      <article class="queue-item u-flex-min-w-0 border-1 surface-border surface-card border-round-lg px-3 py-3 shadow-1">
+        <div class="queue-item__top u-flex-min-w-0 u-mobile-wrap flex align-items-start justify-content-between gap-3">
+          <div class="u-flex-min-w-0 u-flex-1-auto">
+            <p class="m-0 text-sm text-color-secondary">#{{ item.id }}</p>
+            <h3 class="m-0 mt-2 text-lg u-text-break">{{ item.client?.name || texts.unnamedClient }}</h3>
+          </div>
 
-              <div class="queue-item__tags">
-                <p-tag
-                  [value]="getServiceLabel(item.service_label)"
-                  [severity]="getServiceSeverity(item.service_label)"
-                ></p-tag>
-                <p-tag
-                  [value]="getStatusLabel(item.status)"
-                  [severity]="getSeverity(item.status)"
-                ></p-tag>
-              </div>
-            </div>
-
-            <div class="queue-item__body">
-              <p>
-                <span>{{ texts.addressLabel }}</span>
-                {{ item.client_address?.address_text || texts.noAddress }}
-              </p>
-              <p>
-                <span>{{ texts.createdByLabel }}</span>
-                {{ item.created_by_user?.name || texts.systemUser }}
-              </p>
-              <p *ngIf="item.pending_order">
-                <span>{{ texts.orderLabel }}</span>
-                {{ item.pending_order }}
-              </p>
-            </div>
-
-            <button
-              pButton
-              type="button"
-              [label]="texts.openDetail"
-              icon="pi pi-arrow-right"
-              class="queue-item__action"
-              (click)="openDetail(item)"
-            ></button>
-          </article>
+          <div class="queue-item__tags u-mobile-full flex flex-wrap gap-2">
+            <p-tag
+              [value]="getServiceLabel(item.service_label)"
+              [severity]="getServiceSeverity(item.service_label)"
+            ></p-tag>
+            <p-tag
+              [value]="getStatusLabel(item.status)"
+              [severity]="getSeverity(item.status)"
+            ></p-tag>
+          </div>
         </div>
-      </ng-template>
 
-      <ng-template #emptymessage>
-        <div class="queue-empty">
-          {{ texts.empty }}
+        <div class="flex flex-column gap-2">
+          <div class="queue-item__meta text-sm text-color-secondary flex align-items-start gap-2">
+            <i class="pi pi-map-marker mt-1" aria-hidden="true"></i>
+            <div class="u-flex-min-w-0 u-flex-1-auto">
+              <p class="m-0 u-text-break">{{ (item.client_address?.address_text || texts.noAddress) | truncate:50 }}</p>
+            </div>
+          </div>
+          <div class="queue-item__meta text-sm text-color-secondary flex align-items-start gap-2">
+            <i class="pi pi-id-card mt-1" aria-hidden="true"></i>
+            <div class="u-flex-min-w-0 u-flex-1-auto">
+              <p class="m-0 u-text-break">{{ item.created_by_user?.name || texts.systemUser }}</p>
+            </div>
+          </div>
         </div>
-      </ng-template>
-    </p-dataView>
-  </p-card>
-</section>
+
+        <button
+          pButton
+          type="button"
+          label="Completar paso"
+          icon="pi pi-check"
+          class="queue-item__action u-mobile-full"
+          severity="warn"
+          size="small"
+          [disabled]="updatingStatus()"
+          (click)="confirmCompleteStep(item)"
+        ></button>
+
+        <button
+          pButton
+          type="button"
+          [label]="texts.openDetail"
+          icon="pi pi-arrow-right"
+          class="queue-item__action u-mobile-full"
+          severity="secondary"
+          size="small"
+          [disabled]="updatingStatus()"
+          (click)="openDetail(item)"
+        ></button>
+      </article>
+    </div>
+  </div>
+
+  <div *ngIf="items().length === 0" class="text-center py-5 text-color-secondary border-round-xl surface-card shadow-2">
+    {{ texts.empty }}
+  </div>
+</div>
+
+<app-loader-dialog></app-loader-dialog>
+<p-confirmdialog
+  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }" />

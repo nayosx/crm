@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, ViewEncapsulation, computed, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ViewChild, ViewEncapsulation, computed, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of, startWith, switchMap } from 'rxjs';
@@ -17,6 +17,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
 import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { LaundryServiceExtraType, LaundryServiceResp, LaundryUnitType } from '@shared/interfaces/laundry-service.interface';
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
@@ -187,6 +188,23 @@ function asNullableNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function asOptionalId(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value === 'string' && value.trim() === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 function asNullableText(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -233,7 +251,7 @@ function mapToOrderPayload(uiModel: UiCaptureModel): OrderPayload {
   const commercialItems = uiModel.commercial_capture_pending.map((item) => ({
     service_id: item.service_id,
     quantity: item.quantity,
-    selected_price_option_id: item.selected_price_option_id,
+    selected_price_option_id: asOptionalId(item.selected_price_option_id),
     suggested_unit_price: asNumber(item.manual_price),
     final_unit_price: asNumber(item.manual_price),
     notes: item.notes
@@ -321,13 +339,15 @@ function validateOrderPayload(uiModel: UiCaptureModel): string[] {
     TooltipModule,
     ProgressSpinnerModule,
     BackButtonComponent,
-    TruncatePipe
+    TruncatePipe,
+    LoaderDialogComponent
   ],
   templateUrl: './form-preview.component.html',
   styleUrl: './form-preview.component.scss',
   encapsulation: ViewEncapsulation.None
 })
 export class FormPreviewComponent implements OnInit, OnDestroy {
+  @ViewChild(LoaderDialogComponent) loaderDialog?: LoaderDialogComponent;
   readonly loading = signal(true);
   readonly savingDraft = signal(false);
   readonly isMobile = signal(this.checkIsMobile());
@@ -881,6 +901,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
 
     const draftPayload = this.buildPayloadPreview();
     this.savingDraft.set(true);
+    this.loaderDialog?.open('Guardando datos');
     this.draftSaveError.set(null);
     this.draftSaveMessage.set(null);
 
@@ -890,7 +911,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       confirmed_at: draftPayload.confirmed_at,
       charged_by_user_id: draftPayload.charged_by_user_id
     }).pipe(
-      finalize(() => this.savingDraft.set(false)),
+      finalize(() => {
+        this.savingDraft.set(false);
+        this.loaderDialog?.close();
+      }),
       catchError(() => {
         this.draftSaveError.set('No fue posible guardar el borrador comercial.');
         return of(null);
@@ -1094,7 +1118,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   private buildUiCaptureModel(): UiCaptureModel {
     const service = this.service();
     const paymentTypeId = service?.transaction && 'payment_type_id' in service.transaction
-      ? asNullableNumber(service.transaction.payment_type_id)
+      ? asOptionalId(service.transaction.payment_type_id)
       : null;
     const garmentItems = this.garmentTypes()
       .map((type) => {
@@ -1139,7 +1163,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         service_name: control.get('service_name')?.value,
         category_name: control.get('category_name')?.value,
         quantity: this.toNumber(control.get('quantity')?.value),
-        selected_price_option_id: this.toNullableNumber(control.get('selected_price_option_id')?.value),
+        selected_price_option_id: this.toOptionalId(control.get('selected_price_option_id')?.value),
         manual_price: this.toNullableNumber(control.get('manual_price')?.value),
         notes: this.toNullableText(control.get('notes')?.value)
       }))
@@ -1152,11 +1176,11 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       scheduled_pickup_at: service?.scheduled_pickup_at ?? null,
       status: service?.status ?? null,
       service_label: service?.service_label ?? null,
-      transaction_id: service?.transaction_id ?? null,
+      transaction_id: asOptionalId(service?.transaction_id),
       payment_type_id: paymentTypeId,
       weight_lb: this.toNullableNumber(this.form.get('weight_lb')?.value),
-      delivery_zone_id: this.deliveryZoneId(),
-      pricing_profile_id: this.toNullableNumber(this.form.get('pricing_profile_id')?.value),
+      delivery_zone_id: this.toOptionalId(this.deliveryZoneId()),
+      pricing_profile_id: this.toOptionalId(this.form.get('pricing_profile_id')?.value),
       distance_km: this.toNullableNumber(this.form.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm() || null,
       express_service_surcharge: this.getExpressSurchargeAmount() || null,
@@ -1234,6 +1258,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   private toNullableNumber(value: unknown): number | null {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private toOptionalId(value: unknown): number | null {
+    return asOptionalId(value);
   }
 
   private toNullableText(value: unknown): string | null {

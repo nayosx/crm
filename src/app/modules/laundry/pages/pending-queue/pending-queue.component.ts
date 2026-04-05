@@ -1,20 +1,23 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription, catchError, of } from 'rxjs';
+import { finalize, Subscription, catchError, of } from 'rxjs';
+import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { DataViewModule } from 'primeng/dataview';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 
 import {
   type LaundryQueueUpdatedEvent,
   type LaundrySocketTransportError
 } from '@shared/services/socket/laundry/laundry-socket.types';
 import { LaundrySocketService } from '@shared/services/socket/laundry/laundry-socket.service';
+import { LaundryService } from '@shared/services/laundry/laundry.service';
 import {
   type LaundryServiceCompact,
   type LaundryServiceStatus
@@ -33,18 +36,22 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
   selector: 'app-pending-queue',
   imports: [
     CommonModule,
-    CardModule,
-    DataViewModule,
     TagModule,
     ButtonModule,
+    ConfirmDialogModule,
     MessageModule,
     ProgressSpinnerModule,
-    BackButtonComponent
+    BackButtonComponent,
+    LoaderDialogComponent,
+    TruncatePipe
   ],
+  providers: [ConfirmationService],
   templateUrl: './pending-queue.component.html',
   styleUrl: './pending-queue.component.scss'
 })
 export class PendingQueueComponent implements OnInit, OnDestroy {
+  @ViewChild(LoaderDialogComponent) loader?: LoaderDialogComponent;
+
   private readonly subscription = new Subscription();
   readonly texts = LaundryPendingQueueTexts;
   readonly connectionTexts = LaundrySocketQueueTexts;
@@ -53,6 +60,7 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
 
   readonly items = signal<LaundryServiceCompact[]>([]);
   readonly loading = signal<boolean>(true);
+  readonly updatingStatus = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
   readonly total = computed(() => this.items().length);
 
@@ -61,7 +69,9 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly laundrySocket: LaundrySocketService,
-    private readonly router: Router
+    private readonly laundryService: LaundryService,
+    private readonly router: Router,
+    private readonly confirmationService: ConfirmationService
   ) {
     this.connected$ = this.laundrySocket.connected$;
     this.reconnecting$ = this.laundrySocket.reconnecting$;
@@ -86,6 +96,32 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
     });
   }
 
+  confirmCompleteStep(item: LaundryServiceCompact): void {
+    const clientName = item.client?.name || this.texts.unnamedClient;
+    const currentStatusLabel = this.getStatusLabel(item.status);
+    const nextStatusLabel = this.getStatusLabel('READY_FOR_DELIVERY');
+
+    this.confirmationService.confirm({
+      header: 'Confirmar cambio de estado',
+      message: `Vas a completar el paso actual del servicio #${item.id} del cliente ${clientName}. Su estado actual es ${currentStatusLabel} y pasará a ${nextStatusLabel}.`,
+      closable: true,
+      closeOnEscape: true,
+      icon: 'pi pi-check-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        outlined: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, completar',
+        severity: 'warn',
+      },
+      accept: () => {
+        this.updateCurrentStatus(item.id, 'READY_FOR_DELIVERY');
+      }
+    });
+  }
+
   getSeverity(status: LaundryServiceStatus): TagSeverity {
     const severity = getLaundryStatusSeverity(status);
     return severity === 'warning' ? 'warn' : severity;
@@ -105,6 +141,40 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
 
   trackByLaundryId(_: number, item: LaundryServiceCompact): number {
     return item.id;
+  }
+
+  getItemColumnClass(): string {
+    const total = this.total();
+
+    if (total <= 1) {
+      return 'col-12 col-md-6 col-lg-12';
+    }
+
+    if (total === 2) {
+      return 'col-12 col-md-6 col-lg-6';
+    }
+
+    return 'col-12 col-md-6 col-lg-4';
+  }
+
+  private updateCurrentStatus(id: number, status: LaundryServiceStatus): void {
+    this.updatingStatus.set(true);
+    this.errorMessage.set(null);
+    this.loader?.open('Actualizando estado del servicio...');
+
+    this.laundryService.updateStatus(id, status).pipe(
+      finalize(() => {
+        this.updatingStatus.set(false);
+        this.loader?.close();
+      })
+    ).subscribe({
+      next: () => {
+        this.items.set(this.items().filter((item) => item.id !== id));
+      },
+      error: () => {
+        this.errorMessage.set('No se pudo actualizar el estado del servicio.');
+      }
+    });
   }
 
   private bindSocketStreams(): void {

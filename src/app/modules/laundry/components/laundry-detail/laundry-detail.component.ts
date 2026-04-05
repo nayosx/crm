@@ -1,10 +1,11 @@
-import { Component, Input, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of } from 'rxjs';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { LaundryServiceExtraType, LaundryServiceLog, LaundryServiceResp, LaundryServiceStatus, LaundryUnitType } from '@shared/interfaces/laundry-service.interface';
+import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -21,19 +22,22 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list.component';
 import { LaundryNoteComponent } from '../laundry-note/laundry-note.component';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { ToBackLaundry } from '@modules/laundry/commons/route';
 import { NavigationHistoryService } from '@shared/services/navigation/navigation-history.service';
 import { DividerModule } from 'primeng/divider';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
+import { WeightPricingApiService } from '@modules/laundry-commerce/services/weight-pricing-api.service';
 import {
   LaundryServiceCommercialDraftRecord,
   LaundryServiceCommercialDraftsApiService
 } from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
-import { WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
+import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
 
 type DetailUiCaptureGarmentItem = {
   garment_type_id: number;
@@ -105,6 +109,7 @@ type DetailUiCaptureModel = {
     ToastModule,
     LaundryNoteListComponent,
     LaundryNoteComponent,
+    LoaderDialogComponent,
     DividerModule,
     InputNumberModule,
     InputTextModule,
@@ -115,13 +120,16 @@ type DetailUiCaptureModel = {
   encapsulation: ViewEncapsulation.None
 })
 export class LaundryDetailComponent implements OnInit, OnDestroy {
+  @ViewChild(LoaderDialogComponent) loaderDialog?: LoaderDialogComponent;
 
   @Input() status!:LaundryServiceStatus;
   
   data?: LaundryServiceResp;
   draft?: LaundryServiceCommercialDraftRecord | null;
   uiModel: DetailUiCaptureModel | null = null;
+  garmentTypes: LaundryGarmentType[] = [];
   extraTypes: LaundryServiceExtraType[] = [];
+  pricingProfiles: WeightPricingProfile[] = [];
   
   loading = true;
   savingDraft = false;
@@ -130,6 +138,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   draftSaveMessage: string | null = null;
   draftSaveError: string | null = null;
   draftStatusMessage: string | null = null;
+  copySummaryMessage: string | null = null;
   deliveryManualMode = false;
   statusColorMap = LaundryStatusColorMap;
   addressDialogVisible: boolean = false;
@@ -143,8 +152,10 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     private router: Router,
     private fb: FormBuilder,
     private laundryService: LaundryService,
+    private garmentTypesService: LaundryGarmentTypesService,
     private extraTypesService: LaundryServiceExtraTypesService,
     private globalSettingsApi: GlobalSettingsApiService,
+    private weightPricingApi: WeightPricingApiService,
     private commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
     private confirmationService: ConfirmationService,
     private messageService: MessageService,
@@ -164,11 +175,17 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
 
     forkJoin({
       service: this.laundryService.getById(id),
-      extraTypes: this.extraTypesService.getAll().pipe(catchError(() => of([])))
+      garmentTypes: this.garmentTypesService.getAll().pipe(catchError(() => of([]))),
+      extraTypes: this.extraTypesService.getAll().pipe(catchError(() => of([]))),
+      pricingProfiles: this.weightPricingApi.listProfiles({ page: 1, per_page: 200, is_active: true }).pipe(
+        catchError(() => of({ items: [], total: 0, page: 1, per_page: 200, pages: 0 }))
+      )
     }).subscribe({
-      next: ({ service, extraTypes }) => {
+      next: ({ service, garmentTypes, extraTypes, pricingProfiles }) => {
         this.data = service;
+        this.garmentTypes = garmentTypes.filter((item) => item.active !== false);
         this.extraTypes = extraTypes.filter((item) => item.active !== false);
+        this.pricingProfiles = pricingProfiles.items.filter((item) => item.is_active !== false);
         this.uiModel = this.buildBaseUiModel(service);
         this.bindDeliveryTracking();
         this.loadDeliveryPricePerKm();
@@ -213,6 +230,14 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
 
   get extraCount(): number {
     return this.data?.extras?.reduce((total, extra) => total + (extra.quantity ?? 0), 0) ?? 0;
+  }
+
+  getCapturedGarmentCount(): number {
+    return this.uiModel?.items?.reduce((total, item) => total + this.toNumber(item.quantity), 0) ?? this.itemCount;
+  }
+
+  getCapturedExtraCount(): number {
+    return this.uiModel?.extras?.reduce((total, extra) => total + this.toNumber(extra.quantity), 0) ?? this.extraCount;
   }
 
   get transactionDetail(): {
@@ -301,7 +326,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     return (this.uiModel?.items ?? [])
       .filter((item) => this.toNumber(item.quantity) > 0)
       .map((item) => ({
-        name: item.garment_name || `Prenda #${item.garment_type_id}`,
+        name: this.resolveGarmentName(item),
         quantity: this.toNumber(item.quantity),
         unitLabel: item.unit_type === 'PAIR' ? 'pares' : 'unidades'
       }));
@@ -375,6 +400,23 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       service_label: serviceLabel,
       quoted_service_amount: quotedServiceAmount || null
     };
+
+    this.recalculateWeightPricingIfNeeded();
+  }
+
+  async copyWhatsappSummary(): Promise<void> {
+    const text = this.buildWhatsappSummary();
+    if (!text) {
+      this.copySummaryMessage = 'No hay detalle suficiente para copiar.';
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copySummaryMessage = 'Resumen copiado para WhatsApp.';
+    } catch {
+      this.copySummaryMessage = 'No fue posible copiar el resumen.';
+    }
   }
 
   saveDeliveryDraft(): void {
@@ -384,6 +426,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     }
 
     this.savingDraft = true;
+    this.loaderDialog?.open('Guardando datos');
     this.draftSaveError = null;
     this.draftSaveMessage = null;
 
@@ -406,7 +449,10 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       confirmed_at: this.draft?.confirmed_at ?? null,
       charged_by_user_id: this.draft?.charged_by_user_id ?? null
     }).pipe(
-      finalize(() => this.savingDraft = false),
+      finalize(() => {
+        this.savingDraft = false;
+        this.loaderDialog?.close();
+      }),
       catchError(() => {
         this.draftSaveError = 'No fue posible guardar los datos de delivery.';
         return of(null);
@@ -572,6 +618,8 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
           ? this.roundCurrency(this.getBaseWeightQuotePrice() + surcharge)
           : this.getBaseWeightQuotePrice() || null
       };
+
+      this.recalculateWeightPricingIfNeeded();
     });
   }
 
@@ -601,6 +649,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       this.uiModel = this.mergeUiModelWithService(nextUiModel);
       this.patchDeliveryFormFromUiModel(this.uiModel);
       this.draftStatusMessage = `Borrador cargado #${draft.id}`;
+      this.recalculateWeightPricingIfNeeded();
 
       if (this.shouldHydrateDraftFromService(nextUiModel, this.uiModel)) {
         this.persistHydratedDraft();
@@ -682,9 +731,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       quoted_service_amount: uiModel.quoted_service_amount ?? this.uiModel?.quoted_service_amount ?? null,
       items: (uiModel.items ?? []).map((item) => ({
         ...item,
-        garment_name: item.garment_name
-          ?? this.data?.items?.find((serviceItem) => serviceItem.garment_type_id === item.garment_type_id)?.garment_type?.name
-          ?? null
+        garment_name: this.resolveGarmentName(item)
       })),
       extras: (uiModel.extras ?? []).map((extra) => ({
         ...extra,
@@ -712,6 +759,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     return {
       ...this.uiModel,
       service_label: this.deliveryForm.get('is_express')?.value ? 'EXPRESS' : 'NORMAL',
+      pricing_profile_id: this.resolvePricingProfileId(),
       distance_km: this.toNullableNumber(this.deliveryForm.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm || null,
       express_service_surcharge: this.toNumber(this.uiModel.express_service_surcharge) || null,
@@ -728,6 +776,13 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       ?? `Extra #${extra.service_extra_type_id}`;
   }
 
+  private resolveGarmentName(garment: Pick<DetailUiCaptureGarmentItem, 'garment_type_id' | 'garment_name'>): string {
+    return garment.garment_name
+      ?? this.garmentTypes.find((item) => item.id === garment.garment_type_id)?.name
+      ?? this.data?.items?.find((serviceItem) => serviceItem.garment_type_id === garment.garment_type_id)?.garment_type?.name
+      ?? `Prenda #${garment.garment_type_id}`;
+  }
+
   private syncDeliveryFeeFromDistance(): void {
     if (this.deliveryManualMode) {
       return;
@@ -742,6 +797,121 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm),
       delivery_fee_override_reason: 'Calculado por distancia'
     }, { emitEvent: false });
+  }
+
+  private resolvePricingProfileId(): number | null {
+    const draftProfileId = this.toNumber(this.uiModel?.pricing_profile_id);
+    if (draftProfileId > 0) {
+      return draftProfileId;
+    }
+
+    return this.pricingProfiles[0]?.id ?? null;
+  }
+
+  private recalculateWeightPricingIfNeeded(): void {
+    const weightLb = this.toNullableNumber(this.uiModel?.weight_lb);
+    const pricingProfileId = this.resolvePricingProfileId();
+
+    if (!this.uiModel || !weightLb || weightLb <= 0 || !pricingProfileId) {
+      return;
+    }
+
+    this.weightPricingApi.quote({
+      profile_id: pricingProfileId,
+      weight_lb: weightLb
+    }).pipe(
+      catchError(() => of(null))
+    ).subscribe((quote) => {
+      if (!quote || !this.uiModel) {
+        return;
+      }
+
+      const surcharge = this.getCurrentServiceLabel() === 'EXPRESS'
+        ? this.toNumber(this.uiModel.express_service_surcharge)
+        : 0;
+
+      this.uiModel = {
+        ...this.uiModel,
+        pricing_profile_id: pricingProfileId,
+        weight_pricing_preview: quote,
+        quoted_service_amount: this.roundCurrency(this.toNumber(quote.final_price ?? quote.recommended_price) + surcharge)
+      };
+    });
+  }
+
+  private buildWhatsappSummary(): string {
+    const clientName = this.data?.client?.name?.trim();
+    const lines: string[] = [];
+
+    if (clientName) {
+      lines.push(`${clientName}:`);
+    }
+
+    if (this.getWeightQuotePrice() > 0) {
+      lines.push(`👚 ${this.formatCurrency(this.getWeightQuotePrice())} Ropa ${this.getCapturedWeightLb()} lb`);
+    }
+
+    if (this.getDeliveryFeeFinal() > 0) {
+      lines.push(`🚗 ${this.formatCurrency(this.getDeliveryFeeFinal())} Envio`);
+    }
+
+    lines.push(`⚡️ Servicio ${this.getCurrentServiceLabel() === 'EXPRESS' ? 'express' : 'normal'} ${this.formatCurrency(this.getExpressSurchargeAmount())}`);
+
+    const additionalLines = [
+      ...this.getSelectedExtras().map((item) => `${this.getWhatsappLineEmoji(item.name)} ${this.formatCurrency(item.subtotal)} ${item.name}`),
+      ...this.getSelectedSpecialItems().map((item) => {
+        const quantityText = this.getSpecialWhatsappQuantityText(item.name, item.quantity);
+        const suffix = quantityText ? ` ${quantityText}` : '';
+        return `${this.getWhatsappLineEmoji(item.name)} ${this.formatCurrency(item.subtotal)} ${item.name}${suffix}`;
+      })
+    ];
+
+    if (additionalLines.length) {
+      lines.push('Producto adicional');
+      lines.push(...additionalLines);
+    }
+
+    lines.push(`*Total: ${this.formatCurrency(this.getGrandDraftTotal())}*`);
+
+    return lines.join('\n').trim();
+  }
+
+  private getWhatsappLineEmoji(name: string): string {
+    const normalized = name.toLowerCase();
+
+    if (normalized.includes('perla')) return '✨';
+    if (normalized.includes('remojo')) return '🔩';
+    if (normalized.includes('planch')) return '👔';
+    if (normalized.includes('envio') || normalized.includes('delivery')) return '🚗';
+    if (normalized.includes('ropa')) return '👚';
+    if (normalized.includes('express')) return '⚡️';
+
+    return this.getColorCircleEmoji(name);
+  }
+
+  private getColorCircleEmoji(seed: string): string {
+    const circles = ['🔵', '🟢', '🟠', '🟣', '🟡'];
+    const index = Math.abs(seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % circles.length;
+    return circles[index];
+  }
+
+  private getSpecialWhatsappQuantityText(name: string, quantity: number): string {
+    if (!quantity) {
+      return '';
+    }
+
+    if (name.toLowerCase().includes('planch')) {
+      return `(${quantity} prendas)`;
+    }
+
+    return quantity > 1 ? `(${quantity})` : '';
+  }
+
+  private formatCurrency(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(this.toNumber(value));
   }
 
   private shouldHydrateDraftFromService(
