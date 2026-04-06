@@ -22,9 +22,6 @@
 
 .proposal-header,
 .proposal-card__header,
-.proposal-accordion-header,
-.proposal-section__header,
-.proposal-line__title,
 .proposal-summary div {
   display: flex;
   justify-content: space-between;
@@ -103,9 +100,6 @@
   background: linear-gradient(180deg, var(--proposal-line-bg), var(--surface-ground, var(--surface-card)));
 }
 
-.proposal-line {
-  padding: 1rem;
-}
 
 .proposal-line--special {
   border-style: dashed;
@@ -273,20 +267,6 @@
   background: color-mix(in srgb, var(--surface-overlay, var(--surface-card)) 90%, transparent);
 }
 
-:host ::ng-deep .proposal-page .proposal-qty {
-  flex: 0 0 auto;
-  width: 2rem;
-  min-width: 2rem;
-  max-width: 2rem;
-}
-
-:host ::ng-deep .proposal-page .proposal-qty-input {
-  width: 2rem !important;
-  min-width: 2rem !important;
-  max-width: 2rem !important;
-  text-align: center;
-}
-
 .proposal-fab-count,
 .proposal-fab-button {
   position: fixed;
@@ -372,16 +352,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .proposal-line__row-qty {
-    display: flex;
-    align-items: center;
+  .proposal-line__row-main {
+    flex: 1 1 auto;
   }
 }
 
 @media screen and (max-width: 767px) {
-  .proposal-accordion-header,
-  .proposal-section__header,
-  .proposal-line__title,
   .proposal-summary div,
   .proposal-summary-details__header,
   .proposal-summary-item,
@@ -390,10 +366,7 @@
   }
 
   .proposal-line__row {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.5rem;
+    align-items: flex-start;
   }
 
   .proposal-line__row-main,

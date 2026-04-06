@@ -96,7 +96,6 @@
                 <div>
                   <p class="proposal-card__eyebrow">Datos generales</p>
                   <h2 class="proposal-card__title">Peso y observaciones</h2>
-                  <p class="proposal-card__caption">Aqui dejamos la captura operativa principal antes de los acordeones.</p>
                 </div>
               </div>
             </ng-template>
@@ -129,36 +128,31 @@
 
           </p-card>
 
-          <p-card>
-            <ng-template pTemplate="header">
-              <div class="proposal-card__header">
-                <div>
-                  <p class="proposal-card__eyebrow">Bloques operativos</p>
-                  <h2 class="proposal-card__title">Captura por acordeones</h2>
-                  <p class="proposal-card__caption">Persistimos prendas y extras; piezas especiales se preparan en UI para futura integracion comercial.</p>
-                </div>
+          <section class="proposal-section proposal-section--blocks">
+            <div class="proposal-card__header">
+              <div>
+                <h2 class="proposal-card__title">Bloques operativos</h2>
               </div>
-            </ng-template>
+            </div>
 
             <p-accordion [multiple]="true" [value]="mainAccordionValues()" (valueChange)="onMainAccordionValueChange($event)">
               <p-accordion-panel [value]="0">
                 <p-accordion-header>
-                  <div class="proposal-accordion-header">
-                  <div>
-                    <strong>1. Prendas por conteo</strong>
-                    <span>{{ getGarmentSelectedCount() }} items activos · {{ getGarmentQuantityCount() }} piezas</span>
+                  <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                      <strong>1. Prendas por conteo</strong>
+                      <span>{{ getGarmentSelectedCount() }} items activos · {{ getGarmentQuantityCount() }} piezas</span>
+                    </div>
+                    <strong>{{ getGarmentDraftTotal() | currency }}</strong>
                   </div>
-                  <strong>{{ getGarmentDraftTotal() | currency }}</strong>
-                </div>
                 </p-accordion-header>
                 <p-accordion-content>
                   <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
                     @for (section of garmentSections(); track section.key) {
                       <section class="proposal-section">
-                        <div class="proposal-section__header">
-                          <div>
+                        <div class="proposal-section__header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                             <h3 class="proposal-section__title">{{ getCategoryEmoji(section.key) }} {{ section.label }}</h3>
-                            <p class="proposal-section__copy">{{ section.description }}</p>
                           </div>
                           <p-tag [value]="getCategoryBadge(section) + ' piezas'" severity="info"></p-tag>
                         </div>
@@ -166,8 +160,8 @@
                         <div class="proposal-lines">
                           @for (type of section.items; track type.id) {
                             <div class="proposal-line" [formGroup]="getGarmentGroup(type.id)">
-                              <div class="proposal-line__row o-grid o-grid--cols-12 o-grid--gap-2">
-                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-9 proposal-line__row-main">
+                              <div class="proposal-line__row u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                                <div class="proposal-line__row-main u-flex-min-w-0" [style]="{'width': '11rem'}">
                                   <button
                                     type="button"
                                     class="proposal-line__name proposal-line__name-button"
@@ -175,17 +169,22 @@
                                     tooltipPosition="top"
                                     tooltipEvent="focus"
                                   >
-                                    {{ getGarmentEmoji(type) }} {{ isMobile() ? (type.name | truncate:15:'...') : type.name }}
+                                    {{ getGarmentEmoji(type) }} {{ isMobile() ? (type.name | truncate:50:'...') : type.name }}
                                   </button>
                                 </div>
 
-                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3 proposal-line__row-qty">
+                                <div class="proposal-line__row-qty u-d-flex u-d-flex-align-center">
                                   <p-inputnumber
                                     formControlName="quantity"
                                     [useGrouping]="false"
                                     [min]="0"
-                                    inputStyleClass="proposal-qty-input"
-                                    styleClass="proposal-qty"
+                                    [inputStyle]="{
+                                      width: '3rem',
+                                      minWidth: '3rem',
+                                      maxWidth: '3rem',
+                                      textAlign: 'center',
+                                      padding: '0.35rem'
+                                    }"
                                   />
                                 </div>
                               </div>
@@ -198,11 +197,11 @@
                 </p-accordion-content>
               </p-accordion-panel>
 
-              @for (section of specialSections(); track section.key) {
+                @for (section of specialSections(); track section.key) {
                 <p-accordion-panel [value]="$index + 1">
                   <p-accordion-header>
-                    <div class="proposal-accordion-header">
-                      <div>
+                    <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                         <strong>{{ $index + 2 }}. {{ section.label }}</strong>
                         <span>{{ section.items.length }} servicios · {{ getSpecialSectionBadge(section) }} piezas</span>
                       </div>
@@ -210,15 +209,10 @@
                     </div>
                   </p-accordion-header>
                   <p-accordion-content>
-                    <p class="proposal-banner">
-                      Esta seccion se captura en UI y aparece en el payload preview como <code>commercial_capture_pending</code>. No se integra todavia al <code>PUT /v2/laundry_services/:id</code>.
-                    </p>
-
                     <section class="proposal-section">
-                      <div class="proposal-section__header">
-                        <div>
+                      <div class="proposal-section__header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                           <h3 class="proposal-section__title">{{ section.label }}</h3>
-                          <p class="proposal-section__copy">{{ section.description }}</p>
                         </div>
                         <p-tag [value]="getSpecialSectionBadge(section) + ' piezas'" severity="contrast"></p-tag>
                       </div>
@@ -235,15 +229,15 @@
                             <span class="proposal-service-chip__title">{{ getSpecialServiceEmoji(service) }} {{ service.name }}</span>
                             <span class="proposal-service-chip__meta">{{ getSuggestedPriceLabel(service) }}</span>
                           </button>
-                        }
-                      </div>
+                          }
+                        </div>
 
                       @if (getSpecialItemsBySection(section).length) {
                         <div class="proposal-lines">
                           @for (special of getSpecialItemsBySection(section); track special.index) {
                             <div class="proposal-line proposal-line--special" [formGroup]="special.group">
-                              <div class="proposal-line__title">
-                                <div>
+                              <div class="proposal-line__title u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                                   <div class="proposal-line__name">{{ getSpecialServiceEmoji(special.service!) }} {{ special.group.get('service_name')?.value }}</div>
                                   <div class="proposal-line__meta">{{ getSpecialItemPriceLabel(special.group, special.service) }}</div>
                                 </div>
@@ -282,8 +276,8 @@
 
               <p-accordion-panel [value]="specialSections().length + 1">
                 <p-accordion-header>
-                  <div class="proposal-accordion-header">
-                    <div>
+                  <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                       <strong>{{ specialSections().length + 2 }}. Extras</strong>
                       <span>{{ getExtrasSelectedCount() }} extras activos · {{ getExtrasBadge() }} aplicaciones</span>
                     </div>
@@ -294,8 +288,8 @@
                   <div class="proposal-lines">
                     @for (extra of extraTypes(); track extra.id) {
                       <div class="proposal-line" [formGroup]="getExtraGroup(extra.id)">
-                        <div class="proposal-line__title">
-                          <div>
+                        <div class="proposal-line__title u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                             <div class="proposal-line__name">{{ getExtraEmoji(extra) }} {{ extra.name }}</div>
                           </div>
                         </div>
@@ -311,7 +305,7 @@
                 </p-accordion-content>
               </p-accordion-panel>
             </p-accordion>
-          </p-card>
+          </section>
         </form>
       </section>
 
