@@ -27,10 +27,14 @@ import { LaundryCommercialService } from '@modules/laundry-commerce/interfaces/s
 import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
 import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import {
-  LaundryServiceCommercialDraftsApiService
+  LaundryServiceCommercialDraftRecord,
+  LaundryServiceCommercialDraftsApiService,
+  LaundryServiceCommercialOrderRecord
 } from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
 import { ServicesApiService } from '@modules/laundry-commerce/services/services-api.service';
 import { WeightPricingApiService } from '@modules/laundry-commerce/services/weight-pricing-api.service';
+import { PaymentType } from '@shared/interfaces/transaction.interface';
+import { PaymentTypeService } from '@shared/services/transaction/payment-type.service';
 
 type GarmentCategory = NonNullable<LaundryGarmentType['category']>;
 
@@ -177,6 +181,7 @@ type PersistedCommercialDraftRecord = {
   confirmed_at: string | null;
   charged_by_user_id: number | null;
   quoted_service_amount?: number | string | null;
+  order?: LaundryServiceCommercialOrderRecord | null;
 };
 
 function asNumber(value: unknown): number {
@@ -322,6 +327,47 @@ function validateOrderPayload(uiModel: UiCaptureModel): string[] {
   return errors;
 }
 
+function resolveOrderTotal(order: LaundryServiceCommercialOrderRecord | null | undefined): number | null {
+  if (!order) {
+    return null;
+  }
+
+  const candidates = [
+    order['grand_total'],
+    order['final_amount'],
+    order['total_amount'],
+    order['total']
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = asNullableNumber(candidate);
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function calculateOrderPayloadTotal(orderPayload: OrderPayload | null | undefined): number {
+  if (!orderPayload) {
+    return 0;
+  }
+
+  const itemsTotal = orderPayload.items.reduce(
+    (total, item) => total + (asNumber(item.quantity) * asNumber(item.final_unit_price)),
+    0
+  );
+  const extrasTotal = orderPayload.extras.reduce(
+    (total, extra) => total + (asNumber(extra.quantity) * asNumber(extra.final_unit_price)),
+    0
+  );
+  const deliveryTotal = asNumber(orderPayload.delivery_fee_final);
+  const discountTotal = asNumber(orderPayload.global_discount_amount);
+
+  return Math.max(0, Math.round(((itemsTotal + extrasTotal + deliveryTotal - discountTotal) + Number.EPSILON) * 100) / 100);
+}
+
 @Component({
   selector: 'app-laundry-form-preview',
   standalone: true,
@@ -351,6 +397,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   @ViewChild(LoaderDialogComponent) loaderDialog?: LoaderDialogComponent;
   readonly loading = signal(true);
   readonly savingDraft = signal(false);
+  readonly confirmingDraft = signal(false);
   readonly isMobile = signal(this.checkIsMobile());
   readonly payloadDialogVisible = signal(false);
   readonly specialPriceDialogVisible = signal(false);
@@ -361,6 +408,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly garmentTypes = signal<LaundryGarmentType[]>([]);
   readonly extraTypes = signal<LaundryServiceExtraType[]>([]);
   readonly commercialServices = signal<LaundryCommercialService[]>([]);
+  readonly paymentTypes = signal<PaymentType[]>([]);
   readonly pricingProfiles = signal<WeightPricingProfile[]>([]);
   readonly garmentSections = signal<GarmentSection[]>([]);
   readonly specialSections = signal<SpecialSection[]>([]);
@@ -374,8 +422,12 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   readonly deliveryPricePerKm = signal(0);
   readonly expressServiceSurcharge = signal(0);
   readonly savedDraftId = signal<number | null>(null);
+  readonly currentDraft = signal<LaundryServiceCommercialDraftRecord | null>(null);
+  readonly confirmedOrder = signal<LaundryServiceCommercialOrderRecord | null>(null);
   readonly draftSaveMessage = signal<string | null>(null);
   readonly draftSaveError = signal<string | null>(null);
+  readonly draftConfirmMessage = signal<string | null>(null);
+  readonly draftConfirmError = signal<string | null>(null);
   readonly copyDetailMessage = signal<string | null>(null);
   private formSelectionSubscription?: Subscription;
   private weightQuoteSubscription?: Subscription;
@@ -442,6 +494,9 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   ];
 
   readonly payloadPreview = computed(() => this.buildPayloadPreview());
+  readonly currentOrderPayload = computed(() => this.resolveCurrentOrderPayload());
+  readonly currentOrderTotal = computed(() => this.resolveCurrentOrderTotal());
+  readonly isDraftConfirmed = computed(() => Boolean(this.currentDraft()?.is_confirmed));
   readonly selectedItemsCount = signal(0);
   readonly weightBasedService = computed(() => this.commercialServices().find((item) => item.service_type === 'WEIGHT') ?? null);
   private previousSelectedItemsCount = 0;
@@ -456,6 +511,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     private readonly laundryService: LaundryService,
     private readonly garmentTypesService: LaundryGarmentTypesService,
     private readonly extraTypesService: LaundryServiceExtraTypesService,
+    private readonly paymentTypeService: PaymentTypeService,
     private readonly globalSettingsApi: GlobalSettingsApiService,
     private readonly commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
     private readonly servicesApi: ServicesApiService,
@@ -464,6 +520,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     this.form = this.fb.group({
       weight_lb: [null as number | null],
       pricing_profile_id: [null as number | null],
+      payment_type_id: [null as number | null],
       distance_km: [null as number | null],
       delivery_fee_suggested: [0],
       delivery_fee_final: [0],
@@ -491,10 +548,11 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       service: this.laundryService.getById(id),
       garmentTypes: this.garmentTypesService.getAll(),
       extraTypes: this.extraTypesService.getAll(),
+      paymentTypes: this.paymentTypeService.getPaymentTypes().pipe(catchError(() => of([]))),
       commercialServices: this.servicesApi.list({ is_active: true }),
       pricingProfiles: this.weightPricingApi.listProfiles({ page: 1, per_page: 200, is_active: true })
     }).subscribe({
-      next: ({ service, garmentTypes, extraTypes, commercialServices, pricingProfiles }) => {
+      next: ({ service, garmentTypes, extraTypes, paymentTypes, commercialServices, pricingProfiles }) => {
         const activeGarmentTypes = garmentTypes.filter((item) => item.active !== false);
         const activeExtraTypes = extraTypes.filter((item) => item.active !== false);
         const activeCommercialServices = commercialServices.items.filter((item) => item.is_active !== false);
@@ -503,6 +561,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         this.service.set(service);
         this.garmentTypes.set(activeGarmentTypes);
         this.extraTypes.set(activeExtraTypes);
+        this.paymentTypes.set(paymentTypes);
         this.commercialServices.set(activeCommercialServices);
         this.pricingProfiles.set(activeProfiles);
         this.buildForm(service, activeGarmentTypes, activeExtraTypes);
@@ -558,6 +617,13 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     return this.pricingProfiles().map((profile) => ({
       label: profile.name,
       value: profile.id
+    }));
+  }
+
+  get paymentTypeOptions(): Array<{ label: string; value: number }> {
+    return this.paymentTypes().map((paymentType) => ({
+      label: paymentType.name,
+      value: paymentType.id
     }));
   }
 
@@ -881,10 +947,69 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
   }
 
   getGrandDraftTotal(): number {
+    const confirmedOrderTotal = this.currentOrderTotal();
+    if (this.isDraftConfirmed() && confirmedOrderTotal > 0) {
+      return confirmedOrderTotal;
+    }
+
     return this.getGarmentDraftTotal()
       + this.getSpecialItemsDraftTotal()
       + this.getExtrasSubtotal()
       + this.getWeightQuotePrice();
+  }
+
+  getCommercialStatusLabel(): string {
+    return this.isDraftConfirmed() ? 'Confirmado' : 'En edicion';
+  }
+
+  getDisplayedPaymentTypeName(): string {
+    return this.confirmedOrder()?.payment_type_name
+      ?? this.paymentTypes().find((paymentType) => paymentType.id === this.toOptionalId(this.form.get('payment_type_id')?.value))?.name
+      ?? 'Sin definir';
+  }
+
+  canConfirmDraft(): boolean {
+    return !this.loading()
+      && !this.savingDraft()
+      && !this.confirmingDraft()
+      && !this.isDraftConfirmed()
+      && !this.payloadPreview().payload.validations.order.length;
+  }
+
+  confirmDraft(): void {
+    const laundryServiceId = this.service()?.id ?? null;
+    if (!laundryServiceId) {
+      this.draftConfirmError.set('No existe laundry_service_id para confirmar el borrador.');
+      return;
+    }
+
+    this.confirmingDraft.set(true);
+    this.loaderDialog?.open('Confirmando propuesta comercial');
+    this.draftConfirmError.set(null);
+    this.draftConfirmMessage.set(null);
+
+    this.commercialDraftsApi.confirmByService(laundryServiceId).pipe(
+      finalize(() => {
+        this.confirmingDraft.set(false);
+        this.loaderDialog?.close();
+      }),
+      catchError(() => {
+        this.draftConfirmError.set('No fue posible confirmar el borrador comercial.');
+        return of(null);
+      })
+    ).subscribe((response) => {
+      if (!response) {
+        return;
+      }
+
+      this.currentDraft.set(response.draft);
+      this.confirmedOrder.set(response.order ?? response.draft.order ?? null);
+      this.savedDraftId.set(response.draft.id);
+      this.applyDraftToForm(response.draft as PersistedCommercialDraftRecord);
+      this.draftConfirmMessage.set(response.order?.id
+        ? `Borrador confirmado. Orden #${response.order.id} creada.`
+        : 'Borrador confirmado correctamente.');
+    });
   }
 
   getPickupDateText(): string {
@@ -945,6 +1070,8 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
       }
 
       this.savedDraftId.set(draft.id);
+      this.currentDraft.set(draft);
+      this.confirmedOrder.set(draft.order ?? this.confirmedOrder());
       this.draftSaveMessage.set(`Borrador guardado #${draft.id}`);
     });
   }
@@ -985,8 +1112,13 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     garmentTypes: LaundryGarmentType[],
     extraTypes: LaundryServiceExtraType[]
   ): void {
+    const paymentTypeId = service.transaction && 'payment_type_id' in service.transaction
+      ? asOptionalId(service.transaction.payment_type_id)
+      : null;
+
     this.form.patchValue({
       weight_lb: service.weight_lb ?? null,
+      payment_type_id: paymentTypeId,
       distance_km: null,
       delivery_fee_suggested: 0,
       delivery_fee_final: 0,
@@ -1137,9 +1269,10 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
 
   private buildUiCaptureModel(): UiCaptureModel {
     const service = this.service();
-    const paymentTypeId = service?.transaction && 'payment_type_id' in service.transaction
+    const servicePaymentTypeId = service?.transaction && 'payment_type_id' in service.transaction
       ? asOptionalId(service.transaction.payment_type_id)
       : null;
+    const paymentTypeId = this.toOptionalId(this.form.get('payment_type_id')?.value) ?? servicePaymentTypeId;
     const garmentItems = this.garmentTypes()
       .map((type) => {
         const group = this.getGarmentGroup(type.id);
@@ -1234,9 +1367,9 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
         }
       },
       laundry_service_id: uiModel.id ?? null,
-      is_confirmed: false,
-      confirmed_at: null,
-      charged_by_user_id: null
+      is_confirmed: this.currentDraft()?.is_confirmed ?? false,
+      confirmed_at: this.currentDraft()?.confirmed_at ?? null,
+      charged_by_user_id: this.currentDraft()?.charged_by_user_id ?? null
     };
   }
 
@@ -1415,10 +1548,14 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     ).subscribe((response) => {
       const draft = response as PersistedCommercialDraftRecord | null;
       if (!draft) {
+        this.currentDraft.set(null);
+        this.confirmedOrder.set(null);
         return;
       }
 
       this.savedDraftId.set(draft.id);
+      this.currentDraft.set(draft);
+      this.confirmedOrder.set(draft.order ?? null);
       this.applyDraftToForm(draft);
     });
   }
@@ -1440,6 +1577,7 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     this.form.patchValue({
       weight_lb: uiModel.weight_lb ?? this.service()?.weight_lb ?? null,
       pricing_profile_id: uiModel.pricing_profile_id,
+      payment_type_id: uiModel.payment_type_id ?? this.resolvePaymentTypeIdFromOrderPayload(payload['order_payload'] as OrderPayload | null | undefined) ?? this.form.get('payment_type_id')?.value,
       distance_km: uiModel.distance_km,
       delivery_fee_suggested: uiModel.delivery_fee_suggested ?? 0,
       delivery_fee_final: uiModel.delivery_fee_final ?? 0,
@@ -1496,6 +1634,36 @@ export class FormPreviewComponent implements OnInit, OnDestroy {
     });
 
     this.refreshSelectedItemsState();
+  }
+
+  private resolveCurrentOrderPayload(): OrderPayload | null {
+    const draft = this.currentDraft();
+    if (!draft || !draft.payload || typeof draft.payload !== 'object') {
+      return null;
+    }
+
+    const orderPayload = 'order_payload' in draft.payload
+      ? (draft.payload['order_payload'] as OrderPayload | null | undefined)
+      : null;
+
+    return orderPayload ?? null;
+  }
+
+  private resolveCurrentOrderTotal(): number {
+    const orderTotal = resolveOrderTotal(this.confirmedOrder());
+    if (orderTotal != null) {
+      return orderTotal;
+    }
+
+    if (this.isDraftConfirmed()) {
+      return calculateOrderPayloadTotal(this.currentOrderPayload());
+    }
+
+    return 0;
+  }
+
+  private resolvePaymentTypeIdFromOrderPayload(orderPayload: OrderPayload | null | undefined): number | null {
+    return asOptionalId(orderPayload?.payment_type_id);
   }
 
   private resolveDraftQuotedServiceAmount(

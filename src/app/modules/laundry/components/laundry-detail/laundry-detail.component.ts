@@ -1,8 +1,8 @@
 import { Component, Input, OnDestroy, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of } from 'rxjs';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Subscription, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { LaundryServiceExtraType, LaundryServiceLog, LaundryServiceResp, LaundryServiceStatus, LaundryUnitType } from '@shared/interfaces/laundry-service.interface';
 import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
@@ -29,15 +29,19 @@ import { DividerModule } from 'primeng/divider';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { SelectModule } from 'primeng/select';
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import { WeightPricingApiService } from '@modules/laundry-commerce/services/weight-pricing-api.service';
 import {
   LaundryServiceCommercialDraftRecord,
-  LaundryServiceCommercialDraftsApiService
+  LaundryServiceCommercialDraftsApiService,
+  LaundryServiceCommercialOrderRecord
 } from '@modules/laundry-commerce/services/laundry-service-commercial-drafts-api.service';
 import { WeightPricingProfile, WeightPricingQuoteResponse } from '@modules/laundry-commerce/interfaces/weight-pricing.interface';
+import { PaymentType } from '@shared/interfaces/transaction.interface';
+import { PaymentTypeService } from '@shared/services/transaction/payment-type.service';
 
 type DetailUiCaptureGarmentItem = {
   garment_type_id: number;
@@ -63,6 +67,13 @@ type DetailUiCaptureCommercialItem = {
   quantity: number;
   selected_price_option_id: number | null;
   manual_price: number | null;
+  discount_type?: 'PERCENT' | 'TARGET_FINAL_PRICE' | null;
+  discount_value?: number | null;
+  discount_amount?: number | null;
+  base_unit_price?: number | null;
+  final_unit_price?: number | null;
+  manual_price_override_reason?: string | null;
+  discount_reason?: string | null;
   notes: string | null;
 };
 
@@ -82,11 +93,20 @@ type DetailUiCaptureModel = {
   delivery_price_per_km: number | null;
   express_service_surcharge: number | null;
   quoted_service_amount: number | null;
+  weight_discount_type?: 'PERCENT' | 'TARGET_FINAL_PRICE' | null;
+  weight_discount_value?: number | null;
+  weight_discount_amount?: number | null;
+  weight_final_price_after_discount?: number | null;
+  weight_discount_reason?: string | null;
   delivery_fee_suggested: number | null;
   delivery_fee_final: number | null;
   delivery_fee_override_reason: string | null;
+  global_discount_type?: 'PERCENT' | 'TARGET_FINAL_TOTAL' | null;
+  global_discount_value?: number | null;
   global_discount_amount: number;
   global_discount_reason: string | null;
+  gross_total_before_global_discount?: number | null;
+  net_total_after_global_discount?: number | null;
   notes: string | null;
   items: DetailUiCaptureGarmentItem[];
   extras: DetailUiCaptureExtraItem[];
@@ -94,10 +114,47 @@ type DetailUiCaptureModel = {
   commercial_capture_pending: DetailUiCaptureCommercialItem[];
 };
 
+function asNullableNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveOrderTotal(order: LaundryServiceCommercialOrderRecord | null | undefined): number | null {
+  if (!order) {
+    return null;
+  }
+
+  const candidates = [
+    order['grand_total'],
+    order['final_amount'],
+    order['total_amount'],
+    order['total']
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = asNullableNumber(candidate);
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+type DiscountComputation = {
+  baseAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+};
+
+type DiscountType = 'PERCENT' | 'TARGET_FINAL_PRICE';
+type GlobalDiscountType = 'PERCENT' | 'TARGET_FINAL_TOTAL';
+
 @Component({
   selector: 'app-laundry-detail',
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     CardModule,
     TagModule,
@@ -113,7 +170,8 @@ type DetailUiCaptureModel = {
     DividerModule,
     InputNumberModule,
     InputTextModule,
-    ToggleSwitchModule
+    ToggleSwitchModule,
+    SelectModule
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './laundry-detail.component.html',
@@ -126,10 +184,12 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   
   data?: LaundryServiceResp;
   draft?: LaundryServiceCommercialDraftRecord | null;
+  confirmedOrder: LaundryServiceCommercialOrderRecord | null = null;
   uiModel: DetailUiCaptureModel | null = null;
   garmentTypes: LaundryGarmentType[] = [];
   extraTypes: LaundryServiceExtraType[] = [];
   pricingProfiles: WeightPricingProfile[] = [];
+  paymentTypes: PaymentType[] = [];
   
   loading = true;
   savingDraft = false;
@@ -137,11 +197,15 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   deliveryPricePerKmError: string | null = null;
   draftSaveMessage: string | null = null;
   draftSaveError: string | null = null;
+  draftConfirmMessage: string | null = null;
+  draftConfirmError: string | null = null;
   draftStatusMessage: string | null = null;
   copySummaryMessage: string | null = null;
   deliveryManualMode = false;
+  confirmingDraft = false;
   statusColorMap = LaundryStatusColorMap;
   addressDialogVisible: boolean = false;
+  discountDialogVisible = false;
   notesDialogVisible = false;
   latestNote: LaundryServiceLog | null = null;
   deliveryForm: FormGroup;
@@ -156,6 +220,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     private laundryService: LaundryService,
     private garmentTypesService: LaundryGarmentTypesService,
     private extraTypesService: LaundryServiceExtraTypesService,
+    private paymentTypeService: PaymentTypeService,
     private globalSettingsApi: GlobalSettingsApiService,
     private weightPricingApi: WeightPricingApiService,
     private commercialDraftsApi: LaundryServiceCommercialDraftsApiService,
@@ -165,6 +230,14 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   ) {
     this.deliveryForm = this.fb.group({
       is_express: [false],
+      pricing_profile_id: [null as number | null],
+      payment_type_id: [null as number | null],
+      global_discount_type: [null as GlobalDiscountType | null],
+      global_discount_value: [null as number | null],
+      global_discount_reason: [''],
+      weight_discount_type: [null as DiscountType | null],
+      weight_discount_value: [null as number | null],
+      weight_discount_reason: [''],
       distance_km: [null as number | null],
       delivery_fee_final: [0],
       delivery_fee_override_reason: ['']
@@ -179,14 +252,16 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       service: this.laundryService.getById(id),
       garmentTypes: this.garmentTypesService.getAll().pipe(catchError(() => of([]))),
       extraTypes: this.extraTypesService.getAll().pipe(catchError(() => of([]))),
+      paymentTypes: this.paymentTypeService.getPaymentTypes().pipe(catchError(() => of([]))),
       pricingProfiles: this.weightPricingApi.listProfiles({ page: 1, per_page: 200, is_active: true }).pipe(
         catchError(() => of({ items: [], total: 0, page: 1, per_page: 200, pages: 0 }))
       )
     }).subscribe({
-      next: ({ service, garmentTypes, extraTypes, pricingProfiles }) => {
+      next: ({ service, garmentTypes, extraTypes, paymentTypes, pricingProfiles }) => {
         this.data = service;
         this.garmentTypes = garmentTypes.filter((item) => item.active !== false);
         this.extraTypes = extraTypes.filter((item) => item.active !== false);
+        this.paymentTypes = paymentTypes;
         this.pricingProfiles = pricingProfiles.items.filter((item) => item.is_active !== false);
         this.uiModel = this.buildBaseUiModel(service);
         this.bindDeliveryTracking();
@@ -261,6 +336,14 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     return this.toNumber(this.uiModel?.weight_lb ?? this.data?.weight_lb);
   }
 
+  isCommercialDraftConfirmed(): boolean {
+    return Boolean(this.draft?.is_confirmed);
+  }
+
+  getCommercialStatusLabel(): string {
+    return this.isCommercialDraftConfirmed() ? 'Confirmado' : 'En edicion';
+  }
+
   getCurrentServiceLabel(): LaundryServiceResp['service_label'] {
     return this.uiModel?.service_label ?? this.data?.service_label ?? 'NORMAL';
   }
@@ -278,11 +361,21 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   getWeightQuotePrice(): number {
+    const discountedAmount = this.toNullableNumber(this.uiModel?.weight_final_price_after_discount);
+    if (discountedAmount != null && discountedAmount >= 0) {
+      return discountedAmount;
+    }
+
     return this.getQuotedServiceAmount();
   }
 
   getBaseWeightQuotePrice(): number {
-    return this.toNumber(this.uiModel?.weight_pricing_preview?.final_price ?? this.uiModel?.weight_pricing_preview?.recommended_price);
+    return this.toNumber(
+      this.uiModel?.weight_pricing_preview?.final_price
+      ?? this.uiModel?.quoted_service_amount
+      ?? this.draft?.quoted_service_amount
+      ?? this.uiModel?.weight_pricing_preview?.recommended_price
+    );
   }
 
   getExpressSurchargeAmount(): number {
@@ -298,6 +391,27 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     }
 
     return this.roundCurrency(this.getBaseWeightQuotePrice() + this.getExpressSurchargeAmount());
+  }
+
+  hasWeightDiscount(): boolean {
+    return this.toNumber(this.uiModel?.weight_discount_amount) > 0;
+  }
+
+  getWeightDiscountAmount(): number {
+    return this.toNumber(this.uiModel?.weight_discount_amount);
+  }
+
+  getWeightDiscountLabel(): string {
+    const type = this.deliveryForm.get('weight_discount_type')?.value as DiscountType | null;
+    const value = this.toNullableNumber(this.deliveryForm.get('weight_discount_value')?.value);
+
+    if (!type || value == null) {
+      return 'Sin descuento';
+    }
+
+    return type === 'PERCENT'
+      ? `${this.roundCurrency(value)}%`
+      : this.formatCurrency(value);
   }
 
   getGarmentQuantityCount(): number {
@@ -319,10 +433,117 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   getGrandDraftTotal(): number {
-    return this.getWeightQuotePrice()
-      + this.getDeliveryFeeFinal()
+    const confirmedOrderTotal = resolveOrderTotal(this.confirmedOrder);
+    if (this.isCommercialDraftConfirmed() && confirmedOrderTotal != null) {
+      return confirmedOrderTotal;
+    }
+
+    const netTotal = this.toNullableNumber(this.uiModel?.net_total_after_global_discount);
+    if (netTotal != null) {
+      return netTotal;
+    }
+
+    return this.getGrossDraftTotal();
+  }
+
+  getGrossDraftTotal(): number {
+    return this.roundCurrency(
+      this.getServicesSubtotal()
       + this.getExtrasSubtotal()
-      + this.getSpecialItemsDraftTotal();
+      + this.getDeliveryFeeFinal()
+      + this.getExpressSurchargeAmount()
+    );
+  }
+
+  getServicesSubtotal(): number {
+    return this.roundCurrency(this.getWeightCommercialSubtotal() + this.getSpecialItemsDraftTotal());
+  }
+
+  getWeightCommercialSubtotal(): number {
+    return this.roundCurrency(this.getBaseWeightCommercialAmount() + this.getWeightCommercialSurchargeAmount());
+  }
+
+  getBaseWeightCommercialAmount(): number {
+    return this.getWeightQuotePrice();
+  }
+
+  getWeightCommercialSurchargeAmount(): number {
+    const quotedServiceAmount = this.getQuotedServiceAmount();
+    const weightPrice = this.getWeightQuotePrice();
+    const expressSurcharge = this.getExpressSurchargeAmount();
+
+    if (quotedServiceAmount > weightPrice && expressSurcharge > 0) {
+      return 0;
+    }
+
+    return expressSurcharge;
+  }
+
+  hasGlobalDiscount(): boolean {
+    return this.toNumber(this.uiModel?.global_discount_amount) > 0;
+  }
+
+  getGlobalDiscountAmount(): number {
+    return this.toNumber(this.uiModel?.global_discount_amount);
+  }
+
+  getGlobalDiscountLabel(): string {
+    const type = this.deliveryForm.get('global_discount_type')?.value as GlobalDiscountType | null;
+    const value = this.toNullableNumber(this.deliveryForm.get('global_discount_value')?.value);
+
+    if (!type || value == null) {
+      return 'Sin descuento global';
+    }
+
+    return type === 'PERCENT'
+      ? `${this.roundCurrency(value)}%`
+      : this.formatCurrency(value);
+  }
+
+  getCommercialPaymentTypeName(): string {
+    return this.confirmedOrder?.payment_type_name
+      ?? this.paymentTypes.find((item) => item.id === this.toNullableNumber(this.deliveryForm.get('payment_type_id')?.value))?.name
+      ?? this.transactionDetail?.payment_type_name
+      ?? 'Sin definir';
+  }
+
+  get pricingProfileOptions(): Array<{ label: string; value: number }> {
+    return this.pricingProfiles.map((profile) => ({
+      label: profile.name,
+      value: profile.id
+    }));
+  }
+
+  get paymentTypeOptions(): Array<{ label: string; value: number }> {
+    return this.paymentTypes.map((paymentType) => ({
+      label: paymentType.name,
+      value: paymentType.id
+    }));
+  }
+
+  get discountTypeOptions(): Array<{ label: string; value: DiscountType }> {
+    return [
+      { label: 'Por porcentaje', value: 'PERCENT' },
+      { label: 'Por precio final', value: 'TARGET_FINAL_PRICE' }
+    ];
+  }
+
+  get globalDiscountTypeOptions(): Array<{ label: string; value: GlobalDiscountType }> {
+    return [
+      { label: 'Por porcentaje', value: 'PERCENT' },
+      { label: 'Por precio final', value: 'TARGET_FINAL_TOTAL' }
+    ];
+  }
+
+  canConfirmCommercialDraft(): boolean {
+    return !this.loading
+      && !this.savingDraft
+      && !this.confirmingDraft
+      && !this.isCommercialDraftConfirmed()
+      && Boolean(this.data?.id)
+      && Boolean(this.deliveryForm.get('payment_type_id')?.value)
+      && Boolean(this.resolvePricingProfileId())
+      && this.getGrossDraftTotal() > 0;
   }
 
   getSelectedGarments(): Array<{ name: string; quantity: number; unitLabel: string }> {
@@ -352,10 +573,139 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       .map((item) => ({
         name: item.service_name || `Servicio #${item.service_id}`,
         quantity: this.toNumber(item.quantity),
-        unitPrice: this.toNumber(item.manual_price),
-        subtotal: this.toNumber(item.quantity) * this.toNumber(item.manual_price),
+        unitPrice: this.getSpecialItemFinalUnitPrice(item),
+        subtotal: this.toNumber(item.quantity) * this.getSpecialItemFinalUnitPrice(item),
         categoryName: item.category_name
       }));
+  }
+
+  getSpecialItemBaseUnitPrice(item: DetailUiCaptureCommercialItem): number {
+    const explicitBase = this.toNullableNumber(item.base_unit_price);
+    if (explicitBase != null) {
+      return explicitBase;
+    }
+
+    const manualPrice = this.toNullableNumber(item.manual_price);
+    if (manualPrice != null) {
+      return manualPrice;
+    }
+
+    return 0;
+  }
+
+  getSpecialItemFinalUnitPrice(item: DetailUiCaptureCommercialItem): number {
+    const finalUnitPrice = this.toNullableNumber(item.final_unit_price);
+    if (finalUnitPrice != null) {
+      return finalUnitPrice;
+    }
+
+    return this.toNumber(item.manual_price);
+  }
+
+  hasSpecialItemDiscount(item: DetailUiCaptureCommercialItem): boolean {
+    return this.toNumber(item.discount_amount) > 0;
+  }
+
+  getSpecialItemDiscountLabel(item: DetailUiCaptureCommercialItem): string {
+    const type = item.discount_type;
+    const value = this.toNullableNumber(item.discount_value);
+
+    if (!type || value == null) {
+      return 'Sin descuento';
+    }
+
+    return type === 'PERCENT'
+      ? `${this.roundCurrency(value)}%`
+      : this.formatCurrency(value);
+  }
+
+  onWeightDiscountTypeChange(value: DiscountType | null): void {
+    this.updateWeightDiscount({
+      weight_discount_type: value,
+      weight_discount_value: null
+    });
+    this.deliveryForm.patchValue({ weight_discount_value: null }, { emitEvent: false });
+  }
+
+  onWeightDiscountValueInput(value: unknown): void {
+    this.updateWeightDiscount({
+      weight_discount_value: this.toNullableNumber(value)
+    });
+  }
+
+  onWeightDiscountReasonInput(value: string): void {
+    this.updateWeightDiscount({
+      weight_discount_reason: this.toNullableText(value)
+    });
+  }
+
+  onGlobalDiscountTypeChange(value: GlobalDiscountType | null): void {
+    this.updateGlobalDiscount({
+      global_discount_type: value,
+      global_discount_value: null
+    });
+    this.deliveryForm.patchValue({ global_discount_value: null }, { emitEvent: false });
+  }
+
+  onGlobalDiscountValueInput(value: unknown): void {
+    this.updateGlobalDiscount({
+      global_discount_value: this.toNullableNumber(value)
+    });
+  }
+
+  onGlobalDiscountReasonInput(value: string): void {
+    this.updateGlobalDiscount({
+      global_discount_reason: this.toNullableText(value)
+    });
+  }
+
+  resetDiscounts(): void {
+    this.deliveryForm.patchValue({
+      global_discount_type: null,
+      global_discount_value: null,
+      global_discount_reason: ''
+    }, { emitEvent: false });
+
+    if (this.uiModel) {
+      this.uiModel = this.applyGlobalDiscountSnapshot({
+        ...this.uiModel,
+        global_discount_type: null,
+        global_discount_value: null,
+        global_discount_amount: 0,
+        global_discount_reason: null,
+        gross_total_before_global_discount: this.uiModel.gross_total_before_global_discount ?? null,
+        net_total_after_global_discount: this.uiModel.gross_total_before_global_discount ?? this.getGrossDraftTotal(),
+        commercial_capture_pending: this.uiModel.commercial_capture_pending.map((item) => ({
+          ...item,
+          discount_type: null,
+          discount_value: null,
+          discount_amount: null,
+          final_unit_price: item.base_unit_price ?? item.manual_price,
+          manual_price: item.base_unit_price ?? item.manual_price,
+          manual_price_override_reason: null,
+          discount_reason: null
+        }))
+      });
+    }
+  }
+
+  onSpecialItemDiscountTypeChange(item: DetailUiCaptureCommercialItem, value: DiscountType | null): void {
+    this.updateSpecialItem(item.service_id, {
+      discount_type: value,
+      discount_value: null
+    });
+  }
+
+  onSpecialItemDiscountValueInput(item: DetailUiCaptureCommercialItem, value: unknown): void {
+    this.updateSpecialItem(item.service_id, {
+      discount_value: this.toNullableNumber(value)
+    });
+  }
+
+  onSpecialItemDiscountReasonInput(item: DetailUiCaptureCommercialItem, value: string): void {
+    this.updateSpecialItem(item.service_id, {
+      discount_reason: this.toNullableText(value)
+    });
   }
 
   onDeliveryFeeFinalInput(value: unknown): void {
@@ -378,6 +728,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
         }, { emitEvent: false });
       }
 
+      this.updateGlobalDiscount();
       return;
     }
 
@@ -386,6 +737,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     this.deliveryForm.patchValue({
       delivery_fee_override_reason: 'Precio manual de delivery'
     }, { emitEvent: false });
+    this.updateGlobalDiscount();
   }
 
   onExpressToggleChange(checked: boolean): void {
@@ -404,7 +756,9 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       quoted_service_amount: quotedServiceAmount || null
     };
 
+    this.updateWeightDiscount();
     this.recalculateWeightPricingIfNeeded();
+    this.updateGlobalDiscount();
   }
 
   async copyWhatsappSummary(): Promise<void> {
@@ -428,10 +782,16 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.isCommercialDraftConfirmed()) {
+      this.draftSaveError = 'La propuesta comercial ya fue confirmada. La orden confirmada es la fuente principal para montos y pago.';
+      return;
+    }
+
     this.savingDraft = true;
     this.loaderDialog?.open('Guardando datos');
     this.draftSaveError = null;
     this.draftSaveMessage = null;
+    this.draftConfirmError = null;
 
     const nextUiModel = this.buildCurrentUiModel();
     const payload = this.draft?.payload && typeof this.draft.payload === 'object'
@@ -466,8 +826,72 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       }
 
       this.draft = draft;
+      this.confirmedOrder = draft.order ?? this.confirmedOrder;
       this.uiModel = nextUiModel;
       this.draftSaveMessage = `Delivery guardado en borrador #${draft.id}`;
+    });
+  }
+
+  confirmCommercialDraft(): void {
+    if (!this.data?.id || !this.uiModel) {
+      this.draftConfirmError = 'No existe un servicio valido para confirmar.';
+      return;
+    }
+
+    if (!this.canConfirmCommercialDraft()) {
+      this.draftConfirmError = 'Completa perfil de precio, forma de pago y monto comercial antes de confirmar.';
+      return;
+    }
+
+    const nextUiModel = this.buildCurrentUiModel();
+    const payload = this.draft?.payload && typeof this.draft.payload === 'object'
+      ? { ...this.draft.payload, ui_model: nextUiModel }
+      : {
+          ui_model: nextUiModel,
+          laundry_service_payload: null,
+          order_payload: null,
+          validations: {
+            laundry_service: [],
+            order: []
+          }
+        };
+
+    this.confirmingDraft = true;
+    this.loaderDialog?.open('Confirmando propuesta comercial');
+    this.draftConfirmError = null;
+    this.draftConfirmMessage = null;
+    this.draftSaveError = null;
+
+    this.commercialDraftsApi.saveByService(this.data.id, {
+      payload,
+      is_confirmed: this.draft?.is_confirmed ?? false,
+      confirmed_at: this.draft?.confirmed_at ?? null,
+      charged_by_user_id: this.draft?.charged_by_user_id ?? null
+    }).pipe(
+      switchMap((draft) => {
+        this.draft = draft;
+        this.uiModel = nextUiModel;
+        return this.commercialDraftsApi.confirmByService(this.data!.id);
+      }),
+      finalize(() => {
+        this.confirmingDraft = false;
+        this.loaderDialog?.close();
+      }),
+      catchError(() => {
+        this.draftConfirmError = 'No fue posible confirmar la propuesta comercial.';
+        return of(null);
+      })
+    ).subscribe((response) => {
+      if (!response) {
+        return;
+      }
+
+      this.draft = response.draft;
+      this.confirmedOrder = response.order ?? response.draft.order ?? null;
+      this.draftConfirmMessage = response.order?.id
+        ? `Propuesta confirmada. Orden #${response.order.id} creada.`
+        : 'Propuesta confirmada correctamente.';
+      this.draftStatusMessage = `Borrador cargado #${response.draft.id}`;
     });
   }
 
@@ -589,6 +1013,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
         delivery_fee_final: this.roundCurrency(distanceKm * this.deliveryPricePerKm),
         delivery_fee_override_reason: 'Calculado por distancia'
       }, { emitEvent: false });
+      this.updateGlobalDiscount();
     });
   }
 
@@ -639,12 +1064,14 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
     ).subscribe((draft) => {
       if (!draft) {
         this.draft = null;
+        this.confirmedOrder = null;
         this.patchDeliveryFormFromUiModel(this.uiModel);
         this.recalculateWeightPricingIfNeeded();
         return;
       }
 
       this.draft = draft;
+      this.confirmedOrder = draft.order ?? null;
       const payload = draft.payload;
       const nextUiModel = payload && typeof payload === 'object' && 'ui_model' in payload
         ? (payload['ui_model'] as DetailUiCaptureModel | undefined)
@@ -656,6 +1083,8 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       }
 
       this.uiModel = this.mergeUiModelWithService(nextUiModel);
+      this.updateWeightDiscount();
+      this.updateGlobalDiscount();
       this.patchDeliveryFormFromUiModel(this.uiModel);
       this.draftStatusMessage = `Borrador cargado #${draft.id}`;
 
@@ -666,8 +1095,20 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   private patchDeliveryFormFromUiModel(uiModel: DetailUiCaptureModel | null): void {
+    const transactionPaymentTypeId = this.data?.transaction && 'payment_type_id' in this.data.transaction
+      ? this.data.transaction.payment_type_id
+      : null;
+
     this.deliveryForm.patchValue({
       is_express: uiModel?.service_label === 'EXPRESS',
+      pricing_profile_id: uiModel?.pricing_profile_id ?? this.pricingProfiles[0]?.id ?? null,
+      payment_type_id: uiModel?.payment_type_id ?? transactionPaymentTypeId ?? null,
+      global_discount_type: uiModel?.global_discount_type ?? null,
+      global_discount_value: uiModel?.global_discount_value ?? null,
+      global_discount_reason: uiModel?.global_discount_reason ?? '',
+      weight_discount_type: uiModel?.weight_discount_type ?? null,
+      weight_discount_value: uiModel?.weight_discount_value ?? null,
+      weight_discount_reason: uiModel?.weight_discount_reason ?? '',
       distance_km: uiModel?.distance_km ?? null,
       delivery_fee_final: uiModel?.delivery_fee_final ?? 0,
       delivery_fee_override_reason: uiModel?.delivery_fee_override_reason ?? ''
@@ -705,11 +1146,20 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       delivery_price_per_km: null,
       express_service_surcharge: null,
       quoted_service_amount: null,
+      weight_discount_type: null,
+      weight_discount_value: null,
+      weight_discount_amount: null,
+      weight_final_price_after_discount: null,
+      weight_discount_reason: null,
       delivery_fee_suggested: null,
       delivery_fee_final: null,
       delivery_fee_override_reason: null,
+      global_discount_type: null,
+      global_discount_value: null,
       global_discount_amount: 0,
       global_discount_reason: null,
+      gross_total_before_global_discount: null,
+      net_total_after_global_discount: null,
       notes: service.notes ?? null,
       items: (service.items ?? []).map((item) => ({
         garment_type_id: item.garment_type_id,
@@ -742,6 +1192,16 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
         ...item,
         garment_name: this.resolveGarmentName(item)
       })),
+      commercial_capture_pending: (uiModel.commercial_capture_pending ?? []).map((item) => ({
+        ...item,
+        base_unit_price: this.toNullableNumber(item.base_unit_price ?? item.manual_price),
+        final_unit_price: this.toNullableNumber(item.final_unit_price ?? item.manual_price),
+        manual_price: this.toNullableNumber(item.final_unit_price ?? item.manual_price),
+        discount_amount: this.toNullableNumber(item.discount_amount),
+        discount_value: this.toNullableNumber(item.discount_value),
+        discount_reason: this.toNullableText(item.discount_reason),
+        manual_price_override_reason: this.toNullableText(item.manual_price_override_reason)
+      })),
       extras: (uiModel.extras ?? []).map((extra) => ({
         ...extra,
         name: this.resolveExtraName(extra)
@@ -765,17 +1225,29 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       return this.buildBaseUiModel(this.data as LaundryServiceResp);
     }
 
-    return {
+    return this.applyGlobalDiscountSnapshot({
       ...this.uiModel,
       service_label: this.deliveryForm.get('is_express')?.value ? 'EXPRESS' : 'NORMAL',
       pricing_profile_id: this.resolvePricingProfileId(),
+      payment_type_id: this.toNullableNumber(this.deliveryForm.get('payment_type_id')?.value),
       distance_km: this.toNullableNumber(this.deliveryForm.get('distance_km')?.value),
       delivery_price_per_km: this.deliveryPricePerKm || null,
       express_service_surcharge: this.toNumber(this.uiModel.express_service_surcharge) || null,
       quoted_service_amount: this.getQuotedServiceAmount() || null,
+      weight_discount_type: this.deliveryForm.get('weight_discount_type')?.value ?? null,
+      weight_discount_value: this.toNullableNumber(this.deliveryForm.get('weight_discount_value')?.value),
+      weight_discount_amount: this.toNullableNumber(this.uiModel.weight_discount_amount),
+      weight_final_price_after_discount: this.toNullableNumber(this.uiModel.weight_final_price_after_discount),
+      weight_discount_reason: this.toNullableText(this.deliveryForm.get('weight_discount_reason')?.value),
+      global_discount_type: this.deliveryForm.get('global_discount_type')?.value ?? null,
+      global_discount_value: this.toNullableNumber(this.deliveryForm.get('global_discount_value')?.value),
+      global_discount_amount: this.toNumber(this.uiModel.global_discount_amount),
+      global_discount_reason: this.toNullableText(this.deliveryForm.get('global_discount_reason')?.value),
+      gross_total_before_global_discount: this.toNullableNumber(this.uiModel.gross_total_before_global_discount),
+      net_total_after_global_discount: this.toNullableNumber(this.uiModel.net_total_after_global_discount),
       delivery_fee_final: this.toNullableNumber(this.deliveryForm.get('delivery_fee_final')?.value),
       delivery_fee_override_reason: this.toNullableText(this.deliveryForm.get('delivery_fee_override_reason')?.value)
-    };
+    });
   }
 
   private resolveExtraName(extra: Pick<DetailUiCaptureExtraItem, 'service_extra_type_id' | 'name'>): string {
@@ -809,6 +1281,11 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   }
 
   private resolvePricingProfileId(): number | null {
+    const selectedProfileId = this.toNumber(this.deliveryForm.get('pricing_profile_id')?.value);
+    if (selectedProfileId > 0) {
+      return selectedProfileId;
+    }
+
     const draftProfileId = this.toNumber(this.uiModel?.pricing_profile_id);
     if (draftProfileId > 0) {
       return draftProfileId;
@@ -850,7 +1327,207 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
         weight_pricing_preview: quote,
         quoted_service_amount: this.roundCurrency(this.toNumber(quote.final_price ?? quote.recommended_price) + surcharge)
       };
+
+      this.updateWeightDiscount();
+      this.updateGlobalDiscount();
     });
+  }
+
+  private updateWeightDiscount(
+    partial: Partial<Pick<DetailUiCaptureModel,
+      'weight_discount_type' | 'weight_discount_value' | 'weight_discount_reason' |
+      'weight_discount_amount' | 'weight_final_price_after_discount'
+    >> = {}
+  ): void {
+    if (!this.uiModel) {
+      return;
+    }
+
+    const nextModel: DetailUiCaptureModel = {
+      ...this.uiModel,
+      ...partial
+    };
+    const type = nextModel.weight_discount_type ?? null;
+    const value = this.toNullableNumber(nextModel.weight_discount_value);
+    const baseAmount = this.toNumber(
+      nextModel.weight_pricing_preview?.final_price
+      ?? nextModel.quoted_service_amount
+      ?? this.draft?.quoted_service_amount
+      ?? nextModel.weight_pricing_preview?.recommended_price
+    );
+    const discount = this.computeDiscount(baseAmount, type, value);
+
+    nextModel.weight_discount_amount = discount?.discountAmount ?? null;
+    nextModel.weight_final_price_after_discount = discount?.finalAmount ?? null;
+    nextModel.weight_discount_reason = this.toNullableText(nextModel.weight_discount_reason);
+    this.uiModel = nextModel;
+  }
+
+  private updateSpecialItem(
+    serviceId: number,
+    partial: Partial<DetailUiCaptureCommercialItem>
+  ): void {
+    if (!this.uiModel) {
+      return;
+    }
+
+    this.uiModel = {
+      ...this.uiModel,
+      commercial_capture_pending: this.uiModel.commercial_capture_pending.map((item) => {
+        if (item.service_id !== serviceId) {
+          return item;
+        }
+
+        const nextItem: DetailUiCaptureCommercialItem = {
+          ...item,
+          ...partial
+        };
+        const baseAmount = this.getSpecialItemBaseUnitPrice(nextItem);
+        const type = nextItem.discount_type ?? null;
+        const value = this.toNullableNumber(nextItem.discount_value);
+        const discount = this.computeDiscount(baseAmount, type, value);
+
+        nextItem.base_unit_price = baseAmount || null;
+        nextItem.discount_amount = discount?.discountAmount ?? null;
+        nextItem.final_unit_price = discount?.finalAmount ?? (baseAmount || null);
+        nextItem.manual_price = nextItem.final_unit_price ?? nextItem.manual_price;
+        nextItem.manual_price_override_reason = discount ? 'Descuento comercial' : null;
+        nextItem.discount_reason = this.toNullableText(nextItem.discount_reason);
+
+        return nextItem;
+      })
+    };
+    this.updateGlobalDiscount();
+  }
+
+  private updateGlobalDiscount(
+    partial: Partial<Pick<DetailUiCaptureModel,
+      'global_discount_type' | 'global_discount_value' | 'global_discount_reason' |
+      'global_discount_amount' | 'gross_total_before_global_discount' | 'net_total_after_global_discount'
+    >> = {}
+  ): void {
+    if (!this.uiModel) {
+      return;
+    }
+
+    const nextModel: DetailUiCaptureModel = {
+      ...this.uiModel,
+      ...partial
+    };
+    this.uiModel = this.applyGlobalDiscountSnapshot(nextModel);
+  }
+
+  private applyGlobalDiscountSnapshot(model: DetailUiCaptureModel): DetailUiCaptureModel {
+    const grossTotal = this.getGrossTotalForModel(model);
+    const type = model.global_discount_type ?? null;
+    const value = this.toNullableNumber(model.global_discount_value);
+    const discount = this.computeGlobalDiscount(grossTotal, type, value);
+
+    return {
+      ...model,
+      global_discount_amount: discount?.discountAmount ?? 0,
+      gross_total_before_global_discount: grossTotal,
+      net_total_after_global_discount: discount?.finalAmount ?? grossTotal,
+      global_discount_reason: this.toNullableText(model.global_discount_reason)
+    };
+  }
+
+  private getGrossTotalForModel(model: DetailUiCaptureModel): number {
+    const specialItemsSubtotal = (model.commercial_capture_pending ?? []).reduce(
+      (total, item) => total + (this.toNumber(item.quantity) * this.toNumber(item.manual_price)),
+      0
+    );
+    const extrasSubtotal = (model.extras ?? []).reduce(
+      (total, item) => total + (this.toNumber(item.quantity) * this.toNumber(item.unit_price)),
+      0
+    );
+    const weightPrice = this.toNumber(
+      model.weight_final_price_after_discount
+      ?? model.weight_pricing_preview?.final_price
+      ?? model.quoted_service_amount
+      ?? this.draft?.quoted_service_amount
+      ?? model.weight_pricing_preview?.recommended_price
+    );
+    const quotedServiceAmount = this.toNumber(model.quoted_service_amount);
+    const expressSurcharge = model.service_label === 'EXPRESS'
+      ? this.toNumber(model.express_service_surcharge)
+      : 0;
+    const expressToAdd = quotedServiceAmount > weightPrice && expressSurcharge > 0 ? 0 : expressSurcharge;
+
+    return this.roundCurrency(
+      weightPrice
+      + specialItemsSubtotal
+      + extrasSubtotal
+      + this.toNumber(model.delivery_fee_final)
+      + expressToAdd
+    );
+  }
+
+  private computeGlobalDiscount(
+    grossTotal: number,
+    discountType: GlobalDiscountType | null | undefined,
+    discountValue: number | null | undefined
+  ): DiscountComputation | null {
+    const safeGross = this.roundCurrency(Math.max(0, this.toNumber(grossTotal)));
+    const safeValue = this.toNullableNumber(discountValue);
+
+    if (!discountType || safeValue == null || safeValue <= 0 || safeGross <= 0) {
+      return null;
+    }
+
+    if (discountType === 'PERCENT') {
+      const discountAmount = this.roundCurrency(safeGross * (safeValue / 100));
+      return {
+        baseAmount: safeGross,
+        discountAmount: Math.min(discountAmount, safeGross),
+        finalAmount: this.roundCurrency(Math.max(0, safeGross - discountAmount))
+      };
+    }
+
+    const targetFinalTotal = this.roundCurrency(safeValue);
+    if (targetFinalTotal > safeGross) {
+      return null;
+    }
+
+    return {
+      baseAmount: safeGross,
+      discountAmount: this.roundCurrency(Math.max(0, safeGross - targetFinalTotal)),
+      finalAmount: targetFinalTotal
+    };
+  }
+
+  private computeDiscount(
+    baseAmount: number,
+    discountType: DiscountType | null | undefined,
+    discountValue: number | null | undefined
+  ): DiscountComputation | null {
+    const safeBase = this.roundCurrency(Math.max(0, this.toNumber(baseAmount)));
+    const safeValue = this.toNullableNumber(discountValue);
+
+    if (!discountType || safeValue == null || safeValue <= 0 || safeBase <= 0) {
+      return null;
+    }
+
+    if (discountType === 'PERCENT') {
+      const discountAmount = this.roundCurrency(safeBase * (safeValue / 100));
+      const finalAmount = this.roundCurrency(Math.max(0, safeBase - discountAmount));
+      return {
+        baseAmount: safeBase,
+        discountAmount: Math.min(discountAmount, safeBase),
+        finalAmount
+      };
+    }
+
+    const targetFinalAmount = this.roundCurrency(safeValue);
+    if (targetFinalAmount > safeBase) {
+      return null;
+    }
+
+    return {
+      baseAmount: safeBase,
+      discountAmount: this.roundCurrency(Math.max(0, safeBase - targetFinalAmount)),
+      finalAmount: targetFinalAmount
+    };
   }
 
   private resolveDraftQuotedServiceAmount(
@@ -896,6 +1573,8 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
   private buildWhatsappSummary(): string {
     const clientName = this.data?.client?.name?.trim();
     const lines: string[] = [];
+    const globalDiscountAmount = this.getGlobalDiscountAmount();
+    const grossTotal = this.getGrossDraftTotal();
 
     if (clientName) {
       lines.push(`${clientName}:`);
@@ -913,16 +1592,31 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
 
     const additionalLines = [
       ...this.getSelectedExtras().map((item) => `${this.getWhatsappLineEmoji(item.name)} ${this.formatCurrency(item.subtotal)} ${item.name}`),
-      ...this.getSelectedSpecialItems().map((item) => {
-        const quantityText = this.getSpecialWhatsappQuantityText(item.name, item.quantity);
-        const suffix = quantityText ? ` ${quantityText}` : '';
-        return `${this.getWhatsappLineEmoji(item.name)} ${this.formatCurrency(item.subtotal)} ${item.name}${suffix}`;
-      })
+      ...(this.uiModel?.commercial_capture_pending ?? [])
+        .filter((item) => this.toNumber(item.quantity) > 0)
+        .map((item) => {
+          const itemName = item.service_name || `Servicio #${item.service_id}`;
+          const quantity = this.toNumber(item.quantity);
+          const quantityText = this.getSpecialWhatsappQuantityText(itemName, quantity);
+          const suffix = quantityText ? ` ${quantityText}` : '';
+          const discountText = this.hasSpecialItemDiscount(item)
+            ? ` desc. ${this.formatCurrency(this.toNumber(item.discount_amount))}`
+            : '';
+          return `${this.getWhatsappLineEmoji(itemName)} ${this.formatCurrency(quantity * this.getSpecialItemFinalUnitPrice(item))} ${itemName}${suffix}${discountText}`;
+        })
     ];
 
     if (additionalLines.length) {
       lines.push('Producto adicional');
       lines.push(...additionalLines);
+    }
+
+    if (globalDiscountAmount > 0) {
+      lines.push(`Descuento global: -${this.formatCurrency(globalDiscountAmount)}`);
+      if (this.uiModel?.global_discount_reason) {
+        lines.push(`Motivo descuento: ${this.uiModel.global_discount_reason}`);
+      }
+      lines.push(`Subtotal antes de descuento: ${this.formatCurrency(grossTotal)}`);
     }
 
     lines.push(`*Total: ${this.formatCurrency(this.getGrandDraftTotal())}*`);
@@ -985,6 +1679,10 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.draft.is_confirmed) {
+      return;
+    }
+
     const payload = this.draft.payload && typeof this.draft.payload === 'object'
       ? { ...this.draft.payload, ui_model: this.uiModel }
       : {
@@ -1010,6 +1708,7 @@ export class LaundryDetailComponent implements OnInit, OnDestroy {
       }
 
       this.draft = draft;
+      this.confirmedOrder = draft.order ?? this.confirmedOrder;
       this.draftStatusMessage = `Borrador cargado #${draft.id} y completado con datos del servicio`;
     });
   }

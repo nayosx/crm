@@ -14,7 +14,10 @@
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Tipo de servicio</div>
-          <p-tag [value]="getCurrentServiceLabel()" [severity]="getCurrentServiceLabel() === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
+          <div class="flex gap-2 flex-wrap">
+            <p-tag [value]="getCurrentServiceLabel()" [severity]="getCurrentServiceLabel() === 'EXPRESS' ? 'success' : 'secondary'"></p-tag>
+            <p-tag [value]="getCommercialStatusLabel()" [severity]="isCommercialDraftConfirmed() ? 'success' : 'info'"></p-tag>
+          </div>
         </div>
         <div class="col-12 md:col-4">
           <div class="text-sm text-color-secondary">Recolecta</div>
@@ -53,15 +56,36 @@
             <h3 class="m-0">Captura de datos de envio</h3>
           </div>
 
-          <button
-            pButton
-            type="button"
-            label="Guardar delivery"
-            icon="pi pi-save"
-            [loading]="savingDraft"
-            [disabled]="savingDraft"
-            (click)="saveDeliveryDraft()"
-          ></button>
+          <div class="flex flex-wrap gap-2">
+            <button
+              pButton
+              type="button"
+              label="Descuentos"
+              icon="pi pi-percentage"
+              severity="secondary"
+              outlined
+              (click)="discountDialogVisible = true"
+            ></button>
+            <button
+              pButton
+              type="button"
+              label="Confirmar propuesta"
+              icon="pi pi-check-circle"
+              severity="success"
+              [loading]="confirmingDraft"
+              [disabled]="!canConfirmCommercialDraft()"
+              (click)="confirmCommercialDraft()"
+            ></button>
+            <button
+              pButton
+              type="button"
+              label="Guardar delivery"
+              icon="pi pi-save"
+              [loading]="savingDraft"
+              [disabled]="savingDraft || isCommercialDraftConfirmed()"
+              (click)="saveDeliveryDraft()"
+            ></button>
+          </div>
         </div>
 
         @if (draftStatusMessage) {
@@ -76,7 +100,45 @@
           <div class="text-sm text-red-500">{{ draftSaveError }}</div>
         }
 
+        @if (draftConfirmMessage) {
+          <div class="text-sm text-green-600">{{ draftConfirmMessage }}</div>
+        }
+
+        @if (draftConfirmError) {
+          <div class="text-sm text-red-500">{{ draftConfirmError }}</div>
+        }
+
+        @if (isCommercialDraftConfirmed()) {
+          <div class="text-sm text-green-600">
+            La propuesta comercial ya fue confirmada. Los montos finales deben leerse desde la orden confirmada.
+          </div>
+        }
+
         <form [formGroup]="deliveryForm" class="grid">
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Perfil de precio</label>
+            <p-select
+              formControlName="pricing_profile_id"
+              [options]="pricingProfileOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona un perfil"
+              class="w-full"
+            ></p-select>
+          </div>
+
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Forma de pago</label>
+            <p-select
+              formControlName="payment_type_id"
+              [options]="paymentTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona una forma de pago"
+              class="w-full"
+            ></p-select>
+          </div>
+
           <div class="col-12 md:col-4">
             <label class="block text-sm text-color-secondary mb-2">Tipo de servicio</label>
             <div class="flex align-items-center gap-3">
@@ -192,9 +254,21 @@
               <div class="text-sm text-color-secondary">Piezas especiales</div>
               <div class="font-medium">{{ getSpecialItemsDraftTotal() | currency }}</div>
             </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Forma de pago comercial</div>
+              <div class="font-medium">{{ getCommercialPaymentTypeName() }}</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Total bruto</div>
+              <div class="font-medium">{{ getGrossDraftTotal() | currency }}</div>
+            </div>
+            <div class="col-12 md:col-4">
+              <div class="text-sm text-color-secondary">Descuento global</div>
+              <div class="font-medium">{{ getGlobalDiscountAmount() | currency }}</div>
+            </div>
             <div class="col-12">
               <div class="border-round p-3 text-center" style="background: #22c55e; color: #052e16;">
-                <div class="text-sm">Total estimado actual</div>
+                <div class="text-sm">{{ isCommercialDraftConfirmed() ? 'Total confirmado' : 'Total estimado actual' }}</div>
                 <div class="text-xl font-semibold">{{ getGrandDraftTotal() | currency }}</div>
               </div>
             </div>
@@ -260,6 +334,7 @@
                 }
               </div>
             </section>
+
           }
 
           @if (getSelectedExtras().length) {
@@ -304,26 +379,6 @@
                 </p-accordion-panel>
               </p-accordion>
             </section>
-          }
-        </div>
-      </p-card>
-    </div>
-  }
-
-  @if (data.items?.length) {
-    <div class="px-4 pt-4">
-      <h3 class="mb-2">Prendas</h3>
-      <p-card class="border-round shadow-2">
-        <div class="flex flex-column gap-3">
-          @for (item of data.items; track $index) {
-            <div class="border-bottom-1 surface-border pb-3">
-              <div class="font-medium">{{ item.garment_type?.name || ('Prenda #' + item.garment_type_id) }}</div>
-              <div class="text-sm text-color-secondary">Cantidad: {{ item.quantity }} {{ item.unit_type === 'PAIR' ? 'pares' : 'unidades' }}</div>
-              <div class="text-sm text-color-secondary">Precio unitario: {{ item.unit_price ?? 0 | currency }}</div>
-              @if (item.notes) {
-                <div class="text-sm text-color-secondary">Notas: {{ item.notes }}</div>
-              }
-            </div>
           }
         </div>
       </p-card>
@@ -375,6 +430,163 @@
   </div>
 
   <p-confirmdialog />
+
+  <p-dialog
+    header="Descuentos comerciales"
+    [(visible)]="discountDialogVisible"
+    [modal]="true"
+    [style]="{ width: '56rem', maxWidth: 'calc(100vw - 2rem)' }"
+  >
+    <form [formGroup]="deliveryForm" class="flex flex-column gap-4">
+      <div class="flex justify-content-end">
+        <button
+          pButton
+          type="button"
+          label="Reset descuentos"
+          icon="pi pi-undo"
+          severity="secondary"
+          outlined
+          (click)="resetDiscounts()"
+        ></button>
+      </div>
+
+      <section class="surface-100 border-round p-3">
+        <div class="grid">
+          <div class="col-12">
+            <h4 class="mt-0 mb-2">Descuento global</h4>
+          </div>
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Tipo descuento global</label>
+            <p-select
+              formControlName="global_discount_type"
+              [options]="globalDiscountTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sin descuento global"
+              class="w-full"
+              (onChange)="onGlobalDiscountTypeChange($event.value)"
+            ></p-select>
+          </div>
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Valor descuento global</label>
+            <p-inputnumber
+              formControlName="global_discount_value"
+              [useGrouping]="false"
+              [min]="0"
+              [maxFractionDigits]="2"
+              styleClass="w-full"
+              (onInput)="onGlobalDiscountValueInput($event.value)"
+            />
+            <div class="text-sm text-color-secondary mt-2">{{ getGlobalDiscountLabel() }}</div>
+          </div>
+          <div class="col-12 md:col-4">
+            <label class="block text-sm text-color-secondary mb-2">Motivo descuento global</label>
+            <input
+              pInputText
+              formControlName="global_discount_reason"
+              class="w-full"
+              placeholder="Cortesia, negociacion comercial..."
+              (input)="onGlobalDiscountReasonInput($any($event.target).value)"
+            />
+          </div>
+          <div class="col-12 md:col-4">
+            <div class="text-sm text-color-secondary">Total bruto</div>
+            <div class="font-medium">{{ getGrossDraftTotal() | currency }}</div>
+          </div>
+          <div class="col-12 md:col-4">
+            <div class="text-sm text-color-secondary">Monto descontado</div>
+            <div class="font-medium">{{ getGlobalDiscountAmount() | currency }}</div>
+          </div>
+          <div class="col-12 md:col-4">
+            <div class="text-sm text-color-secondary">Total final</div>
+            <div class="font-medium">{{ getGrandDraftTotal() | currency }}</div>
+          </div>
+        </div>
+      </section>
+
+      @if (uiModel; as currentUiModel) {
+        @if (currentUiModel.commercial_capture_pending.length) {
+          <section>
+            <h4 class="mt-0 mb-2">Descuentos en piezas especiales</h4>
+            <div class="flex flex-column gap-2">
+              @for (item of currentUiModel.commercial_capture_pending; track item.service_id) {
+                <div class="surface-100 border-round p-3">
+                  <div class="font-medium mb-2">{{ item.service_name || ('Servicio #' + item.service_id) }}</div>
+                  <div class="grid">
+                    <div class="col-12 md:col-3">
+                      <label class="block text-sm text-color-secondary mb-2">Precio base</label>
+                      <div class="font-medium">{{ getSpecialItemBaseUnitPrice(item) | currency }}</div>
+                    </div>
+                    <div class="col-12 md:col-3">
+                      <label class="block text-sm text-color-secondary mb-2">Tipo descuento</label>
+                      <p-select
+                        [options]="discountTypeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        [ngModel]="item.discount_type"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="Sin descuento"
+                        class="w-full"
+                        (onChange)="onSpecialItemDiscountTypeChange(item, $event.value)"
+                      ></p-select>
+                    </div>
+                    <div class="col-12 md:col-3">
+                      <label class="block text-sm text-color-secondary mb-2">Valor</label>
+                      <p-inputnumber
+                        [ngModel]="item.discount_value"
+                        [ngModelOptions]="{ standalone: true }"
+                        [useGrouping]="false"
+                        [min]="0"
+                        [maxFractionDigits]="2"
+                        styleClass="w-full"
+                        (onInput)="onSpecialItemDiscountValueInput(item, $event.value)"
+                      />
+                    </div>
+                    <div class="col-12 md:col-3">
+                      <label class="block text-sm text-color-secondary mb-2">Precio final</label>
+                      <div class="font-medium">{{ getSpecialItemFinalUnitPrice(item) | currency }}</div>
+                      @if (hasSpecialItemDiscount(item)) {
+                        <div class="text-sm text-color-secondary">Descuento: {{ item.discount_amount | currency }} ({{ getSpecialItemDiscountLabel(item) }})</div>
+                      }
+                    </div>
+                    <div class="col-12">
+                      <label class="block text-sm text-color-secondary mb-2">Motivo</label>
+                      <input
+                        pInputText
+                        class="w-full"
+                        [ngModel]="item.discount_reason"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="Cliente frecuente, ajuste comercial..."
+                        (input)="onSpecialItemDiscountReasonInput(item, $any($event.target).value)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+
+      <div class="flex justify-content-end gap-2">
+        <button
+          pButton
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          text
+          (click)="discountDialogVisible = false"
+        ></button>
+        <button
+          pButton
+          type="button"
+          label="Aceptar descuentos"
+          icon="pi pi-check"
+          (click)="discountDialogVisible = false"
+        ></button>
+      </div>
+    </form>
+  </p-dialog>
 
   <p-dialog [(visible)]="notesDialogVisible" [modal]="true" [style]="{ width: '400px' }" [closable]="false">
     <ng-template pTemplate="header">

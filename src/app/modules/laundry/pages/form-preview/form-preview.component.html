@@ -35,6 +35,18 @@
     </p-card>
   }
 
+  @if (draftConfirmMessage()) {
+    <p-card>
+      <p class="m-0">{{ draftConfirmMessage() }}</p>
+    </p-card>
+  }
+
+  @if (draftConfirmError()) {
+    <p-card>
+      <p class="m-0">{{ draftConfirmError() }}</p>
+    </p-card>
+  }
+
   @if (copyDetailMessage()) {
     <p-card>
       <p class="m-0">{{ copyDetailMessage() }}</p>
@@ -63,6 +75,7 @@
                 <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
                   <p-tag [value]="service()!.status" severity="warn"></p-tag>
                   <p-tag [value]="getServiceLabel()" [severity]="service()!.service_label === 'EXPRESS' ? 'danger' : 'secondary'"></p-tag>
+                  <p-tag [value]="getCommercialStatusLabel()" [severity]="isDraftConfirmed() ? 'success' : 'info'"></p-tag>
                 </div>
               </div>
             </ng-template>

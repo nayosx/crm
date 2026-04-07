@@ -11,6 +11,18 @@ export type LaundryServiceCommercialDraftPayload = {
   charged_by_user_id: number | null;
 };
 
+export type LaundryServiceCommercialOrderRecord = {
+  id: number;
+  payment_type_id?: number | null;
+  payment_type_name?: string | null;
+  status?: string | null;
+  total_amount?: number | string | null;
+  final_amount?: number | string | null;
+  grand_total?: number | string | null;
+  total?: number | string | null;
+  [key: string]: unknown;
+};
+
 export type LaundryServiceCommercialDraftRecord = {
   id: number;
   payload: Record<string, unknown>;
@@ -19,6 +31,12 @@ export type LaundryServiceCommercialDraftRecord = {
   confirmed_at: string | null;
   charged_by_user_id: number | null;
   quoted_service_amount?: number | string | null;
+  order?: LaundryServiceCommercialOrderRecord | null;
+};
+
+export type LaundryServiceCommercialDraftConfirmResponse = {
+  draft: LaundryServiceCommercialDraftRecord;
+  order: LaundryServiceCommercialOrderRecord | null;
 };
 
 @Injectable({
@@ -65,6 +83,13 @@ export class LaundryServiceCommercialDraftsApiService {
     payload: Omit<LaundryServiceCommercialDraftPayload, 'laundry_service_id'>
   ): import('rxjs').Observable<LaundryServiceCommercialDraftRecord> {
     return this.http.put<LaundryServiceCommercialDraftRecord>(`${this.baseUrl}/by-service/${laundryServiceId}`, payload);
+  }
+
+  confirmByService(laundryServiceId: number): import('rxjs').Observable<LaundryServiceCommercialDraftConfirmResponse> {
+    return this.http.post<LaundryServiceCommercialDraftConfirmResponse>(
+      `${this.baseUrl}/by-service/${laundryServiceId}/confirm`,
+      {}
+    );
   }
 
   update(id: number, payload: Partial<LaundryServiceCommercialDraftPayload>): import('rxjs').Observable<LaundryServiceCommercialDraftRecord> {
