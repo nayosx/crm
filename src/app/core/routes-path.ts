@@ -20,6 +20,5 @@ export const ROUTE_PATH = {
     WORK_SESSIONS: 'work-sessions',
     WORK_SESSIONS_ADMIN: 'work-sessions-admin',
 
-    LAUNDRY: 'laundry',
-    LAUNDRY_COMMERCE: 'commerce'
+    LAUNDRY: 'laundry'
 }

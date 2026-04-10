@@ -170,11 +170,6 @@ export const routes: Routes = [
                         loadComponent: () =>
                             import('./modules/laundry/pages/form-preview/form-preview.component').then(m => m.FormPreviewComponent)
                     },
-                    {
-                        path: ROUTE_PATH.LAUNDRY_COMMERCE,
-                        loadChildren: () =>
-                            import('./modules/laundry-commerce/laundry-commerce.routes').then(m => m.laundryCommerceRoutes)
-                    },
 
                 ]
             },

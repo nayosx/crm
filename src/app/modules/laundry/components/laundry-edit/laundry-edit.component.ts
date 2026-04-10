@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LaundryServiceResp, LaundryServiceLog } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceResp, LaundryServiceLog, LaundryServiceUpdatePayload } from '@shared/interfaces/laundry-service.interface';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
 import { LaundryFormComponent } from '../laundry-form/laundry-form.component';
@@ -56,7 +56,7 @@ export class LaundryEditComponent implements OnInit {
     }
   }
 
-  onFormSubmit(data: Partial<LaundryServiceResp>): void {
+  onFormSubmit(data: LaundryServiceUpdatePayload & { isRedirect?: boolean }): void {
     const isRedirect = data.isRedirect || false;
 
     delete data.isRedirect;

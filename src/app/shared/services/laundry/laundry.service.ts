@@ -1,11 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 
 import {
+  LaundryDeliveryQuote,
+  LaundryServiceCommercialDetailPayload,
+  LaundryServiceCreatePayload,
+  LaundryServiceHeaderPayload,
   LaundryServiceResp,
   LaundryServicePagination,
   LaundryServiceStatus,
+  LaundryServiceSummaryResponse,
+  LaundryServiceUpdatePayload,
   LaundryServiceWithMessages,
   LaundryServiceLitePagination,
   LaundryServiceDetailPagination,
@@ -195,14 +201,79 @@ export class LaundryService {
   }
 
   getById(id: number): Observable<LaundryServiceResp> {
-    return this.http.get<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`);
+    return forkJoin({
+      service: this.http.get<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`),
+      summary: this.getSummary(id).pipe(catchError(() => of(null)))
+    }).pipe(
+      map(({ service, summary }) => {
+        if (!summary) {
+          return service;
+        }
+
+        const weightDetail = summary.weight_service_detail;
+        const mergedClient = service.client
+          ? {
+              ...service.client,
+              phones: summary.client_phones ?? service.client.phones ?? []
+            }
+          : {
+              id: summary.client.id,
+              name: summary.client.name,
+              phones: summary.client_phones ?? []
+            };
+
+        return {
+          ...service,
+          scheduled_pickup_at: summary.laundry_service.scheduled_pickup_at ?? service.scheduled_pickup_at,
+          status: summary.laundry_service.status ?? service.status,
+          service_label: summary.laundry_service.service_label ?? service.service_label,
+          fulfillment_type: summary.laundry_service.fulfillment_type ?? service.fulfillment_type,
+          transaction_id: summary.laundry_service.transaction_id ?? service.transaction_id,
+          notes: summary.laundry_service.notes ?? service.notes ?? null,
+          client: mergedClient as LaundryServiceResp['client'],
+          client_address: summary.client_address ?? service.client_address ?? undefined,
+          weight_lb: weightDetail ? Number(weightDetail.weight_lb) : service.weight_lb ?? null,
+          items: weightDetail?.garments?.map((item) => ({
+            garment_type_id: item.garment_type_id,
+            quantity: Number(item.quantity),
+            unit_type: 'UNIT',
+            unit_price: null,
+            notes: null,
+            garment_type: item.garment_type_name
+              ? {
+                  id: item.garment_type_id,
+                  name: item.garment_type_name
+                }
+              : undefined
+          })) ?? service.items ?? [],
+          extras: summary.extras.map((extra) => ({
+            service_extra_type_id: extra.extra_id,
+            quantity: extra.quantity,
+            unit_price: Number(extra.unit_price),
+            notes: null,
+            service_extra_type: {
+              id: extra.extra_id,
+              code: '',
+              name: extra.extra_name
+            }
+          })),
+          items_total: Number(summary.summary.weight_service_subtotal ?? service.items_total ?? 0),
+          extras_total: Number(summary.summary.extras_subtotal ?? service.extras_total ?? 0),
+          grand_total: Number(summary.summary.grand_total ?? service.grand_total ?? 0)
+        };
+      })
+    );
   }
 
-  create(data: Partial<LaundryServiceResp>): Observable<LaundryServiceResp> {
+  getSummary(id: number): Observable<LaundryServiceSummaryResponse> {
+    return this.http.get<LaundryServiceSummaryResponse>(`${this.v2BaseUrl}/${id}/summary`);
+  }
+
+  create(data: LaundryServiceCreatePayload): Observable<LaundryServiceResp> {
     return this.http.post<LaundryServiceResp>(this.v2BaseUrl, data);
   }
 
-  update(id: number, data: Partial<LaundryServiceResp>): Observable<LaundryServiceResp> {
+  update(id: number, data: LaundryServiceUpdatePayload): Observable<LaundryServiceResp> {
     return this.http.put<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`, data);
   }
 
@@ -211,7 +282,48 @@ export class LaundryService {
   }
 
   updateStatus(id: number, status: LaundryServiceStatus): Observable<LaundryServiceResp> {
-    return this.http.put<LaundryServiceResp>(`${this.v2BaseUrl}/${id}`, { status });
+    return this.update(id, { status });
+  }
+
+  updateHeader(id: number, payload: LaundryServiceHeaderPayload): Observable<LaundryServiceSummaryResponse> {
+    return this.http.patch<LaundryServiceSummaryResponse>(`${this.v2BaseUrl}/${id}/header`, payload);
+  }
+
+  updateCommercialDetail(
+    id: number,
+    payload: LaundryServiceCommercialDetailPayload
+  ): Observable<LaundryServiceSummaryResponse> {
+    return this.http.patch<LaundryServiceSummaryResponse>(`${this.v2BaseUrl}/${id}/commercial-detail`, payload);
+  }
+
+  getWeightQuote(params: {
+    weight_lb: number;
+    has_other_services?: boolean | null;
+  }): Observable<Record<string, unknown>> {
+    let httpParams = new HttpParams()
+      .set('weight_lb', String(params.weight_lb));
+
+    if (params.has_other_services != null) {
+      httpParams = httpParams.set('has_other_services', String(params.has_other_services));
+    }
+
+    return this.http.get<Record<string, unknown>>(`${this.v2BaseUrl}/weight-quote`, { params: httpParams });
+  }
+
+  getDeliveryQuote(params: {
+    fulfillment_type: LaundryDeliveryQuote['fulfillment_type'];
+    distance_km: number;
+    manual_delivery_fee?: number | null;
+  }): Observable<LaundryDeliveryQuote> {
+    let httpParams = new HttpParams()
+      .set('fulfillment_type', params.fulfillment_type)
+      .set('distance_km', String(params.distance_km));
+
+    if (params.manual_delivery_fee != null) {
+      httpParams = httpParams.set('manual_delivery_fee', String(params.manual_delivery_fee));
+    }
+
+    return this.http.get<LaundryDeliveryQuote>(`${this.v2BaseUrl}/delivery-quote`, { params: httpParams });
   }
 
 

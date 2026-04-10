@@ -117,13 +117,13 @@ export class SocketQueuesComponent implements OnInit, OnDestroy {
 
     this.subscription.add(
       this.laundrySocket.queueError$.subscribe((event) => {
-        this.errorMessage.set(event.error);
+        this.errorMessage.set(typeof event.error === 'string' ? event.error : JSON.stringify(event.error));
       })
     );
 
     this.subscription.add(
       this.laundrySocket.transportError$.subscribe((event: LaundrySocketTransportError) => {
-        this.errorMessage.set(event.code ?? this.texts.socketTransportError);
+        this.errorMessage.set(event.code != null ? String(event.code) : this.texts.socketTransportError);
       })
     );
   }

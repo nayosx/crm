@@ -12,22 +12,13 @@ import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 
-import { LaundryServiceCompact, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceCompact, LaundryServiceCreatePayload, LaundryServiceStatus } from '@shared/interfaces/laundry-service.interface';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { PendingCreateLaundryFormComponent } from './pending-create-laundry-form.component';
 import { PendingCreateClientAddressLaundryFormComponent } from './pending-create-client-address-laundry-form.component';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
-
-type CreateLaundryPayload = {
-  client_id: number;
-  client_address_id: number;
-  scheduled_pickup_at: string;
-  status: 'PENDING';
-  service_label: 'NORMAL' | 'EXPRESS';
-  transaction_id: null;
-};
 
 type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
 
@@ -219,7 +210,7 @@ export class PendingComponent implements OnInit {
     return item.id;
   }
 
-  createPendingService(payload: CreateLaundryPayload): void {
+  createPendingService(payload: LaundryServiceCreatePayload): void {
     this.creating.set(true);
     this.errorMessage.set(null);
     this.loader?.open('Creando servicio de lavandería...');

@@ -74,7 +74,18 @@ export class LaundrySocketService {
   readonly queueError$ = this.queueErrorSubject.asObservable();
 
   connect(): void {
+    const nextToken = this.authService.getAccessToken();
+    if (!nextToken) {
+      this.connectedSubject.next(false);
+      this.transportErrorSubject.next({
+        kind: 'transport',
+        code: 'Missing socket auth token'
+      });
+      return;
+    }
+
     const socket = this.getOrCreateSocket();
+    this.syncSocketAuth(socket, nextToken);
 
     if (socket.connected) {
       this.connectedSubject.next(true);
@@ -224,6 +235,10 @@ export class LaundrySocketService {
     });
 
     socket.io.on('reconnect_attempt', () => {
+      const nextToken = this.authService.getAccessToken();
+      if (nextToken) {
+        this.syncSocketAuth(socket, nextToken);
+      }
       this.reconnectingSubject.next(true);
     });
 
@@ -235,7 +250,7 @@ export class LaundrySocketService {
     socket.io.on('reconnect_error', (error: Error) => {
       this.transportErrorSubject.next({
         kind: 'transport',
-        code: error.message
+        code: this.resolveSocketErrorMessage(error)
       });
     });
 
@@ -252,7 +267,7 @@ export class LaundrySocketService {
       this.connectedSubject.next(false);
       this.transportErrorSubject.next({
         kind: 'transport',
-        code: error.message
+        code: this.resolveSocketErrorMessage(error)
       });
     });
 
@@ -261,7 +276,10 @@ export class LaundrySocketService {
     });
 
     socket.on('laundry:queue:error', (payload: LaundryQueueErrorEvent) => {
-      this.queueErrorSubject.next(payload);
+      this.queueErrorSubject.next({
+        ...payload,
+        error: this.resolveQueueErrorMessage(payload)
+      });
     });
   }
 
@@ -279,5 +297,46 @@ export class LaundrySocketService {
       auth: tokenPayload,
       query: tokenPayload
     };
+  }
+
+  private syncSocketAuth(socket: LaundrySocket, token: string): void {
+    const tokenPayload = { token };
+    this.activeToken = token;
+    socket.auth = tokenPayload;
+    socket.io.opts.query = tokenPayload;
+  }
+
+  private resolveSocketErrorMessage(error: unknown): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (error && typeof error === 'object') {
+      const message = (error as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim().length) {
+        return message;
+      }
+    }
+
+    return 'socket_connection_error';
+  }
+
+  private resolveQueueErrorMessage(payload: LaundryQueueErrorEvent): string {
+    if (typeof payload.error === 'string') {
+      return payload.error;
+    }
+
+    if (payload.error && typeof payload.error === 'object') {
+      const nestedMessage = (payload.error as { error?: unknown }).error;
+      if (typeof nestedMessage === 'string' && nestedMessage.trim().length) {
+        return nestedMessage;
+      }
+    }
+
+    return 'Unknown queue error';
   }
 }

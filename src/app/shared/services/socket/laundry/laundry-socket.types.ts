@@ -79,8 +79,8 @@ export interface LaundryQueueUpdatedEvent<TItem = unknown> {
 }
 
 export interface LaundryQueueErrorEvent {
-  error: string;
-  code?: string;
+  error: string | { error?: string } | Record<string, unknown>;
+  code?: string | number;
 }
 
 export interface LaundrySocketConfig {
@@ -109,7 +109,7 @@ export interface LaundrySocketContractError {
 export interface LaundrySocketTransportError {
   kind: 'transport';
   event?: LaundryClientEventName;
-  code?: string;
+  code?: string | number;
 }
 
 export type LaundrySocketErrorDetails = LaundrySocketContractError | LaundrySocketTransportError;

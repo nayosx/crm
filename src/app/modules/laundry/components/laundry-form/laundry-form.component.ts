@@ -6,6 +6,7 @@ import {
   LaundryServiceExtra,
   LaundryServiceExtraType,
   LaundryServiceItem,
+  LaundryServiceUpdatePayload,
   LaundryServiceResp,
   LaundryServiceStatusValues,
   LaundryUnitType
@@ -59,7 +60,7 @@ export class LaundryFormComponent implements OnInit {
   @Input() categories: TransactionCategory[] = [];
   @Input() isEditMode = false;
   @Input() autoInProgress = false;
-  @Output() formSubmit = new EventEmitter<Partial<LaundryServiceResp>>();
+  @Output() formSubmit = new EventEmitter<(LaundryServiceUpdatePayload & { isRedirect?: boolean })>();
 
   form!: FormGroup;
   statuses = LaundryServiceStatusValues;
@@ -202,10 +203,11 @@ export class LaundryFormComponent implements OnInit {
       delete formValue.pickup_date;
       delete formValue.pickup_time;
 
-      formValue.weight_lb = this.toNullableNumber(formValue.weight_lb);
       formValue.notes = this.normalizeText(formValue.notes);
-      formValue.items = this.normalizeItems(formValue.items);
-      formValue.extras = this.normalizeExtras(formValue.extras);
+      formValue.fulfillment_type = this.initialData?.fulfillment_type ?? 'WALK_IN';
+      delete formValue.weight_lb;
+      delete formValue.items;
+      delete formValue.extras;
 
       this.formSubmit.emit(formValue);
     } else {
@@ -360,29 +362,6 @@ export class LaundryFormComponent implements OnInit {
     });
   }
 
-  private normalizeItems(items: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
-    return items
-      .map((item) => ({
-        garment_type_id: this.toRequiredNumber(item['garment_type_id']),
-        quantity: this.toRequiredNumber(item['quantity']),
-        unit_type: item['unit_type'],
-        unit_price: this.toNullableNumber(item['unit_price']),
-        notes: this.normalizeText(item['notes'])
-      }))
-      .filter((item) => item.garment_type_id !== null);
-  }
-
-  private normalizeExtras(extras: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
-    return extras
-      .map((extra) => ({
-        service_extra_type_id: this.toRequiredNumber(extra['service_extra_type_id']),
-        quantity: this.toRequiredNumber(extra['quantity']),
-        unit_price: this.toNullableNumber(extra['unit_price']),
-        notes: this.normalizeText(extra['notes'])
-      }))
-      .filter((extra) => extra.service_extra_type_id !== null);
-  }
-
   private toNullableNumber(value: unknown): number | null {
     if (value === '' || value === null || value === undefined) {
       return null;
@@ -390,11 +369,6 @@ export class LaundryFormComponent implements OnInit {
 
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  private toRequiredNumber(value: unknown): number | null {
-    const parsed = this.toNullableNumber(value);
-    return parsed === null ? null : parsed;
   }
 
   private normalizeText(value: unknown): string | null {

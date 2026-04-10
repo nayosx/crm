@@ -10,7 +10,7 @@ import { InputTextarea } from 'primeng/inputtextarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
 import { Client } from '@shared/interfaces/client.interface';
-import { LaundryServiceResp } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceCreatePayload } from '@shared/interfaces/laundry-service.interface';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { ClientService } from '@shared/services/client/client.service';
 import { ClientAddressService } from '@shared/services/client/client-address.service';
@@ -149,17 +149,14 @@ export class PendingCreateClientAddressLaundryFormComponent {
   }
 
   private createLaundry(clientId: number, clientAddressId: number, isExpress: boolean): Observable<unknown> {
-    const payload = {
+    const payload: LaundryServiceCreatePayload = {
       client_id: clientId,
       client_address_id: clientAddressId,
       scheduled_pickup_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       status: 'PENDING',
       service_label: isExpress ? 'EXPRESS' : 'NORMAL',
+      fulfillment_type: 'WALK_IN',
       transaction_id: null
-    } as Partial<LaundryServiceResp> & {
-      client_id: number;
-      client_address_id: number;
-      transaction_id: null;
     };
 
     return this.laundryService.create(payload).pipe(

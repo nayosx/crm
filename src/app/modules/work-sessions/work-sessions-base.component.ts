@@ -9,7 +9,6 @@ import { interval, Subscription } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { KEYSTORE } from '@core/keystore';
 import { UserData } from '@shared/interfaces/auth.interface';
-import { GlobalSettingsApiService } from '@modules/laundry-commerce/services/global-settings-api.service';
 import {
   LiteUser,
   WorkSession,
@@ -50,7 +49,6 @@ export abstract class WorkSessionsBaseComponent {
   protected readonly historyService = inject(WorkSessionsHistoryService);
   protected readonly reportService = inject(WorkSessionsReportService);
   protected readonly api = inject(WorkSessionsApiService);
-  protected readonly globalSettingsApi = inject(GlobalSettingsApiService);
   protected readonly messageService = inject(MessageService);
   protected readonly confirmationService = inject(ConfirmationService);
   protected readonly subscription = new Subscription();
@@ -424,14 +422,7 @@ export abstract class WorkSessionsBaseComponent {
   }
 
   private loadDailyTargetTime(): void {
-    this.globalSettingsApi.getWorkSessionDailyTargetTime().subscribe({
-      next: (value) => {
-        this.dailyTargetMinutes.set(this.normalizeDailyTargetMinutes(value));
-      },
-      error: () => {
-        this.dailyTargetMinutes.set(540);
-      }
-    });
+    this.dailyTargetMinutes.set(540);
   }
 
   private ensureCalendarRange(start: string, end: string): void {

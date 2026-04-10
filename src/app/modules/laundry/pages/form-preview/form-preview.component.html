@@ -1,467 +1,345 @@
-<section class="proposal-page">
-  <header class="proposal-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-    <div class="u-flex-min-w-0">
-      <p class="proposal-kicker">Pantalla 2</p>
-      <h1 class="proposal-title">
-        <app-back-button [fallbackRoute]="'/laundry/pending'" />
-        Captura operativa de lavanderia
-      </h1>
-    </div>
+<app-loader-dialog></app-loader-dialog>
+<p-toast></p-toast>
 
-    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-      <button
-        pButton
-        type="button"
-        label="Guardar borrador"
-        icon="pi pi-save"
-        [loading]="savingDraft()"
-        [disabled]="loading() || savingDraft()"
-        (click)="saveDraft()"
-      ></button>
-    </div>
-  </header>
-
-  <app-loader-dialog></app-loader-dialog>
-
-  @if (draftSaveMessage()) {
-    <p-card>
-      <p class="m-0">{{ draftSaveMessage() }}</p>
-    </p-card>
-  }
-
-  @if (draftSaveError()) {
-    <p-card>
-      <p class="m-0">{{ draftSaveError() }}</p>
-    </p-card>
-  }
-
-  @if (draftConfirmMessage()) {
-    <p-card>
-      <p class="m-0">{{ draftConfirmMessage() }}</p>
-    </p-card>
-  }
-
-  @if (draftConfirmError()) {
-    <p-card>
-      <p class="m-0">{{ draftConfirmError() }}</p>
-    </p-card>
-  }
-
-  @if (copyDetailMessage()) {
-    <p-card>
-      <p class="m-0">{{ copyDetailMessage() }}</p>
-    </p-card>
-  }
-
-  @if (errorMessage()) {
-    <p-card>
-      <p class="m-0">{{ errorMessage() }}</p>
-    </p-card>
-  } @else if (loading()) {
-    <div class="proposal-loading">
-      <p-progress-spinner strokeWidth="4"></p-progress-spinner>
-    </div>
-  } @else if (service()) {
-    <div class="o-grid o-grid--cols-12 o-grid--gap-4">
-      <section class="o-grid__item o-grid__item--span-12">
-        <form [formGroup]="form" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-          <p-card>
-            <ng-template pTemplate="header">
-              <div class="proposal-card__header">
-                <div>
-                  <p class="proposal-card__eyebrow">Resumen superior</p>
-                  <h2 class="proposal-card__title">{{ getClientName() }}</h2>
-                </div>
-                <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                  <p-tag [value]="service()!.status" severity="warn"></p-tag>
-                  <p-tag [value]="getServiceLabel()" [severity]="service()!.service_label === 'EXPRESS' ? 'danger' : 'secondary'"></p-tag>
-                  <p-tag [value]="getCommercialStatusLabel()" [severity]="isDraftConfirmed() ? 'success' : 'info'"></p-tag>
-                </div>
-              </div>
-            </ng-template>
-
-            <div class="o-grid o-grid--cols-12 o-grid--gap-3">
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">Cliente</label>
-                <input pInputText [value]="getClientName()" readonly>
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">Direccion</label>
-                <input pInputText [value]="getAddressText()" readonly>
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">Fecha de recoleccion</label>
-                <input pInputText [value]="getPickupDateText()" readonly>
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-6">
-                <label class="proposal-label">Tipo de servicio</label>
-                <input pInputText [value]="getServiceLabel()" readonly>
-              </div>
-            </div>
-          </p-card>
-
-          <p-card>
-            <ng-template pTemplate="header">
-              <div class="proposal-card__header">
-                <div>
-                  <p class="proposal-card__eyebrow">Datos generales</p>
-                  <h2 class="proposal-card__title">Peso y observaciones</h2>
-                </div>
-              </div>
-            </ng-template>
-
-            <div class="o-grid o-grid--cols-12 o-grid--gap-3">
-              <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                <label class="proposal-label">Peso total (lb)</label>
-                <p-inputnumber
-                  formControlName="weight_lb"
-                  inputId="weight_lb"
-                  [useGrouping]="false"
-                  [min]="0"
-                  [minFractionDigits]="0"
-                  [maxFractionDigits]="2"
-                  styleClass="w-full"
-                />
-              </div>
-
-              <div class="o-grid__item o-grid__item--span-12">
-                <label class="proposal-label">Observaciones generales</label>
-                <textarea
-                  pTextarea
-                  formControlName="notes"
-                  rows="4"
-                  class="w-full"
-                  placeholder="Cliente solicita cuidado especial, mezcla separada o notas generales..."
-                ></textarea>
-              </div>
-            </div>
-
-          </p-card>
-
-          <section class="proposal-section proposal-section--blocks">
-            <div class="proposal-card__header">
-              <div>
-                <h2 class="proposal-card__title">Bloques operativos</h2>
-              </div>
-            </div>
-
-            <p-accordion [multiple]="true" [value]="mainAccordionValues()" (valueChange)="onMainAccordionValueChange($event)">
-              <p-accordion-panel [value]="0">
-                <p-accordion-header>
-                  <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                      <strong>1. Prendas por conteo</strong>
-                      <span>{{ getGarmentSelectedCount() }} items activos · {{ getGarmentQuantityCount() }} piezas</span>
-                    </div>
-                    <strong>{{ getGarmentDraftTotal() | currency }}</strong>
-                  </div>
-                </p-accordion-header>
-                <p-accordion-content>
-                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-                    @for (section of garmentSections(); track section.key) {
-                      <section class="proposal-section">
-                        <div class="proposal-section__header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                            <h3 class="proposal-section__title">{{ getCategoryEmoji(section.key) }} {{ section.label }}</h3>
-                          </div>
-                          <p-tag [value]="getCategoryBadge(section) + ' piezas'" severity="info"></p-tag>
-                        </div>
-
-                        <div class="proposal-lines">
-                          @for (type of section.items; track type.id) {
-                            <div class="proposal-line" [formGroup]="getGarmentGroup(type.id)">
-                              <div class="proposal-line__row u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-                                <div class="proposal-line__row-main u-flex-min-w-0" [style]="{'width': '11rem'}">
-                                  <button
-                                    type="button"
-                                    class="proposal-line__name proposal-line__name-button"
-                                    [pTooltip]="isMobile() ? type.name : ''"
-                                    tooltipPosition="top"
-                                    tooltipEvent="focus"
-                                  >
-                                    {{ getGarmentEmoji(type) }} {{ isMobile() ? (type.name | truncate:50:'...') : type.name }}
-                                  </button>
-                                </div>
-
-                                <div class="proposal-line__row-qty u-d-flex u-d-flex-align-center">
-                                  <p-inputnumber
-                                    formControlName="quantity"
-                                    [useGrouping]="false"
-                                    [min]="0"
-                                    [inputStyle]="{
-                                      width: '3rem',
-                                      minWidth: '3rem',
-                                      maxWidth: '3rem',
-                                      textAlign: 'center',
-                                      padding: '0.35rem'
-                                    }"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      </section>
-                    }
-                  </div>
-                </p-accordion-content>
-              </p-accordion-panel>
-
-                @for (section of specialSections(); track section.key) {
-                <p-accordion-panel [value]="$index + 1">
-                  <p-accordion-header>
-                    <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                        <strong>{{ $index + 2 }}. {{ section.label }}</strong>
-                        <span>{{ section.items.length }} servicios · {{ getSpecialSectionBadge(section) }} piezas</span>
-                      </div>
-                      <strong>{{ getSpecialItemsBySection(section).length }} activos</strong>
-                    </div>
-                  </p-accordion-header>
-                  <p-accordion-content>
-                    <section class="proposal-section">
-                      <div class="proposal-section__header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                          <h3 class="proposal-section__title">{{ section.label }}</h3>
-                        </div>
-                        <p-tag [value]="getSpecialSectionBadge(section) + ' piezas'" severity="contrast"></p-tag>
-                      </div>
-
-                      <div class="proposal-chip-grid">
-                        @for (service of section.items; track service.id) {
-                          <button
-                            pButton
-                            type="button"
-                            class="proposal-service-chip"
-                            severity="secondary"
-                            (click)="addSpecialItem(service)"
-                          >
-                            <span class="proposal-service-chip__title">{{ getSpecialServiceEmoji(service) }} {{ service.name }}</span>
-                            <span class="proposal-service-chip__meta">{{ getSuggestedPriceLabel(service) }}</span>
-                          </button>
-                          }
-                        </div>
-
-                      @if (getSpecialItemsBySection(section).length) {
-                        <div class="proposal-lines">
-                          @for (special of getSpecialItemsBySection(section); track special.index) {
-                            <div class="proposal-line proposal-line--special" [formGroup]="special.group">
-                              <div class="proposal-line__title u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                                  <div class="proposal-line__name">{{ getSpecialServiceEmoji(special.service!) }} {{ special.group.get('service_name')?.value }}</div>
-                                  <div class="proposal-line__meta">{{ getSpecialItemPriceLabel(special.group, special.service) }}</div>
-                                </div>
-
-                                <button
-                                  pButton
-                                  type="button"
-                                  icon="pi pi-trash"
-                                  severity="danger"
-                                  text
-                                  (click)="removeSpecialItem(special.index)"
-                                ></button>
-                              </div>
-
-                              <div class="o-grid o-grid--cols-12 o-grid--gap-2">
-                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-3">
-                                  <label class="proposal-label">Cantidad</label>
-                                  <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="0" styleClass="w-full" />
-                                </div>
-
-                                <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-5">
-                                  <label class="proposal-label">Precio manual</label>
-                                  <p-inputnumber formControlName="manual_price" mode="currency" currency="USD" [min]="0" styleClass="w-full" />
-                                </div>
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      } @else {
-                        <p class="proposal-empty">Aun no hay piezas especiales agregadas en esta categoria.</p>
-                      }
-                    </section>
-                  </p-accordion-content>
-                </p-accordion-panel>
-              }
-
-              <p-accordion-panel [value]="specialSections().length + 1">
-                <p-accordion-header>
-                  <div class="proposal-accordion-header u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                      <strong>{{ specialSections().length + 2 }}. Extras</strong>
-                      <span>{{ getExtrasSelectedCount() }} extras activos · {{ getExtrasBadge() }} aplicaciones</span>
-                    </div>
-                    <strong>{{ getExtrasSubtotal() | currency }}</strong>
-                  </div>
-                </p-accordion-header>
-                <p-accordion-content>
-                  <div class="proposal-lines">
-                    @for (extra of extraTypes(); track extra.id) {
-                      <div class="proposal-line" [formGroup]="getExtraGroup(extra.id)">
-                        <div class="proposal-line__title u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                            <div class="proposal-line__name">{{ getExtraEmoji(extra) }} {{ extra.name }}</div>
-                          </div>
-                        </div>
-
-                        <div class="o-grid o-grid--cols-12 o-grid--gap-2">
-                          <div class="o-grid__item o-grid__item--span-12 o-grid__item--md-span-4">
-                            <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="0" styleClass="w-full" />
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </p-accordion-content>
-              </p-accordion-panel>
-            </p-accordion>
-          </section>
-        </form>
-      </section>
-
-    </div>
-
-    <button
-      pButton
-      type="button"
-      icon="pi pi-list"
-      class="proposal-fab proposal-fab-button"
-      [class.proposal-fab--pulse]="fabPulse()"
-      [pTooltip]="'Seleccionados (' + selectedItemsCount() + ')'"
-      tooltipPosition="left"
-      (click)="selectedItemsDialogVisible.set(true)"
-    ></button>
-    <span class="proposal-fab-count" [class.proposal-fab-count--pulse]="fabPulse()">{{ selectedItemsCount() }}</span>
-  }
-
-  <p-dialog
-    header="Seleccionar precio para servicio especial"
-    [modal]="true"
-    [visible]="specialPriceDialogVisible()"
-    (visibleChange)="specialPriceDialogVisible.set($event)"
-    [style]="{ width: '34rem', maxWidth: 'calc(100vw - 2rem)' }"
-    (onHide)="closeSpecialPriceDialog()"
-  >
-    @if (activeSpecialService(); as specialService) {
-      <div [formGroup]="specialItemSelectorGroup" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-        <div>
-          <p class="proposal-card__eyebrow">Servicio</p>
-          <h3 class="proposal-section__title m-0">{{ specialService.name }}</h3>
-        </div>
-
-        <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-          <label class="proposal-label">Precio</label>
-          <p-select
-            formControlName="selected_price_option_id"
-            [options]="getSpecialPriceOptionsForSelect(specialService)"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Selecciona un precio"
-            class="w-full"
-          ></p-select>
-        </div>
-
-        <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-          <label class="proposal-label">Cantidad</label>
-          <p-inputnumber formControlName="quantity" [useGrouping]="false" [min]="1" styleClass="w-full" />
-        </div>
-
-        <p class="proposal-banner">Seleccion actual: {{ getSelectedSpecialPriceLabel() }}</p>
-
-        <div class="u-d-flex u-d-flex-justify-end u-d-flex-gap-2">
-          <button pButton type="button" label="Cancelar" severity="secondary" (click)="closeSpecialPriceDialog()"></button>
-          <button pButton type="button" label="Agregar" (click)="confirmSpecialItemSelection()"></button>
-        </div>
-      </div>
-    }
-  </p-dialog>
-
-  <p-dialog
-    header="Elementos seleccionados"
-    [modal]="true"
-    [visible]="selectedItemsDialogVisible()"
-    (visibleChange)="selectedItemsDialogVisible.set($event)"
-    [style]="{ width: '38rem', maxWidth: 'calc(100vw - 2rem)' }"
-    (onHide)="selectedItemsDialogVisible.set(false)"
-  >
-    <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-      @if (!getSelectedItemsCount()) {
-        <p class="proposal-empty">Aun no hay elementos con cantidad mayor a cero.</p>
-      } @else {
-        @if (getSelectedGarments().length) {
-          <section class="proposal-section">
-            <div class="proposal-section__header">
-              <h3 class="proposal-section__title">Prendas por conteo</h3>
-              <p-tag [value]="getSelectedGarments().length + ' items'" severity="info"></p-tag>
-            </div>
-            <div class="proposal-lines">
-              @for (item of getSelectedGarments(); track item.name) {
-                <div class="proposal-line">
-                  <div class="proposal-line__title">
-                    <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                    <strong>{{ item.quantity }}</strong>
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
-
-        @if (getSelectedSpecialItems().length) {
-          <section class="proposal-section">
-            <div class="proposal-section__header">
-              <h3 class="proposal-section__title">Piezas especiales</h3>
-              <p-tag [value]="getSelectedSpecialItems().length + ' items'" severity="contrast"></p-tag>
-            </div>
-            <div class="proposal-lines">
-              @for (item of getSelectedSpecialItems(); track item.name + item.priceLabel) {
-                <div class="proposal-line">
-                  <div class="proposal-line__title">
-                    <div>
-                      <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                      <div class="proposal-line__meta">{{ item.priceLabel }}</div>
-                    </div>
-                    <strong>{{ item.quantity }}</strong>
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
-
-        @if (getSelectedExtras().length) {
-          <section class="proposal-section">
-            <div class="proposal-section__header">
-              <h3 class="proposal-section__title">Extras</h3>
-              <p-tag [value]="getSelectedExtras().length + ' items'" severity="success"></p-tag>
-            </div>
-            <div class="proposal-lines">
-              @for (item of getSelectedExtras(); track item.name) {
-                <div class="proposal-line">
-                  <div class="proposal-line__title">
-                    <div class="proposal-line__name">{{ item.emoji }} {{ item.name }}</div>
-                    <strong>{{ item.quantity }}</strong>
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
+<section class="dr-container commercial-capture">
+  <header class="capture-header">
+    <div>
+      <p class="dr-helper-text m-0">Captura operativa comercial</p>
+      <h1 class="capture-title">Servicio #{{ serviceId }}</h1>
+      @if (summary?.client) {
+        <p class="capture-client m-0">{{ summary?.client?.name }}</p>
       }
     </div>
-  </p-dialog>
 
-  <p-dialog
-    header="Payload propuesto para Pantalla 2"
-    [modal]="true"
-    [visible]="payloadDialogVisible()"
-    (visibleChange)="payloadDialogVisible.set($event)"
-    [style]="{ width: '56rem', maxWidth: 'calc(100vw - 2rem)' }"
-    (onHide)="payloadDialogVisible.set(false)"
-  >
-    <pre class="proposal-payload">{{ payloadPreview() | json }}</pre>
-  </p-dialog>
+    <p-button
+      type="button"
+      icon="pi pi-plus"
+      label="AGREGAR SERVICIO"
+      severity="secondary"
+      [loading]="isLoading()"
+      [disabled]="isLoading()"
+      (onClick)="openServicePicker()">
+    </p-button>
+  </header>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="capture-form">
+    <p-card styleClass="services-captured-card">
+      <ng-template pTemplate="title">Servicios capturados</ng-template>
+      <ng-template pTemplate="subtitle">
+        <span class="dr-helper-text">El frontend captura datos. El backend calcula precios.</span>
+      </ng-template>
+
+      <p-accordion
+        [multiple]="true"
+        [value]="activeAccordionValues()"
+        (valueChange)="onAccordionValueChange($event)">
+        @if (showWeightService()) {
+          <p-accordion-panel value="weight">
+            <p-accordion-header>Servicio por peso</p-accordion-header>
+            <p-accordion-content>
+              <div formGroupName="weight_service" class="capture-section">
+                <div class="field-block">
+                  <label for="weight_lb">Peso (lb)</label>
+                  <p-inputnumber
+                    inputId="weight_lb"
+                    formControlName="weight_lb"
+                    mode="decimal"
+                    [min]="0"
+                    [minFractionDigits]="0"
+                    [maxFractionDigits]="2"
+                    styleClass="w-full"
+                    inputStyleClass="dr-bolder-input w-full">
+                  </p-inputnumber>
+                  <small class="dr-helper-text">Peso real recibido en libras.</small>
+                </div>
+
+                <div formArrayName="garments" class="capture-list">
+                  <div class="section-row">
+                    <div>
+                      <h3 class="section-title">Desglose de prendas</h3>
+                      <p class="dr-helper-text m-0">Opcional, usado para operación interna.</p>
+                    </div>
+                    <p-button
+                      type="button"
+                      icon="pi pi-plus"
+                      label="Prenda"
+                      severity="secondary"
+                      [loading]="isLoading()"
+                      [disabled]="isLoading()"
+                      (onClick)="addGarment()">
+                    </p-button>
+                  </div>
+
+                  @for (garment of garmentsArray.controls; track $index) {
+                    <article class="capture-card" [formGroupName]="$index">
+                      <div class="mobile-grid">
+                        <div class="field-block">
+                          <label>Tipo de prenda</label>
+                          <p-select
+                            class="w-full"
+                            formControlName="garment_type_id"
+                            [options]="garmentTypes"
+                            optionLabel="name"
+                            optionValue="id"
+                            appendTo="body"
+                            placeholder="Selecciona prenda">
+                          </p-select>
+                        </div>
+
+                        <div class="field-block">
+                          <label>Cantidad</label>
+                          <p-inputnumber
+                            formControlName="quantity"
+                            [min]="1"
+                            [showButtons]="true"
+                            styleClass="w-full">
+                          </p-inputnumber>
+                        </div>
+                      </div>
+
+                      <div class="actions-row">
+                        <p-button
+                          type="button"
+                          icon="pi pi-trash"
+                          label="Eliminar"
+                          severity="danger"
+                          [text]="true"
+                          [loading]="isLoading()"
+                          [disabled]="isLoading()"
+                          (onClick)="removeGarment($index)">
+                        </p-button>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="empty-text">Sin prendas agregadas.</p>
+                  }
+                </div>
+
+                <div class="actions-row">
+                  <p-button
+                    type="button"
+                    icon="pi pi-trash"
+                    label="Quitar servicio"
+                    severity="danger"
+                    [text]="true"
+                    [loading]="isLoading()"
+                    [disabled]="isLoading()"
+                    (onClick)="removeWeightService()">
+                  </p-button>
+                </div>
+              </div>
+            </p-accordion-content>
+          </p-accordion-panel>
+        }
+
+        <ng-container formArrayName="order_items">
+          @for (item of orderItemsArray.controls; track $index) {
+            <p-accordion-panel [value]="servicePanelValue($index)">
+              <p-accordion-header>{{ selectedServiceName($index) }}</p-accordion-header>
+              <p-accordion-content>
+                <article class="capture-section" [formGroupName]="$index">
+                  <p-tag [value]="selectedServiceMode($index)" severity="info"></p-tag>
+
+                  @if (selectedServiceMode($index) === 'FIXED') {
+                    <div class="mobile-grid">
+                      <div class="field-block">
+                        <label>Cantidad</label>
+                        <p-inputnumber
+                          formControlName="quantity"
+                          [min]="1"
+                          [showButtons]="true"
+                          styleClass="w-full">
+                        </p-inputnumber>
+                      </div>
+
+                      @if (variantsFor($index).length > 0) {
+                        <div class="field-block">
+                          <label>Variante</label>
+                          <p-select
+                            class="w-full"
+                            formControlName="service_variant_id"
+                            [options]="variantsFor($index)"
+                            optionLabel="name"
+                            optionValue="id"
+                            appendTo="body"
+                            placeholder="Sin variante"
+                            (onChange)="onVariantChange($index)">
+                          </p-select>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <div class="actions-row">
+                    <p-button
+                      type="button"
+                      icon="pi pi-trash"
+                      label="Quitar servicio"
+                      severity="danger"
+                      [text]="true"
+                      [loading]="isLoading()"
+                      [disabled]="isLoading()"
+                      (onClick)="removeService($index)">
+                    </p-button>
+                  </div>
+                </article>
+              </p-accordion-content>
+            </p-accordion-panel>
+          }
+        </ng-container>
+      </p-accordion>
+    </p-card>
+
+    <p-card>
+      <ng-template pTemplate="title">Extras</ng-template>
+      <ng-template pTemplate="subtitle">
+        <span class="dr-helper-text">Agrega ítems operativos. Sin cálculo local de totales.</span>
+      </ng-template>
+
+      <div formArrayName="extras" class="capture-list">
+        <div class="section-row">
+          <p class="dr-helper-text m-0">Catálogo activo de extras.</p>
+          <p-button
+            type="button"
+            icon="pi pi-plus"
+            label="Agregar extra"
+            severity="secondary"
+            [loading]="isLoading()"
+            [disabled]="isLoading() || extrasCatalog.length === 0"
+            (onClick)="addExtra()">
+          </p-button>
+        </div>
+
+        @for (extra of extrasArray.controls; track $index) {
+          <article class="capture-card" [formGroupName]="$index">
+            <div class="mobile-grid">
+              <div class="field-block">
+                <label>Extra</label>
+                <p-select
+                  class="w-full"
+                  formControlName="extra_id"
+                  [options]="extrasCatalog"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Selecciona extra"
+                  (onChange)="onExtraChange($index)">
+                </p-select>
+              </div>
+
+              <div class="field-block">
+                <label>Cantidad</label>
+                <p-inputnumber
+                  formControlName="quantity"
+                  [min]="1"
+                  [showButtons]="true"
+                  styleClass="w-full">
+                </p-inputnumber>
+              </div>
+            </div>
+
+            <div class="actions-row">
+              <p-button
+                type="button"
+                icon="pi pi-trash"
+                label="Eliminar"
+                severity="danger"
+                [text]="true"
+                [loading]="isLoading()"
+                [disabled]="isLoading()"
+                (onClick)="removeExtra($index)">
+              </p-button>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-text">Sin extras agregados.</p>
+        }
+      </div>
+    </p-card>
+
+    @if ((summary?.automatic_items?.length ?? 0) > 0) {
+      <p-card>
+        <ng-template pTemplate="title">Ítems automáticos</ng-template>
+        <ng-template pTemplate="subtitle">
+          <span class="dr-helper-text">Solo lectura. Delivery y recargos los controla backend.</span>
+        </ng-template>
+
+        <div class="capture-list">
+          @for (automatic of summary?.automatic_items; track automatic.id) {
+            <article class="readonly-item">
+              <div>
+                <strong>{{ automatic.service_name }}</strong>
+                @if (automatic.service_variant_name) {
+                  <p class="dr-helper-text m-0">{{ automatic.service_variant_name }}</p>
+                }
+              </div>
+              <p-tag severity="secondary" [value]="'Cant. ' + automatic.quantity"></p-tag>
+            </article>
+          }
+        </div>
+      </p-card>
+    }
+
+    <footer class="sticky-save">
+      <p-button
+        type="submit"
+        label="Guardar captura"
+        icon="pi pi-save"
+        styleClass="dr-primary-button w-full"
+        [loading]="isLoading()"
+        [disabled]="isLoading()">
+      </p-button>
+    </footer>
+  </form>
 </section>
+
+<p-dialog
+  header="Agregar servicio"
+  [(visible)]="showServicePicker"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="service-picker-dialog">
+  <div class="service-picker-list">
+    <p class="dr-helper-text m-0">No se muestran delivery ni recargos automáticos.</p>
+
+    <div class="field-block">
+      <label for="service-search">Buscar servicio</label>
+      <input
+        id="service-search"
+        pInputText
+        type="search"
+        class="w-full"
+        [(ngModel)]="serviceSearchTerm"
+        [ngModelOptions]="{ standalone: true }"
+        placeholder="Buscar por nombre">
+      @if (shouldShowServiceSearchHint()) {
+        <small class="dr-helper-text">El filtro inicia con 3 letras.</small>
+      }
+    </div>
+
+    @for (service of availableServices(); track service.id) {
+      <button
+        type="button"
+        class="service-picker-item"
+        [disabled]="isLoading()"
+        (click)="addServiceFromList(service)">
+        <span class="service-picker-item__name">{{ service.name }}</span>
+        <span class="service-picker-item__meta">{{ service.pricing_mode }}</span>
+      </button>
+    } @empty {
+      <p class="empty-text">No hay servicios disponibles para agregar.</p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      type="button"
+      label="Cancelar"
+      severity="secondary"
+      [loading]="isLoading()"
+      [disabled]="isLoading()"
+      (onClick)="showServicePicker = false">
+    </p-button>
+  </ng-template>
+</p-dialog>

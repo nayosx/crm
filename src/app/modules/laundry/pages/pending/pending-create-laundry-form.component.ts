@@ -9,15 +9,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
 import { ClientListComponent } from '@shared/components/client-list/client-list.component';
 import { ClientFullResponse } from '@shared/interfaces/client.interface';
-
-type CreateLaundryPayload = {
-  client_id: number;
-  client_address_id: number;
-  scheduled_pickup_at: string;
-  status: 'PENDING';
-  service_label: 'NORMAL' | 'EXPRESS';
-  transaction_id: null;
-};
+import { LaundryServiceCreatePayload } from '@shared/interfaces/laundry-service.interface';
 
 @Component({
   selector: 'app-pending-create-laundry-form',
@@ -85,7 +77,7 @@ export class PendingCreateLaundryFormComponent {
     return this._submitting;
   }
 
-  @Output() formSubmit = new EventEmitter<CreateLaundryPayload>();
+  @Output() formSubmit = new EventEmitter<LaundryServiceCreatePayload>();
   @Output() cancel = new EventEmitter<void>();
 
   readonly form: FormGroup;
@@ -149,6 +141,7 @@ export class PendingCreateLaundryFormComponent {
       scheduled_pickup_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       status: 'PENDING',
       service_label: value.is_express ? 'EXPRESS' : 'NORMAL',
+      fulfillment_type: 'WALK_IN',
       transaction_id: null
     });
   }
