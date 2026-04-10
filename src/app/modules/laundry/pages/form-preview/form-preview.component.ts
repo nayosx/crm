@@ -84,6 +84,10 @@ export class FormPreviewComponent implements OnInit {
   serviceVariants: Record<number, LaundryCommercialCatalogVariantItem[]> = {};
   showServicePicker = false;
   serviceSearchTerm = '';
+  showGarmentPicker = false;
+  garmentSearchTerm = '';
+  garmentDraftQuantity = 1;
+  selectedGarmentType: LaundryGarmentType | null = null;
 
   readonly form = this.fb.group({
     weight_service: this.fb.group({
@@ -146,6 +150,23 @@ export class FormPreviewComponent implements OnInit {
     return length > 0 && length < 3;
   }
 
+  availableGarmentTypes(): LaundryGarmentType[] {
+    const search = this.normalizedGarmentSearchTerm();
+
+    return this.garmentTypes.filter((garmentType) => {
+      return search.length < 3 || garmentType.name.toLowerCase().includes(search);
+    });
+  }
+
+  normalizedGarmentSearchTerm(): string {
+    return this.garmentSearchTerm.trim().toLowerCase();
+  }
+
+  shouldShowGarmentSearchHint(): boolean {
+    const length = this.normalizedGarmentSearchTerm().length;
+    return length > 0 && length < 3;
+  }
+
   selectedServiceName(index: number): string {
     const serviceId = Number(this.orderItemsArray.at(index)?.get('service_id')?.value);
     return this.serviceCatalog.find((service) => service.id === serviceId)?.name ?? 'Servicio';
@@ -174,6 +195,45 @@ export class FormPreviewComponent implements OnInit {
   openServicePicker(): void {
     this.serviceSearchTerm = '';
     this.showServicePicker = true;
+  }
+
+  openGarmentPicker(): void {
+    this.resetGarmentPicker();
+    this.showGarmentPicker = true;
+  }
+
+  closeGarmentPicker(): void {
+    this.showGarmentPicker = false;
+    this.resetGarmentPicker();
+  }
+
+  selectGarmentType(garmentType: LaundryGarmentType): void {
+    this.selectedGarmentType = garmentType;
+  }
+
+  changeSelectedGarment(): void {
+    this.selectedGarmentType = null;
+  }
+
+  confirmGarmentSelection(): void {
+    if (!this.selectedGarmentType) {
+      this.showError('Selecciona una prenda.');
+      return;
+    }
+
+    const quantity = Number(this.garmentDraftQuantity ?? 0);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      this.showError('La cantidad debe ser mayor o igual a 1.');
+      return;
+    }
+
+    this.garmentsArray.push(this.createGarmentGroup({
+      garment_type_id: this.selectedGarmentType.id,
+      quantity
+    }));
+
+    this.showGarmentPicker = false;
+    this.resetGarmentPicker();
   }
 
   addServiceFromList(service: LaundryCommercialCatalogServiceItem): void {
@@ -209,10 +269,6 @@ export class FormPreviewComponent implements OnInit {
       weight_lb: 0
     });
     this.promptServicePickerWhenOnlyReadOnlyItems();
-  }
-
-  addGarment(): void {
-    this.garmentsArray.push(this.createGarmentGroup());
   }
 
   removeGarment(index: number): void {
@@ -520,6 +576,12 @@ export class FormPreviewComponent implements OnInit {
     }
 
     this.dialogLoadingService.hide();
+  }
+
+  private resetGarmentPicker(): void {
+    this.garmentSearchTerm = '';
+    this.garmentDraftQuantity = 1;
+    this.selectedGarmentType = null;
   }
 
   private toMoneyString(value: string | number | null | undefined): string {

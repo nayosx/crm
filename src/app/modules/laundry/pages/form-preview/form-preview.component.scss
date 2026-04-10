@@ -1,12 +1,5 @@
-.dr-container {
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1rem 1rem 6rem;
-}
-
 .dr-helper-text {
-  color: var(--text-color-secondary, #64748b);
+  color: var(--p-text-muted-color, var(--text-color-secondary));
   font-size: 0.875rem;
   line-height: 1.35;
 }
@@ -21,92 +14,12 @@
   font-weight: 800;
 }
 
-.commercial-capture {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.capture-header,
-.section-row,
-.readonly-item,
-.toggle-row,
-.actions-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.capture-header {
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-direction: column;
-}
-
-.capture-title {
-  margin: 0.15rem 0;
-  font-size: 1.5rem;
-  line-height: 1.15;
-}
-
-.capture-client {
-  color: var(--text-color, #1f2937);
-  font-weight: 700;
-}
-
-.capture-form,
-.capture-section,
-.capture-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-row,
-.readonly-item,
-.toggle-row {
-  align-items: center;
-  justify-content: space-between;
-}
-
-.section-title {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.field-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.field-block label {
-  font-weight: 700;
-}
-
-.mobile-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
 .capture-card,
-.readonly-item {
-  border: 1px solid var(--surface-border, #d1d5db);
-  border-radius: 8px;
-  padding: 1rem;
-  background: var(--surface-card, #fff);
-}
-
-.actions-row {
-  justify-content: flex-end;
-}
-
+.readonly-item,
 .empty-text {
-  margin: 0;
-  padding: 1rem;
-  border: 1px dashed var(--surface-border, #d1d5db);
-  border-radius: 8px;
-  color: var(--text-color-secondary, #64748b);
+  border: 1px solid var(--p-content-border-color, var(--surface-border));
+  border-radius: var(--p-border-radius, 8px);
+  // background: var(--p-content-background, var(--surface-card));
 }
 
 .sticky-save {
@@ -116,8 +29,8 @@
   bottom: 0;
   z-index: 10;
   padding: 0.75rem 1rem;
-  background: var(--surface-card, #fff);
-  border-top: 1px solid var(--surface-border, #d1d5db);
+  background: var(--p-content-background, var(--surface-card));
+  border-top: 1px solid var(--p-content-border-color, var(--surface-border));
 }
 
 :host ::ng-deep .service-picker-dialog {
@@ -157,19 +70,11 @@
 }
 
 .service-picker-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
   min-height: 3.5rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--surface-border, #d1d5db);
-  border-radius: 8px;
-  background: var(--surface-card, #fff);
-  color: var(--text-color, #1f2937);
+  border: 1px solid var(--p-content-border-color, var(--surface-border));
+  background: var(--p-content-background, var(--surface-card));
+  color: inherit;
   cursor: pointer;
-  text-align: left;
 }
 
 .service-picker-item:disabled {
@@ -177,31 +82,24 @@
   opacity: 0.65;
 }
 
-.service-picker-item__name {
-  font-weight: 700;
-}
-
 .service-picker-item__meta {
-  flex: 0 0 auto;
-  color: var(--text-color-secondary, #64748b);
-  font-size: 0.8rem;
-  font-weight: 700;
+  color: var(--p-text-muted-color, var(--text-color-secondary));
 }
 
 :host ::ng-deep .p-card,
 :host ::ng-deep .p-accordioncontent-content {
-  border-radius: 8px;
+  border-radius: var(--p-border-radius, 8px);
 }
 
 @media (min-width: 768px) {
-  .dr-container {
+  .form-preview-shell {
     padding-bottom: 2rem;
   }
 
   :host ::ng-deep .services-captured-card {
-    background: var(--surface-card, #fff);
-    border: 1px solid var(--surface-border, #d1d5db);
-    box-shadow: var(--card-shadow, none);
+    background: var(--p-content-background, var(--surface-card));
+    border: 1px solid var(--p-content-border-color, var(--surface-border));
+    box-shadow: var(--p-card-shadow, var(--card-shadow, none));
   }
 
   :host ::ng-deep .services-captured-card > .p-card-body {
@@ -211,15 +109,6 @@
 
   :host ::ng-deep .services-captured-card > .p-card-body > .p-card-content {
     padding: var(--p-card-content-padding, 0);
-  }
-
-  .capture-header {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .mobile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sticky-save {
