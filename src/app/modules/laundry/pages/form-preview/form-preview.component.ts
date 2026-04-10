@@ -84,6 +84,14 @@ export class FormPreviewComponent implements OnInit {
   serviceVariants: Record<number, LaundryCommercialCatalogVariantItem[]> = {};
   showServicePicker = false;
   serviceSearchTerm = '';
+  selectedServiceForPicker: LaundryCommercialCatalogServiceItem | null = null;
+  selectedServiceVariants: LaundryCommercialCatalogVariantItem[] = [];
+  serviceVariantQuantities: Record<number, number | null> = {};
+  servicePickerPreviewItems: Array<{
+    variant: LaundryCommercialCatalogVariantItem;
+    quantity: number;
+  }> = [];
+  servicePickerStep: 'list' | 'variants' | 'preview' = 'list';
   showGarmentPicker = false;
   garmentSearchTerm = '';
   garmentDraftQuantity = 1;
@@ -172,6 +180,17 @@ export class FormPreviewComponent implements OnInit {
     return this.serviceCatalog.find((service) => service.id === serviceId)?.name ?? 'Servicio';
   }
 
+  selectedServiceHeader(index: number): string {
+    const serviceName = this.selectedServiceName(index);
+    const variantId = Number(this.orderItemsArray.at(index)?.get('service_variant_id')?.value);
+    if (!variantId) {
+      return serviceName;
+    }
+
+    const variantName = this.variantsFor(index).find((variant) => variant.id === variantId)?.name;
+    return variantName ? `${serviceName} - ${variantName}` : serviceName;
+  }
+
   selectedServiceMode(index: number): string {
     const serviceId = Number(this.orderItemsArray.at(index)?.get('service_id')?.value);
     return this.serviceCatalog.find((service) => service.id === serviceId)?.pricing_mode?.toUpperCase() ?? 'FIXED';
@@ -193,8 +212,13 @@ export class FormPreviewComponent implements OnInit {
   }
 
   openServicePicker(): void {
-    this.serviceSearchTerm = '';
+    this.resetServicePicker();
     this.showServicePicker = true;
+  }
+
+  closeServicePicker(): void {
+    this.showServicePicker = false;
+    this.resetServicePicker();
   }
 
   openGarmentPicker(): void {
@@ -240,12 +264,65 @@ export class FormPreviewComponent implements OnInit {
     if (service.pricing_mode?.toUpperCase() === 'WEIGHT') {
       this.showWeightService.set(true);
       this.addAccordionValue('weight');
-      this.showServicePicker = false;
+      this.closeServicePicker();
       return;
     }
 
-    this.addService(service);
-    this.showServicePicker = false;
+    this.prepareServiceSelection(service);
+  }
+
+  updateServiceVariantQuantity(variantId: number, value: number | null): void {
+    this.serviceVariantQuantities = {
+      ...this.serviceVariantQuantities,
+      [variantId]: value == null ? null : Number(value)
+    };
+  }
+
+  backToServiceList(): void {
+    this.selectedServiceForPicker = null;
+    this.selectedServiceVariants = [];
+    this.serviceVariantQuantities = {};
+    this.servicePickerPreviewItems = [];
+    this.servicePickerStep = 'list';
+  }
+
+  reviewVariantSelection(): void {
+    const previewItems = this.selectedServiceVariants
+      .map((variant) => ({
+        variant,
+        quantity: Number(this.serviceVariantQuantities[variant.id] ?? 0)
+      }))
+      .filter((item) => Number.isFinite(item.quantity) && item.quantity > 0);
+
+    if (previewItems.length === 0) {
+      this.showError('Ingresa al menos una cantidad para continuar.');
+      return;
+    }
+
+    this.servicePickerPreviewItems = previewItems;
+    this.servicePickerStep = 'preview';
+  }
+
+  editVariantSelection(): void {
+    this.servicePickerStep = 'variants';
+  }
+
+  confirmVariantSelection(): void {
+    if (!this.selectedServiceForPicker || this.servicePickerPreviewItems.length === 0) {
+      this.showError('No hay variantes seleccionadas para agregar.');
+      return;
+    }
+
+    this.servicePickerPreviewItems.forEach(({ variant, quantity }) => {
+      this.addService(this.selectedServiceForPicker!, {
+        service_variant_id: variant.id,
+        quantity,
+        catalog_price: this.toMoneyString(variant.catalog_price),
+        applied_price: this.toMoneyString(variant.catalog_price)
+      });
+    });
+
+    this.closeServicePicker();
   }
 
   addService(service: LaundryCommercialCatalogServiceItem, item?: Partial<LaundryServiceSummaryItem>): void {
@@ -436,6 +513,57 @@ export class FormPreviewComponent implements OnInit {
     });
   }
 
+  private prepareServiceSelection(service: LaundryCommercialCatalogServiceItem): void {
+    const cachedVariants = this.serviceVariants[service.id];
+    if (cachedVariants) {
+      this.handleServiceSelection(service, cachedVariants);
+      return;
+    }
+
+    this.setBusy(true, 'Cargando variantes...');
+    this.catalogService.listVariantsByService(service.id).pipe(
+      catchError(() => {
+        this.showError('No se pudieron cargar las variantes.');
+        return of([]);
+      }),
+      finalize(() => this.setBusy(false))
+    ).subscribe((variants) => {
+      this.serviceVariants = {
+        ...this.serviceVariants,
+        [service.id]: variants
+      };
+      this.handleServiceSelection(service, variants);
+    });
+  }
+
+  private handleServiceSelection(
+    service: LaundryCommercialCatalogServiceItem,
+    variants: LaundryCommercialCatalogVariantItem[]
+  ): void {
+    if (variants.length <= 1) {
+      const variant = variants[0];
+      this.addService(service, variant
+        ? {
+            service_variant_id: variant.id,
+            quantity: 1,
+            catalog_price: this.toMoneyString(variant.catalog_price),
+            applied_price: this.toMoneyString(variant.catalog_price)
+          }
+        : undefined
+      );
+      this.closeServicePicker();
+      return;
+    }
+
+    this.selectedServiceForPicker = service;
+    this.selectedServiceVariants = variants;
+    this.serviceVariantQuantities = Object.fromEntries(
+      variants.map((variant) => [variant.id, null])
+    );
+    this.servicePickerPreviewItems = [];
+    this.servicePickerStep = 'variants';
+  }
+
   private createOrderItemGroup(
     service: LaundryCommercialCatalogServiceItem,
     item?: Partial<LaundryServiceSummaryItem>
@@ -582,6 +710,15 @@ export class FormPreviewComponent implements OnInit {
     this.garmentSearchTerm = '';
     this.garmentDraftQuantity = 1;
     this.selectedGarmentType = null;
+  }
+
+  private resetServicePicker(): void {
+    this.serviceSearchTerm = '';
+    this.selectedServiceForPicker = null;
+    this.selectedServiceVariants = [];
+    this.serviceVariantQuantities = {};
+    this.servicePickerPreviewItems = [];
+    this.servicePickerStep = 'list';
   }
 
   private toMoneyString(value: string | number | null | undefined): string {

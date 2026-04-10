@@ -134,13 +134,11 @@
         <ng-container formArrayName="order_items">
           @for (item of orderItemsArray.controls; track $index) {
             <p-accordion-panel [value]="servicePanelValue($index)">
-              <p-accordion-header>{{ selectedServiceName($index) }}</p-accordion-header>
+              <p-accordion-header>{{ selectedServiceHeader($index) }}</p-accordion-header>
               <p-accordion-content>
                 <article class="u-d-flex u-d-flex-column u-d-flex-gap-3" [formGroupName]="$index">
-                  <p-tag [value]="selectedServiceMode($index)" severity="info"></p-tag>
-
                   @if (selectedServiceMode($index) === 'FIXED') {
-                    <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+                    <div class="o-grid o-grid--cols-1 o-grid--gap-2">
                       <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                         <label class="u-text-sm-bold">Cantidad</label>
                         <p-inputnumber
@@ -150,22 +148,6 @@
                           styleClass="u-w-100">
                         </p-inputnumber>
                       </div>
-
-                      @if (variantsFor($index).length > 0) {
-                        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                          <label class="u-text-sm-bold">Variante</label>
-                          <p-select
-                            class="u-w-100"
-                            formControlName="service_variant_id"
-                            [options]="variantsFor($index)"
-                            optionLabel="name"
-                            optionValue="id"
-                            appendTo="body"
-                            placeholder="Sin variante"
-                            (onChange)="onVariantChange($index)">
-                          </p-select>
-                        </div>
-                      }
                     </div>
                   }
 
@@ -275,47 +257,159 @@
   [modal]="true"
   [draggable]="false"
   [resizable]="false"
-  styleClass="service-picker-dialog">
+  styleClass="service-picker-dialog"
+  (onHide)="closeServicePicker()">
   <div class="service-picker-list">
+    @if (servicePickerStep === 'list') {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <label for="service-search" class="u-text-sm-bold">Buscar servicio</label>
+        <input
+          id="service-search"
+          pInputText
+          type="search"
+          class="u-w-100"
+          [(ngModel)]="serviceSearchTerm"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Buscar por nombre">
+        @if (shouldShowServiceSearchHint()) {
+          <small class="dr-helper-text">El filtro inicia con 3 letras.</small>
+        }
+      </div>
 
-    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-      <label for="service-search" class="u-text-sm-bold">Buscar servicio</label>
-      <input
-        id="service-search"
-        pInputText
-        type="search"
-        class="u-w-100"
-        [(ngModel)]="serviceSearchTerm"
-        [ngModelOptions]="{ standalone: true }"
-        placeholder="Buscar por nombre">
-      @if (shouldShowServiceSearchHint()) {
-        <small class="dr-helper-text">El filtro inicia con 3 letras.</small>
+      @for (service of availableServices(); track service.id) {
+        <button
+          type="button"
+          class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
+          [disabled]="isLoading()"
+          (click)="addServiceFromList(service)">
+          <span class="service-picker-item__name u-text-base-bold">{{ service.name }}</span>
+          <span class="service-picker-item__meta u-text-xs-bold">{{ service.pricing_mode }}</span>
+        </button>
+      } @empty {
+        <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay servicios disponibles para agregar.</p>
       }
-    </div>
+    } @else if (servicePickerStep === 'variants' && selectedServiceForPicker) {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <p class="dr-helper-text u-m-all-none">Servicio seleccionado</p>
+        <h3 class="u-text-lg-bold u-m-all-none">{{ selectedServiceForPicker.name }}</h3>
+        <p class="dr-helper-text u-m-all-none">Captura cantidad por opción de precio.</p>
+      </div>
 
-    @for (service of availableServices(); track service.id) {
-      <button
-        type="button"
-        class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
-        [disabled]="isLoading()"
-        (click)="addServiceFromList(service)">
-        <span class="service-picker-item__name u-text-base-bold">{{ service.name }}</span>
-        <span class="service-picker-item__meta u-text-xs-bold">{{ service.pricing_mode }}</span>
-      </button>
-    } @empty {
-      <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay servicios disponibles para agregar.</p>
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        @for (variant of selectedServiceVariants; track variant.id) {
+          <article class="capture-card u-p-all-2">
+            <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold">{{ selectedServiceForPicker.name }}</label>
+                <span class="dr-helper-text">{{ variant.name }}</span>
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold">Cantidad</label>
+                <p-inputnumber
+                  [inputId]="'service-variant-' + variant.id"
+                  [ngModel]="serviceVariantQuantities[variant.id]"
+                  (ngModelChange)="updateServiceVariantQuantity(variant.id, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [min]="0"
+                  [showButtons]="true"
+                  styleClass="u-w-100">
+                </p-inputnumber>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else if (servicePickerStep === 'preview' && selectedServiceForPicker) {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <p class="dr-helper-text u-m-all-none">Preview de captura</p>
+        <h3 class="u-text-lg-bold u-m-all-none">{{ selectedServiceForPicker.name }}</h3>
+        <p class="dr-helper-text u-m-all-none">Revisa si datos están correctos o vuelve a editar.</p>
+      </div>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        @for (previewItem of servicePickerPreviewItems; track previewItem.variant.id) {
+          <article class="readonly-item u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+              <strong>{{ selectedServiceForPicker.name }}</strong>
+              <span class="dr-helper-text">{{ previewItem.variant.name }}</span>
+            </div>
+            <p-tag severity="secondary" [value]="'Cant. ' + previewItem.quantity"></p-tag>
+          </article>
+        }
+      </div>
     }
   </div>
 
   <ng-template pTemplate="footer">
-    <p-button
-      type="button"
-      label="Cancelar"
-      severity="secondary"
-      [loading]="isLoading()"
-      [disabled]="isLoading()"
-      (onClick)="showServicePicker = false">
-    </p-button>
+    @if (servicePickerStep === 'list') {
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [loading]="isLoading()"
+        [disabled]="isLoading()"
+        (onClick)="closeServicePicker()">
+      </p-button>
+    } @else if (servicePickerStep === 'variants') {
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+        <p-button
+          type="button"
+          label="Cambiar servicio"
+          severity="secondary"
+          [text]="true"
+          [loading]="isLoading()"
+          [disabled]="isLoading()"
+          (onClick)="backToServiceList()">
+        </p-button>
+        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+          <p-button
+            type="button"
+            label="Cancelar"
+            severity="secondary"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="closeServicePicker()">
+          </p-button>
+          <p-button
+            type="button"
+            label="Continuar"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="reviewVariantSelection()">
+          </p-button>
+        </div>
+      </div>
+    } @else {
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+        <p-button
+          type="button"
+          label="Editar"
+          severity="secondary"
+          [text]="true"
+          [loading]="isLoading()"
+          [disabled]="isLoading()"
+          (onClick)="editVariantSelection()">
+        </p-button>
+        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+          <p-button
+            type="button"
+            label="Cancelar"
+            severity="secondary"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="closeServicePicker()">
+          </p-button>
+          <p-button
+            type="button"
+            label="Confirmar"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="confirmVariantSelection()">
+          </p-button>
+        </div>
+      </div>
+    }
   </ng-template>
 </p-dialog>
 
