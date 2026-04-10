@@ -132,23 +132,62 @@
         }
 
         <ng-container formArrayName="order_items">
-          @for (item of orderItemsArray.controls; track $index) {
-            <p-accordion-panel [value]="servicePanelValue($index)">
-              <p-accordion-header>{{ selectedServiceHeader($index) }}</p-accordion-header>
+          @for (group of serviceGroups(); track group.serviceId) {
+            <p-accordion-panel [value]="'service-' + group.serviceId">
+              <p-accordion-header>{{ serviceGroupTitle(group.serviceId) }}</p-accordion-header>
               <p-accordion-content>
-                <article class="u-d-flex u-d-flex-column u-d-flex-gap-3" [formGroupName]="$index">
-                  @if (selectedServiceMode($index) === 'FIXED') {
-                    <div class="o-grid o-grid--cols-1 o-grid--gap-2">
-                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                        <label class="u-text-sm-bold">Cantidad</label>
-                        <p-inputnumber
-                          formControlName="quantity"
-                          [min]="1"
-                          [showButtons]="true"
-                          styleClass="u-w-100">
-                        </p-inputnumber>
+                <article class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                  @if (selectedServiceMode(group.indexes[0]) === 'FIXED') {
+                    @if (serviceGroupHasMultipleVariants(group.indexes)) {
+                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                        @for (itemIndex of group.indexes; track itemIndex) {
+                          <article class="capture-card u-bg-grey-80 u-p-all-2" [formGroupName]="itemIndex">
+                            <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+                              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                                <label class="u-text-sm-bold">{{ selectedVariantName(itemIndex) }}</label>
+                              </div>
+
+                              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                                <label class="u-text-sm-bold">Cantidad</label>
+                                <p-inputnumber
+                                  formControlName="quantity"
+                                  [min]="1"
+                                  [showButtons]="true"
+                                  styleClass="u-w-100">
+                                </p-inputnumber>
+                              </div>
+                            </div>
+
+                            <div class="u-d-flex u-d-flex-justify-end u-mt-2">
+                              <p-button
+                                type="button"
+                                icon="pi pi-trash"
+                                label="Eliminar"
+                                severity="danger"
+                                [text]="true"
+                                [loading]="isLoading()"
+                                [disabled]="isLoading()"
+                                (onClick)="removeService(itemIndex)">
+                              </p-button>
+                            </div>
+                          </article>
+                        }
                       </div>
-                    </div>
+                    } @else {
+                      @for (itemIndex of group.indexes; track itemIndex) {
+                        <div class="o-grid o-grid--cols-1 o-grid--gap-2" [formGroupName]="itemIndex">
+                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                            <label class="u-text-sm-bold">Cantidad</label>
+                            <p-inputnumber
+                              formControlName="quantity"
+                              [min]="1"
+                              [showButtons]="true"
+                              styleClass="u-w-100">
+                            </p-inputnumber>
+                          </div>
+                        </div>
+                      }
+                    }
                   }
 
                   <div class="u-d-flex u-d-flex-justify-end">
@@ -160,7 +199,7 @@
                       [text]="true"
                       [loading]="isLoading()"
                       [disabled]="isLoading()"
-                      (onClick)="removeService($index)">
+                      (onClick)="removeServiceGroup(group.serviceId)">
                     </p-button>
                   </div>
                 </article>

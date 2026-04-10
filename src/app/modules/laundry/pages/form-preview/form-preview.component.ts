@@ -180,15 +180,39 @@ export class FormPreviewComponent implements OnInit {
     return this.serviceCatalog.find((service) => service.id === serviceId)?.name ?? 'Servicio';
   }
 
-  selectedServiceHeader(index: number): string {
-    const serviceName = this.selectedServiceName(index);
+  serviceGroups(): Array<{ serviceId: number; indexes: number[] }> {
+    const groups = new Map<number, number[]>();
+
+    this.orderItemsArray.controls.forEach((_, index) => {
+      const serviceId = Number(this.orderItemsArray.at(index)?.get('service_id')?.value);
+      if (!serviceId) {
+        return;
+      }
+
+      const current = groups.get(serviceId) ?? [];
+      current.push(index);
+      groups.set(serviceId, current);
+    });
+
+    return Array.from(groups.entries()).map(([serviceId, indexes]) => ({ serviceId, indexes }));
+  }
+
+  serviceGroupTitle(serviceId: number): string {
+    return this.serviceCatalog.find((service) => service.id === serviceId)?.name ?? 'Servicio';
+  }
+
+  serviceGroupHasMultipleVariants(indexes: number[]): boolean {
+    return indexes.length > 1;
+  }
+
+  selectedVariantName(index: number): string {
+    const serviceId = Number(this.orderItemsArray.at(index)?.get('service_id')?.value);
     const variantId = Number(this.orderItemsArray.at(index)?.get('service_variant_id')?.value);
-    if (!variantId) {
-      return serviceName;
+    if (!serviceId || !variantId) {
+      return 'Precio único';
     }
 
-    const variantName = this.variantsFor(index).find((variant) => variant.id === variantId)?.name;
-    return variantName ? `${serviceName} - ${variantName}` : serviceName;
+    return this.serviceVariants[serviceId]?.find((variant) => variant.id === variantId)?.name ?? 'Variante';
   }
 
   selectedServiceMode(index: number): string {
@@ -204,6 +228,17 @@ export class FormPreviewComponent implements OnInit {
   servicePanelValue(index: number): string {
     const serviceId = Number(this.orderItemsArray.at(index)?.get('service_id')?.value);
     return `service-${serviceId}`;
+  }
+
+  removeServiceGroup(serviceId: number): void {
+    const indexesToRemove = this.orderItemsArray.controls
+      .map((_, index) => index)
+      .filter((index) => Number(this.orderItemsArray.at(index)?.get('service_id')?.value) === serviceId)
+      .sort((a, b) => b - a);
+
+    indexesToRemove.forEach((index) => this.orderItemsArray.removeAt(index));
+    this.removeAccordionValue(`service-${serviceId}`);
+    this.promptServicePickerWhenOnlyReadOnlyItems();
   }
 
   onAccordionValueChange(value: string | number | string[] | number[]): void {
