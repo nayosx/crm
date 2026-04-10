@@ -17,6 +17,9 @@
 - Maintain consistency between sidebar menu, `home` shortcuts, and actual application routes.
 - When adding a new navigable feature, validate whether it must also appear in `sidebar` and `home`.
 - Avoid duplicating navigation configuration if a single source of truth can be used.
+- In `src/app/modules/laundry/pages/form-preview`, prefer classes and patterns from `node_modules/drstyles` first.
+- In `src/app/modules/laundry/pages/form-preview`, avoid custom colors and avoid custom classes outside `drstyles` and PrimeNG whenever possible.
+- If `drstyles` does not provide an adequate solution in `src/app/modules/laundry/pages/form-preview`, use PrimeNG classes and PrimeNG color tokens/list before introducing custom styling.
 - Any UI action that triggers async processes (API calls, sockets, state changes) must provide clear loading feedback.
 - If the action affects critical business state or may cause double submissions or inconsistent states, use `LoaderDialogComponent` or an equivalent blocking pattern.
 
@@ -56,7 +59,7 @@
   3. how to verify
 
 ## Compression Modes
-- Default: concise professional tone.
+- Default: `caveman full`.
 - If the user says `caveman`, switch to highly compressed output.
 - If the user says `normal mode`, return to standard concise output.
 - Compression affects wording only, never technical accuracy, safety, or completeness.
