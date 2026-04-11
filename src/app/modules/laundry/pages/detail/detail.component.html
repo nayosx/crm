@@ -1,4 +1,389 @@
-<section class="p-4">
-  <h2 class="m-0 mb-2">Laundry Detail</h2>
-  <p class="m-0 text-color-secondary">Pendiente de construir.</p>
+<p-toast></p-toast>
+<app-loader-dialog></app-loader-dialog>
+
+<section class="container u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
+  <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3 u-pt-4">
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+      <app-back-button [fallbackRoute]="backRoute()" label="Volver"></app-back-button>
+      <p class="u-text-sm-medium u-m-all-none text-color-secondary">Operador lavandería</p>
+      <h1 class="u-text-2xl-bold u-leading-tight u-m-all-none">Servicio #{{ serviceId() }}</h1>
+
+      @if (summary(); as data) {
+        <p class="u-text-lg-bold u-m-all-none">{{ data.client.name }}</p>
+        <p class="u-m-all-none text-color-secondary">
+          Programado: {{ formatDate(data.laundry_service.scheduled_pickup_at) }}
+        </p>
+      } @else {
+        <p class="u-m-all-none text-color-secondary">Cargando detalle del servicio...</p>
+      }
+    </div>
+
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+      @if (summary(); as data) {
+        <div class="u-d-flex u-d-flex-justify-end u-d-flex-gap-2">
+          <p-tag [value]="statusLabel()" [severity]="statusSeverity(data.laundry_service.status)"></p-tag>
+          <p-tag [value]="serviceLabel()" [severity]="serviceLabelSeverity(data.laundry_service.service_label)"></p-tag>
+        </div>
+      }
+
+      <button
+        pButton
+        type="button"
+        label="Editar detalle comercial"
+        icon="pi pi-pencil"
+        (click)="openCommercialDetail()"
+        [disabled]="!summary() || isLoading()">
+      </button>
+    </div>
+  </header>
+
+  @if (summary(); as data) {
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+      <p-card>
+        <ng-template pTemplate="header">
+          <div class="u-p-all-2 border-bottom-1 surface-border">
+            <h2 class="u-text-lg-bold u-m-all-none">Cabecera operativa</h2>
+          </div>
+        </ng-template>
+
+        <form [formGroup]="headerForm" class="u-d-flex u-d-flex-column u-d-flex-gap-3" (ngSubmit)="saveHeader()">
+          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="service_label">Tipo de servicio</label>
+              <p-select
+                inputId="service_label"
+                class="w-full"
+                formControlName="service_label"
+                optionLabel="label"
+                optionValue="value"
+                [options]="serviceLabelOptions"
+                appendTo="body">
+              </p-select>
+            </div>
+
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="fulfillment_type">Cumplimiento</label>
+              <p-select
+                inputId="fulfillment_type"
+                class="w-full"
+                formControlName="fulfillment_type"
+                optionLabel="label"
+                optionValue="value"
+                [options]="fulfillmentOptions"
+                appendTo="body">
+              </p-select>
+            </div>
+          </div>
+
+          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="distance_km">Distancia (km)</label>
+              <p-inputNumber
+                inputId="distance_km"
+                formControlName="distance_km"
+                mode="decimal"
+                [min]="0"
+                [minFractionDigits]="0"
+                [maxFractionDigits]="2"
+                [useGrouping]="false"
+                styleClass="w-full"
+                [disabled]="!deliveryControlsEnabled()">
+              </p-inputNumber>
+            </div>
+
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="manual_delivery_fee">Delivery manual</label>
+              <p-inputNumber
+                inputId="manual_delivery_fee"
+                formControlName="manual_delivery_fee"
+                mode="currency"
+                currency="USD"
+                locale="en-US"
+                [min]="0"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                styleClass="w-full"
+                [disabled]="!deliveryControlsEnabled()">
+              </p-inputNumber>
+            </div>
+          </div>
+
+          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+              <span class="u-text-sm-bold">Notas operativas</span>
+              <p class="u-m-all-none text-color-secondary">
+                {{ data.laundry_service.notes || 'Sin notas registradas.' }}
+              </p>
+              @if (!deliveryControlsEnabled()) {
+                <p class="u-m-all-none text-color-secondary">
+                  WALK_IN no cobra delivery. Los campos se envían vacíos.
+                </p>
+              }
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-end">
+              <button
+                pButton
+                type="submit"
+                label="Guardar cabecera"
+                icon="pi pi-save"
+                [loading]="isLoading()"
+                [disabled]="isLoading()">
+              </button>
+            </div>
+          </div>
+        </form>
+      </p-card>
+
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Cliente</h2>
+            </div>
+          </ng-template>
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Nombre</p>
+              <p class="u-m-all-none">{{ data.client.name }}</p>
+            </div>
+
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Teléfonos</p>
+              @if (clientPhones().length) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  @for (phone of clientPhones(); track phone) {
+                    <p class="u-m-all-none">{{ phone }}</p>
+                  }
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">Sin teléfonos registrados.</p>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Dirección</h2>
+            </div>
+          </ng-template>
+
+          @if (data.client_address) {
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+              <p class="u-m-all-none">{{ data.client_address.address_text }}</p>
+
+              <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                @if (data.client_address.latitude && data.client_address.longitude) {
+                  <p-tag
+                    [value]="'Lat ' + data.client_address.latitude + ' · Lon ' + data.client_address.longitude"
+                    severity="secondary">
+                  </p-tag>
+                }
+
+                @if (data.client_address.is_primary) {
+                  <p-tag value="Principal" severity="contrast"></p-tag>
+                }
+              </div>
+            </div>
+          } @else {
+            <p class="u-m-all-none text-color-secondary">Sin dirección registrada.</p>
+          }
+        </p-card>
+      </div>
+
+      <p-card>
+        <ng-template pTemplate="header">
+          <div class="u-p-all-2 border-bottom-1 surface-border">
+            <h2 class="u-text-lg-bold u-m-all-none">Cargos automáticos</h2>
+          </div>
+        </ng-template>
+
+        @if (automaticItems().length) {
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+            @for (item of automaticItems(); track item.id) {
+              <article class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ item.service_name }}</p>
+                  <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                    @for (meta of itemMeta(item); track meta) {
+                      <p-tag [value]="meta" severity="secondary"></p-tag>
+                    }
+                    @if (item.is_friendly_discount) {
+                      <p-tag value="Descuento amigable" severity="success"></p-tag>
+                    }
+                  </div>
+                </div>
+
+                <div class="u-text-right">
+                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                  <p class="u-m-all-none text-color-secondary">
+                    {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                  </p>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="u-m-all-none text-color-secondary">No hay cargos automáticos.</p>
+        }
+      </p-card>
+
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Lavado por peso</h2>
+            </div>
+          </ng-template>
+
+          @if (weightService(); as weight) {
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+              <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                <p-tag [value]="'Peso ' + formatQuantity(weight.weight_lb) + ' lb'" severity="info"></p-tag>
+                <p-tag [value]="'Subtotal ' + formatMoney(data.summary.weight_service_subtotal)" severity="contrast"></p-tag>
+                @if (weight.has_other_services) {
+                  <p-tag value="Con otros servicios" severity="secondary"></p-tag>
+                }
+              </div>
+
+              @if (weight.garments.length) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                  @for (garment of weight.garments; track garment.garment_type_id) {
+                    <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                      <div>
+                        <p class="u-text-base-bold u-m-all-none">{{ garment.garment_type_name || ('Prenda #' + garment.garment_type_id) }}</p>
+                        <p class="u-m-all-none text-color-secondary">{{ weightGarmentMeta(garment) }}</p>
+                      </div>
+
+                      <p class="u-text-base-bold u-m-all-none">{{ formatQuantity(garment.quantity) }}</p>
+                    </article>
+                  }
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">Sin desglose de prendas.</p>
+              }
+            </div>
+          } @else {
+            <p class="u-m-all-none text-color-secondary">No se ha capturado servicio por peso.</p>
+          }
+        </p-card>
+
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Servicios manuales</h2>
+            </div>
+          </ng-template>
+
+          @if (manualItems().length) {
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+              @for (item of manualItems(); track item.id) {
+                <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                    <p class="u-text-base-bold u-m-all-none">{{ item.service_name }}</p>
+                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                      @for (meta of itemMeta(item); track meta) {
+                        <p-tag [value]="meta" severity="secondary"></p-tag>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="u-text-right">
+                    <p class="u-text-base-bold u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                    <p class="u-m-all-none text-color-secondary">
+                      {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                    </p>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="u-m-all-none text-color-secondary">No hay servicios manuales.</p>
+          }
+        </p-card>
+      </div>
+
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Extras</h2>
+            </div>
+          </ng-template>
+
+          @if (extras().length) {
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+              @for (extra of extras(); track extra.id) {
+                <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                    <p class="u-text-base-bold u-m-all-none">{{ extra.extra_name }}</p>
+                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                      @for (meta of extraMeta(extra); track meta) {
+                        <p-tag [value]="meta" severity="secondary"></p-tag>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="u-text-right">
+                    <p class="u-text-base-bold u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
+                    <p class="u-m-all-none text-color-secondary">{{ extra.quantity }} unidades</p>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="u-m-all-none text-color-secondary">No hay extras registrados.</p>
+          }
+        </p-card>
+
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Resumen</h2>
+            </div>
+          </ng-template>
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+              <p class="u-m-all-none">Automáticos</p>
+              <p class="u-m-all-none">{{ formatMoney(data.summary.automatic_items_subtotal) }}</p>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+              <p class="u-m-all-none">Lavado por peso</p>
+              <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+              <p class="u-m-all-none">Servicios manuales</p>
+              <p class="u-m-all-none">{{ formatMoney(data.summary.manual_items_subtotal) }}</p>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+              <p class="u-m-all-none">Extras</p>
+              <p class="u-m-all-none">{{ formatMoney(data.summary.extras_subtotal) }}</p>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+              <p class="u-text-lg-bold u-m-all-none">Total general</p>
+              <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(data.summary.grand_total) }}</p>
+            </div>
+
+            @if (hasDeliveryCharge()) {
+              <p class="u-m-all-none text-color-secondary">
+                El delivery se refleja dentro de cargos automáticos.
+              </p>
+            }
+          </div>
+        </p-card>
+      </div>
+    </div>
+  } @else {
+    <p-card>
+      <p class="u-m-all-none text-color-secondary">No hay detalle disponible todavía.</p>
+    </p-card>
+  }
 </section>
