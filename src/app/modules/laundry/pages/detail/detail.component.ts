@@ -70,16 +70,11 @@ export class DetailComponent implements OnInit {
   readonly serviceId = signal<number>(0);
 
   readonly headerForm = this.fb.group({
-    service_label: this.fb.control<LaundryServiceLabel>('NORMAL', { nonNullable: true, validators: [Validators.required] }),
+    is_express: this.fb.control(false, { nonNullable: true }),
     fulfillment_type: this.fb.control<LaundryServiceFulfillmentType>('WALK_IN', { nonNullable: true, validators: [Validators.required] }),
     distance_km: this.fb.control<number | null>(null),
     manual_delivery_fee: this.fb.control<number | null>(null)
   });
-
-  readonly serviceLabelOptions: SelectOption<LaundryServiceLabel>[] = [
-    { label: 'Normal', value: 'NORMAL' },
-    { label: 'Exprés', value: 'EXPRESS' }
-  ];
 
   readonly fulfillmentOptions: SelectOption<LaundryServiceFulfillmentType>[] = [
     { label: 'Walk-in', value: 'WALK_IN' },
@@ -96,8 +91,6 @@ export class DetailComponent implements OnInit {
     const value = this.summary()?.laundry_service.service_label;
     return value ? LaundryServiceLabelMap[value] : 'Sin tipo';
   });
-
-  readonly isExpressSelected = computed(() => this.headerForm.getRawValue().service_label === 'EXPRESS');
 
   readonly backRoute = computed(() => {
     const status = this.summary()?.laundry_service.status ?? (this.route.snapshot.queryParamMap.get('status') as LaundryServiceStatus | null);
@@ -142,6 +135,19 @@ export class DetailComponent implements OnInit {
 
   manualItems(): LaundryServiceSummaryItem[] {
     return this.summary()?.manual_items ?? [];
+  }
+
+  manualSummaryLabel(item: LaundryServiceSummaryItem): string {
+    const variants = new Set(
+      this.manualItems()
+        .filter((manualItem) => manualItem.service_id === item.service_id)
+        .map((manualItem) => manualItem.service_variant_name)
+        .filter((variantName): variantName is string => Boolean(variantName))
+    );
+
+    return variants.size > 1 && item.service_variant_name
+      ? `${item.service_name} - ${item.service_variant_name}`
+      : item.service_name;
   }
 
   extras(): LaundryServiceSummaryExtra[] {
@@ -283,10 +289,6 @@ export class DetailComponent implements OnInit {
     );
   }
 
-  onServiceLabelToggle(checked: boolean): void {
-    this.headerForm.controls.service_label.setValue(checked ? 'EXPRESS' : 'NORMAL');
-  }
-
   private loadSummary(): void {
     this.setBusy(true, 'Cargando detalle del servicio...');
 
@@ -309,7 +311,7 @@ export class DetailComponent implements OnInit {
       ?.calculation_snapshot as Record<string, unknown> | null | undefined;
 
     return {
-      service_label: summary.laundry_service.service_label,
+      is_express: summary.laundry_service.service_label === 'EXPRESS',
       fulfillment_type: summary.laundry_service.fulfillment_type,
       distance_km: this.toNullableNumber(deliverySnapshot?.['distance_km']),
       manual_delivery_fee: this.toNullableNumber(deliverySnapshot?.['manual_delivery_fee'])
@@ -319,7 +321,7 @@ export class DetailComponent implements OnInit {
   private buildHeaderPayload(): LaundryServiceHeaderPayload {
     const value = this.headerForm.getRawValue();
     const payload: LaundryServiceHeaderPayload = {
-      service_label: value.service_label,
+      service_label: value.is_express ? 'EXPRESS' : 'NORMAL',
       fulfillment_type: value.fulfillment_type
     };
 

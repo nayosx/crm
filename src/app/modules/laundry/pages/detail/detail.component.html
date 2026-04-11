@@ -50,15 +50,14 @@
           <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
             <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
               <label class="u-text-sm-bold" for="service_label">Tipo de servicio</label>
-              <p-select
-                inputId="service_label"
-                class="w-full"
-                formControlName="service_label"
-                optionLabel="label"
-                optionValue="value"
-                [options]="serviceLabelOptions"
-                appendTo="body">
-              </p-select>
+              <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                <span class="text-color-secondary">Normal</span>
+                <p-toggleswitch
+                  inputId="service_label"
+                  formControlName="is_express">
+                </p-toggleswitch>
+                <span class="u-text-sm-bold">Exprés</span>
+              </div>
             </div>
 
             <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
@@ -161,77 +160,33 @@
                 <p class="u-m-all-none text-color-secondary">Sin teléfonos registrados.</p>
               }
             </div>
-          </div>
-        </p-card>
 
-        <p-card class="u-w-100">
-          <ng-template pTemplate="header">
-            <div class="u-p-all-2 border-bottom-1 surface-border">
-              <h2 class="u-text-lg-bold u-m-all-none">Dirección</h2>
-            </div>
-          </ng-template>
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Dirección</p>
+              @if (data.client_address) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                  <p class="u-m-all-none">{{ data.client_address.address_text }}</p>
 
-          @if (data.client_address) {
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-              <p class="u-m-all-none">{{ data.client_address.address_text }}</p>
-
-              <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                @if (data.client_address.latitude && data.client_address.longitude) {
-                  <p-tag
-                    [value]="'Lat ' + data.client_address.latitude + ' · Lon ' + data.client_address.longitude"
-                    severity="secondary">
-                  </p-tag>
-                }
-
-                @if (data.client_address.is_primary) {
-                  <p-tag value="Principal" severity="contrast"></p-tag>
-                }
-              </div>
-            </div>
-          } @else {
-            <p class="u-m-all-none text-color-secondary">Sin dirección registrada.</p>
-          }
-        </p-card>
-      </div>
-
-      <p-card>
-        <ng-template pTemplate="header">
-          <div class="u-p-all-2 border-bottom-1 surface-border">
-            <h2 class="u-text-lg-bold u-m-all-none">Cargos automáticos</h2>
-          </div>
-        </ng-template>
-
-        @if (automaticItems().length) {
-          <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-            @for (item of automaticItems(); track item.id) {
-              <article class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                  <p class="u-text-base-bold u-m-all-none">{{ item.service_name }}</p>
                   <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                    @for (meta of itemMeta(item); track meta) {
-                      <p-tag [value]="meta" severity="secondary"></p-tag>
+                    @if (data.client_address.latitude && data.client_address.longitude) {
+                      <p-tag
+                        [value]="'Lat ' + data.client_address.latitude + ' · Lon ' + data.client_address.longitude"
+                        severity="secondary">
+                      </p-tag>
                     }
-                    @if (item.is_friendly_discount) {
-                      <p-tag value="Descuento amigable" severity="success"></p-tag>
+
+                    @if (data.client_address.is_primary) {
+                      <p-tag value="Principal" severity="contrast"></p-tag>
                     }
                   </div>
                 </div>
-
-                <div class="u-text-right">
-                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                  <p class="u-m-all-none text-color-secondary">
-                    {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                  </p>
-                </div>
-              </article>
-            }
+              } @else {
+                <p class="u-m-all-none text-color-secondary">Sin dirección registrada.</p>
+              }
+            </div>
           </div>
-        } @else {
-          <p class="u-m-all-none text-color-secondary">No hay cargos automáticos.</p>
-        }
-      </p-card>
+        </p-card>
 
-      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
         <p-card class="u-w-100">
           <ng-template pTemplate="header">
             <div class="u-p-all-2 border-bottom-1 surface-border">
@@ -270,75 +225,9 @@
             <p class="u-m-all-none text-color-secondary">No se ha capturado servicio por peso.</p>
           }
         </p-card>
-
-        <p-card class="u-w-100">
-          <ng-template pTemplate="header">
-            <div class="u-p-all-2 border-bottom-1 surface-border">
-              <h2 class="u-text-lg-bold u-m-all-none">Servicios manuales</h2>
-            </div>
-          </ng-template>
-
-          @if (manualItems().length) {
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-              @for (item of manualItems(); track item.id) {
-                <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                    <p class="u-text-base-bold u-m-all-none">{{ item.service_name }}</p>
-                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                      @for (meta of itemMeta(item); track meta) {
-                        <p-tag [value]="meta" severity="secondary"></p-tag>
-                      }
-                    </div>
-                  </div>
-
-                  <div class="u-text-right">
-                    <p class="u-text-base-bold u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                    <p class="u-m-all-none text-color-secondary">
-                      {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                    </p>
-                  </div>
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="u-m-all-none text-color-secondary">No hay servicios manuales.</p>
-          }
-        </p-card>
       </div>
 
       <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
-        <p-card class="u-w-100">
-          <ng-template pTemplate="header">
-            <div class="u-p-all-2 border-bottom-1 surface-border">
-              <h2 class="u-text-lg-bold u-m-all-none">Extras</h2>
-            </div>
-          </ng-template>
-
-          @if (extras().length) {
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-              @for (extra of extras(); track extra.id) {
-                <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                    <p class="u-text-base-bold u-m-all-none">{{ extra.extra_name }}</p>
-                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                      @for (meta of extraMeta(extra); track meta) {
-                        <p-tag [value]="meta" severity="secondary"></p-tag>
-                      }
-                    </div>
-                  </div>
-
-                  <div class="u-text-right">
-                    <p class="u-text-base-bold u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
-                    <p class="u-m-all-none text-color-secondary">{{ extra.quantity }} unidades</p>
-                  </div>
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="u-m-all-none text-color-secondary">No hay extras registrados.</p>
-          }
-        </p-card>
-
         <p-card class="u-w-100">
           <ng-template pTemplate="header">
             <div class="u-p-all-2 border-bottom-1 surface-border">
@@ -347,36 +236,97 @@
           </ng-template>
 
           <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-              <p class="u-m-all-none">Automáticos</p>
-              <p class="u-m-all-none">{{ formatMoney(data.summary.automatic_items_subtotal) }}</p>
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+              @if (automaticItems().length) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                  @for (item of automaticItems(); track item.id) {
+                    <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                        <p class="u-m-all-none">{{ item.service_name }}</p>
+                        @if (item.pricing_mode?.toUpperCase() !== 'DELIVERY') {
+                          <p-tag
+                            [value]="serviceLabel()"
+                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
+                          </p-tag>
+                        }
+                      </div>
+
+                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                        <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                        <p class="u-m-all-none u-text-grey-70">
+                          {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">No hay cobros automáticos.</p>
+              }
             </div>
 
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
               <p class="u-m-all-none">Lavado por peso</p>
-              <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
+                @if (weightService(); as weight) {
+                  <p class="u-m-all-none u-text-grey-70">
+                    {{ formatQuantity(weight.weight_lb) }} lb
+                  </p>
+                }
+              </div>
             </div>
 
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-              <p class="u-m-all-none">Servicios manuales</p>
-              <p class="u-m-all-none">{{ formatMoney(data.summary.manual_items_subtotal) }}</p>
-            </div>
+            @if (manualItems().length) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                @for (item of manualItems(); track item.id) {
+                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                    <p class="u-m-all-none">{{ manualSummaryLabel(item) }}</p>
 
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-              <p class="u-m-all-none">Extras</p>
-              <p class="u-m-all-none">{{ formatMoney(data.summary.extras_subtotal) }}</p>
-            </div>
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                      <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">
+                        {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                      </p>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                <p class="u-m-all-none">Servicios manuales</p>
+                <p class="u-m-all-none">{{ formatMoney(data.summary.manual_items_subtotal) }}</p>
+              </div>
+            }
+
+            @if (extras().length) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                @for (extra of extras(); track extra.id) {
+                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                    <p class="u-m-all-none">{{ extra.extra_name }}</p>
+
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                      <p class="u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">
+                        {{ formatQuantity(extra.quantity) }} x {{ formatMoney(extra.unit_price) }}
+                      </p>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                <p class="u-m-all-none">Extras</p>
+                <p class="u-m-all-none">{{ formatMoney(data.summary.extras_subtotal) }}</p>
+              </div>
+            }
 
             <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
               <p class="u-text-lg-bold u-m-all-none">Total general</p>
               <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(data.summary.grand_total) }}</p>
             </div>
 
-            @if (hasDeliveryCharge()) {
-              <p class="u-m-all-none text-color-secondary">
-                El delivery se refleja dentro de cargos automáticos.
-              </p>
-            }
           </div>
         </p-card>
       </div>

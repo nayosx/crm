@@ -103,7 +103,8 @@ export class LaundryCommercialCatalogService {
           name: item.name ?? 'Extra',
           is_active: item.is_active !== false,
           default_unit_price: Number(
-            item.default_unit_price
+            item.default_price
+            ?? item.default_unit_price
             ?? item.unit_price
             ?? item.price
             ?? 0
