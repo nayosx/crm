@@ -54,7 +54,29 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
     BackButtonComponent
   ],
   providers: [MessageService],
-  templateUrl: './detail.component.html'
+  templateUrl: './detail.component.html',
+  styles: [`
+    .summary-copy-button {
+      transition: transform 180ms ease, filter 180ms ease;
+    }
+
+    .summary-copy-button--copied {
+      animation: summary-copy-pop 420ms ease;
+      filter: saturate(1.15);
+    }
+
+    @keyframes summary-copy-pop {
+      0% {
+        transform: scale(1);
+      }
+      45% {
+        transform: scale(1.06);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+  `]
 })
 export class DetailComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -68,6 +90,7 @@ export class DetailComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly summary = signal<LaundryServiceSummaryResponse | null>(null);
   readonly serviceId = signal<number>(0);
+  readonly isSummaryCopied = signal(false);
 
   readonly headerForm = this.fb.group({
     is_express: this.fb.control(false, { nonNullable: true }),
@@ -77,9 +100,9 @@ export class DetailComponent implements OnInit {
   });
 
   readonly fulfillmentOptions: SelectOption<LaundryServiceFulfillmentType>[] = [
-    { label: 'Walk-in', value: 'WALK_IN' },
-    { label: 'Delivery', value: 'DELIVERY' },
-    { label: 'Pickup + Delivery', value: 'PICKUP_DELIVERY' }
+    { label: 'No tiene delivery', value: 'WALK_IN' },
+    { label: 'Solo Envio/Entrega', value: 'DELIVERY' },
+    { label: 'Delivery completo', value: 'PICKUP_DELIVERY' }
   ];
 
   readonly statusLabel = computed(() => {
@@ -98,6 +121,7 @@ export class DetailComponent implements OnInit {
   });
 
   readonly deliveryControlsEnabled = signal(false);
+  readonly distanceControlDisabled = signal(false);
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -111,15 +135,13 @@ export class DetailComponent implements OnInit {
     this.headerForm.controls.fulfillment_type.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => {
-        const enabled = value !== 'WALK_IN';
-        this.deliveryControlsEnabled.set(enabled);
+        this.syncDeliveryFieldState(value, this.headerForm.controls.manual_delivery_fee.value);
+      });
 
-        if (!enabled) {
-          this.headerForm.patchValue({
-            distance_km: null,
-            manual_delivery_fee: null
-          }, { emitEvent: false });
-        }
+    this.headerForm.controls.manual_delivery_fee.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.syncDeliveryFieldState(this.headerForm.controls.fulfillment_type.value, value);
       });
 
     this.loadSummary();
@@ -134,7 +156,7 @@ export class DetailComponent implements OnInit {
   }
 
   manualItems(): LaundryServiceSummaryItem[] {
-    return this.summary()?.manual_items ?? [];
+    return (this.summary()?.manual_items ?? []).filter((item) => this.hasVisibleItemValues(item));
   }
 
   manualSummaryLabel(item: LaundryServiceSummaryItem): string {
@@ -151,11 +173,46 @@ export class DetailComponent implements OnInit {
   }
 
   extras(): LaundryServiceSummaryExtra[] {
-    return this.summary()?.extras ?? [];
+    return (this.summary()?.extras ?? []).filter((extra) => this.hasVisibleExtraValues(extra));
   }
 
   weightService(): LaundryServiceSummaryWeightDetail | null {
     return this.summary()?.weight_service_detail ?? null;
+  }
+
+  showWeightServiceSummary(): boolean {
+    const summary = this.summary();
+    if (!summary) {
+      return false;
+    }
+
+    const subtotal = Number(summary.summary.weight_service_subtotal ?? 0);
+    const weight = Number(summary.weight_service_detail?.weight_lb ?? 0);
+    return subtotal > 0 || weight > 0;
+  }
+
+  async copySummaryForWhatsApp(): Promise<void> {
+    const summary = this.summary();
+    if (!summary) {
+      this.showError('No hay resumen disponible para copiar.');
+      return;
+    }
+
+    const content = this.buildWhatsAppSummary(summary);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        this.copyTextWithTextarea(content);
+      }
+
+      this.isSummaryCopied.set(true);
+      window.setTimeout(() => this.isSummaryCopied.set(false), 1800);
+      this.showSuccess('Resumen copiado para WhatsApp.');
+    } catch {
+      this.showError('No se pudo copiar el resumen.');
+    }
   }
 
   openCommercialDetail(): void {
@@ -233,6 +290,87 @@ export class DetailComponent implements OnInit {
     return `${this.formatQuantity(garment.quantity)} prendas`;
   }
 
+  private hasVisibleItemValues(item: LaundryServiceSummaryItem): boolean {
+    const quantity = Number(item.quantity ?? 0);
+    const appliedPrice = Number(item.applied_price ?? 0);
+    return quantity > 0 || appliedPrice > 0 || this.itemSubtotal(item) > 0;
+  }
+
+  private hasVisibleExtraValues(extra: LaundryServiceSummaryExtra): boolean {
+    const quantity = Number(extra.quantity ?? 0);
+    const unitPrice = Number(extra.unit_price ?? 0);
+    const subtotal = Number(extra.subtotal ?? 0);
+    return quantity > 0 || unitPrice > 0 || subtotal > 0;
+  }
+
+  private buildWhatsAppSummary(summary: LaundryServiceSummaryResponse): string {
+    const lines: string[] = [
+      `*Resumen servicio #${summary.laundry_service.id}*`,
+      `*Cliente:* ${summary.client.name}`,
+      `*Programado:* ${this.formatDate(summary.laundry_service.scheduled_pickup_at)}`,
+      `*Estado:* ${this.statusLabel()}`,
+      `*Tipo:* ${this.serviceLabel()}`,
+      ''
+    ];
+
+    const automaticLines = this.automaticItems().map((item) =>
+      `- ${item.service_name}: ${this.formatMoney(this.itemSubtotal(item))} (${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)})`
+    );
+
+    if (automaticLines.length) {
+      lines.push('*Servicios automáticos:*');
+      lines.push(...automaticLines);
+      lines.push('');
+    }
+
+    if (this.showWeightServiceSummary()) {
+      const weight = this.weightService();
+      lines.push('*Lavado por peso:*');
+      lines.push(`- Subtotal: ${this.formatMoney(summary.summary.weight_service_subtotal)}`);
+
+      if (weight) {
+        lines.push(`- Peso: ${this.formatQuantity(weight.weight_lb)} lb`);
+      }
+
+      lines.push('');
+    }
+
+    const manualLines = this.manualItems().map((item) =>
+      `- ${this.manualSummaryLabel(item)}: ${this.formatMoney(this.itemSubtotal(item))} (${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)})`
+    );
+
+    if (manualLines.length) {
+      lines.push('*Servicios manuales:*');
+      lines.push(...manualLines);
+      lines.push('');
+    }
+
+    const extraLines = this.extras().map((extra) =>
+      `- ${extra.extra_name}: ${this.formatMoney(Number(extra.subtotal ?? 0))} (${this.formatQuantity(extra.quantity)} x ${this.formatMoney(extra.unit_price)})`
+    );
+
+    if (extraLines.length) {
+      lines.push('*Extras:*');
+      lines.push(...extraLines);
+      lines.push('');
+    }
+
+    lines.push(`*Total general:* ${this.formatMoney(summary.summary.grand_total)}`);
+    return lines.join('\n').trim();
+  }
+
+  private copyTextWithTextarea(content: string): void {
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+
   formatMoney(value: string | number | null | undefined): string {
     return `$${Number(value ?? 0).toFixed(2)}`;
   }
@@ -285,7 +423,7 @@ export class DetailComponent implements OnInit {
     return Boolean(
       summary
       && summary.laundry_service.fulfillment_type !== 'WALK_IN'
-      && summary.automatic_items.some((item) => item.pricing_mode?.toUpperCase() === 'DELIVERY')
+      && summary.automatic_items.some((item) => item.pricing_mode.toUpperCase() === 'DELIVERY')
     );
   }
 
@@ -303,11 +441,14 @@ export class DetailComponent implements OnInit {
   private applySummary(summary: LaundryServiceSummaryResponse): void {
     this.summary.set(summary);
     this.headerForm.patchValue(this.buildHeaderFormValue(summary), { emitEvent: false });
-    this.deliveryControlsEnabled.set(summary.laundry_service.fulfillment_type !== 'WALK_IN');
+    this.syncDeliveryFieldState(
+      summary.laundry_service.fulfillment_type,
+      this.headerForm.controls.manual_delivery_fee.value
+    );
   }
 
   private buildHeaderFormValue(summary: LaundryServiceSummaryResponse) {
-    const deliverySnapshot = summary.automatic_items.find((item) => item.pricing_mode?.toUpperCase() === 'DELIVERY')
+    const deliverySnapshot = summary.automatic_items.find((item) => item.pricing_mode.toUpperCase() === 'DELIVERY')
       ?.calculation_snapshot as Record<string, unknown> | null | undefined;
 
     return {
@@ -338,13 +479,42 @@ export class DetailComponent implements OnInit {
     return payload;
   }
 
+  private syncDeliveryFieldState(
+    fulfillmentType: LaundryServiceFulfillmentType,
+    manualDeliveryFee: number | null
+  ): void {
+    const deliveryEnabled = fulfillmentType !== 'WALK_IN';
+    this.deliveryControlsEnabled.set(deliveryEnabled);
+
+    if (!deliveryEnabled) {
+      this.distanceControlDisabled.set(false);
+      this.headerForm.controls.distance_km.enable({ emitEvent: false });
+      this.headerForm.patchValue({
+        distance_km: null,
+        manual_delivery_fee: null
+      }, { emitEvent: false });
+      return;
+    }
+
+    const shouldDisableDistance = Number(manualDeliveryFee ?? 0) > 0;
+    this.distanceControlDisabled.set(shouldDisableDistance);
+
+    if (shouldDisableDistance) {
+      this.headerForm.patchValue({ distance_km: null }, { emitEvent: false });
+      this.headerForm.controls.distance_km.disable({ emitEvent: false });
+      return;
+    }
+
+    this.headerForm.controls.distance_km.enable({ emitEvent: false });
+  }
+
   private snapshotMeta(item: LaundryServiceSummaryItem): string | null {
     if (!item.calculation_snapshot || typeof item.calculation_snapshot !== 'object') {
       return null;
     }
 
     const snapshot = item.calculation_snapshot as Record<string, unknown>;
-    if (item.pricing_mode?.toUpperCase() === 'DELIVERY') {
+    if (item.pricing_mode.toUpperCase() === 'DELIVERY') {
       const distance = this.toNullableNumber(snapshot['distance_km']);
       const finalFee = this.toNullableNumber(snapshot['final_delivery_fee']);
 

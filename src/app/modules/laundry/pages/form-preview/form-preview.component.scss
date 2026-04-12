@@ -4,6 +4,10 @@
   line-height: 1.35;
 }
 
+.form-preview-shell {
+  padding-bottom: 6.5rem;
+}
+
 :host ::ng-deep .dr-primary-button {
   min-height: 3rem;
   font-weight: 700;
@@ -20,17 +24,6 @@
   border: 1px solid var(--p-content-border-color, var(--surface-border));
   border-radius: var(--p-border-radius, 8px);
   // background: var(--p-content-background, var(--surface-card));
-}
-
-.sticky-save {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  padding: 0.75rem 1rem;
-  background: var(--p-content-background, var(--surface-card));
-  border-top: 1px solid var(--p-content-border-color, var(--surface-border));
 }
 
 :host ::ng-deep .service-picker-dialog {
@@ -91,9 +84,45 @@
   border-radius: var(--p-border-radius, 8px);
 }
 
+@media (max-width: 767px) {
+  .service-picker-footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .service-picker-footer__actions {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+  }
+
+  :host ::ng-deep .service-picker-action--compact-mobile.p-button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  :host ::ng-deep .service-picker-action--compact-mobile .p-button-label {
+    display: none;
+  }
+
+  :host ::ng-deep .service-picker-action--compact-mobile .p-button-icon-right,
+  :host ::ng-deep .service-picker-action--compact-mobile .p-button-icon-left {
+    margin: 0;
+  }
+}
+
 @media (min-width: 768px) {
   .form-preview-shell {
-    padding-bottom: 2rem;
+    padding-bottom: 6rem;
+  }
+
+  :host ::ng-deep .service-picker-dialog {
+    width: 50rem;
+    max-width: min(50rem, calc(100vw - 3rem));
   }
 
   :host ::ng-deep .services-captured-card {
@@ -109,14 +138,5 @@
 
   :host ::ng-deep .services-captured-card > .p-card-body > .p-card-content {
     padding: var(--p-card-content-padding, 0);
-  }
-
-  .sticky-save {
-    position: sticky;
-    margin-left: auto;
-    max-width: 280px;
-    padding: 0;
-    background: transparent;
-    border-top: 0;
   }
 }

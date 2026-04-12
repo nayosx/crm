@@ -16,6 +16,7 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputTextarea } from 'primeng/inputtextarea';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
@@ -30,6 +31,10 @@ import {
 } from '@shared/interfaces/laundry-service.interface';
 import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import {
+  BottomNavigationAction,
+  BottomNavigationComponent
+} from '@shared/components/bottom-navigation/bottom-navigation.component';
 import { DialogLoadingService } from '@shared/services/dialog-loading.service';
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
@@ -51,13 +56,15 @@ import {
     ButtonModule,
     InputNumberModule,
     InputTextModule,
+    InputTextarea,
     SelectModule,
     ToggleSwitchModule,
     TagModule,
     ToastModule,
     AccordionModule,
     DialogModule,
-    LoaderDialogComponent
+    LoaderDialogComponent,
+    BottomNavigationComponent
   ],
   providers: [MessageService],
   templateUrl: './form-preview.component.html',
@@ -75,6 +82,7 @@ export class FormPreviewComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly showWeightService = signal(false);
   readonly activeAccordionValues = signal<string[]>([]);
+  readonly showNotesCard = signal(false);
 
   serviceId!: number;
   summary: LaundryServiceSummaryResponse | null = null;
@@ -92,12 +100,14 @@ export class FormPreviewComponent implements OnInit {
     quantity: number;
   }> = [];
   servicePickerStep: 'list' | 'variants' | 'preview' = 'list';
+  showExtraPicker = false;
   showGarmentPicker = false;
   garmentSearchTerm = '';
   garmentDraftQuantity = 1;
   selectedGarmentType: LaundryGarmentType | null = null;
 
   readonly form = this.fb.group({
+    notes: [''],
     weight_service: this.fb.group({
       weight_lb: [0, [Validators.required, Validators.min(0)]],
       garments: this.fb.array([])
@@ -131,6 +141,56 @@ export class FormPreviewComponent implements OnInit {
 
   get extrasArray(): FormArray {
     return this.form.get('extras') as FormArray;
+  }
+
+  availableExtras(): LaundryCommercialCatalogExtraItem[] {
+    return this.extrasCatalog;
+  }
+
+  canAddNote(): boolean {
+    return !this.showNotesCard();
+  }
+
+  bottomNavigationActions(): BottomNavigationAction[] {
+    const actions: BottomNavigationAction[] = [
+      {
+        id: 'add-service',
+        label: 'Servicio',
+        icon: 'pi pi-plus',
+        severity: 'secondary',
+        mobileMode: 'more',
+        disabled: this.isLoading()
+      },
+      {
+        id: 'add-extra',
+        label: 'Extras',
+        icon: 'pi pi-plus',
+        severity: 'secondary',
+        mobileMode: 'more',
+        disabled: this.isLoading() || this.extrasCatalog.length === 0
+      },
+      {
+        id: 'save',
+        label: 'Guardar',
+        icon: 'pi pi-save',
+        mobileMode: 'primary',
+        loading: this.isLoading(),
+        disabled: this.isLoading()
+      }
+    ];
+
+    if (this.canAddNote()) {
+      actions.splice(2, 0, {
+        id: 'add-note',
+        label: 'Nota',
+        icon: 'pi pi-file-edit',
+        severity: 'secondary',
+        mobileMode: 'more',
+        disabled: this.isLoading()
+      });
+    }
+
+    return actions;
   }
 
   availableServices(): LaundryCommercialCatalogServiceItem[] {
@@ -254,6 +314,14 @@ export class FormPreviewComponent implements OnInit {
   closeServicePicker(): void {
     this.showServicePicker = false;
     this.resetServicePicker();
+  }
+
+  openExtraPicker(): void {
+    this.showExtraPicker = true;
+  }
+
+  closeExtraPicker(): void {
+    this.showExtraPicker = false;
   }
 
   openGarmentPicker(): void {
@@ -397,6 +465,30 @@ export class FormPreviewComponent implements OnInit {
     this.extrasArray.push(this.createExtraGroup(selectedExtra));
   }
 
+  addExtraFromList(extra: LaundryCommercialCatalogExtraItem): void {
+    this.addExtra(extra);
+    this.closeExtraPicker();
+  }
+
+  onBottomNavigationAction(actionId: string): void {
+    switch (actionId) {
+      case 'add-service':
+        this.openServicePicker();
+        break;
+      case 'add-extra':
+        this.openExtraPicker();
+        break;
+      case 'add-note':
+        this.showNotesCard.set(true);
+        break;
+      case 'save':
+        this.save();
+        break;
+      default:
+        break;
+    }
+  }
+
   onExtraChange(index: number): void {
     const control = this.extrasArray.at(index) as FormGroup;
     const extraId = Number(control.get('extra_id')?.value);
@@ -487,6 +579,10 @@ export class FormPreviewComponent implements OnInit {
     this.garmentsArray.clear();
     this.orderItemsArray.clear();
     this.extrasArray.clear();
+    this.form.patchValue({
+      notes: summary.laundry_service.notes ?? ''
+    });
+    this.showNotesCard.set(this.showNotesCard() || Boolean(summary.laundry_service.notes?.trim()));
 
     const weightDetail = summary.weight_service_detail;
     this.showWeightService.set(Boolean(weightDetail));
@@ -637,6 +733,7 @@ export class FormPreviewComponent implements OnInit {
 
   private buildPayload(): LaundryServiceCommercialDetailPayload {
     return {
+      notes: String(this.form.get('notes')?.value ?? '').trim() || null,
       weight_service: this.showWeightService()
         ? {
             weight_lb: Number(this.weightServiceGroup.get('weight_lb')?.value ?? 0),

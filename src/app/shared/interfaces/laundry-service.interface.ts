@@ -233,6 +233,7 @@ export interface LaundryServiceHeaderPayload {
 }
 
 export interface LaundryServiceCommercialDetailPayload {
+  notes?: string | null;
   weight_service: {
     weight_lb: number;
     garments: Array<{

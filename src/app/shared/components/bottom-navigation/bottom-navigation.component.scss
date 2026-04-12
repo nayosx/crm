@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+.bottom-navigation {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 0.75rem 1rem;
+  background: var(--p-content-background, var(--surface-card));
+  border-top: 1px solid var(--p-content-border-color, var(--surface-border));
+}
+
+.bottom-navigation__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.bottom-navigation__inner--mobile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.bottom-navigation__inner--desktop {
+  display: none;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+:host ::ng-deep .bottom-navigation__button,
+:host ::ng-deep .bottom-navigation__button .p-button,
+:host ::ng-deep .bottom-navigation__desktop-button,
+:host ::ng-deep .bottom-navigation__desktop-button .p-button {
+  width: 100%;
+}
+
+.bottom-navigation__dialog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+:host ::ng-deep .bottom-navigation__dialog-button,
+:host ::ng-deep .bottom-navigation__dialog-button .p-button {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .bottom-navigation__inner--mobile {
+    display: none;
+  }
+
+  .bottom-navigation__inner--desktop {
+    display: flex;
+  }
+}

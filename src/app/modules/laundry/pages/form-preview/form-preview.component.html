@@ -11,15 +11,6 @@
       }
     </div>
 
-    <p-button
-      type="button"
-      icon="pi pi-plus"
-      label="AGREGAR SERVICIO"
-      severity="secondary"
-      [loading]="isLoading()"
-      [disabled]="isLoading()"
-      (onClick)="openServicePicker()">
-    </p-button>
   </header>
 
   <form [formGroup]="form" (ngSubmit)="save()" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
@@ -210,26 +201,14 @@
       </p-accordion>
     </p-card>
 
-    <p-card>
+    @if (extrasArray.length) {
+      <p-card>
       <ng-template pTemplate="title">Extras</ng-template>
       <ng-template pTemplate="subtitle">
         <span class="dr-helper-text">Agrega ítems operativos. Sin cálculo local de totales.</span>
       </ng-template>
 
       <div formArrayName="extras" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
-          <p class="dr-helper-text u-m-all-none">Catálogo activo de extras.</p>
-          <p-button
-            type="button"
-            icon="pi pi-plus"
-            label="Agregar extra"
-            severity="secondary"
-            [loading]="isLoading()"
-            [disabled]="isLoading() || extrasCatalog.length === 0"
-            (onClick)="addExtra()">
-          </p-button>
-        </div>
-
         @for (extra of extrasArray.controls; track $index) {
           <article class="capture-card u-p-all-2" [formGroupName]="$index">
             <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
@@ -275,19 +254,36 @@
           <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">Sin extras agregados.</p>
         }
       </div>
-    </p-card>
+      </p-card>
+    }
 
-    <footer class="sticky-save">
-      <p-button
-        type="submit"
-        label="Guardar captura"
-        icon="pi pi-save"
-        styleClass="dr-primary-button u-w-100"
-        [loading]="isLoading()"
-        [disabled]="isLoading()">
-      </p-button>
-    </footer>
+    @if (showNotesCard()) {
+      <p-card>
+      <ng-template pTemplate="title">Notas</ng-template>
+      <ng-template pTemplate="subtitle">
+        <span class="dr-helper-text">Observaciones operativas para esta captura comercial.</span>
+      </ng-template>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <label for="commercial_notes" class="u-text-sm-bold">Notas</label>
+        <textarea
+          id="commercial_notes"
+          pInputTextarea
+          formControlName="notes"
+          rows="4"
+          class="u-w-100"
+          placeholder="Escribe observaciones opcionales">
+        </textarea>
+      </div>
+      </p-card>
+    }
   </form>
+
+  <app-bottom-navigation
+    [actions]="bottomNavigationActions()"
+    dialogHeader="Más opciones"
+    (actionSelected)="onBottomNavigationAction($event)">
+  </app-bottom-navigation>
 </section>
 
 <p-dialog
@@ -344,7 +340,6 @@
               </div>
 
               <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                <label class="u-text-sm-bold">Cantidad</label>
                 <p-inputnumber
                   [inputId]="'service-variant-' + variant.id"
                   [ngModel]="serviceVariantQuantities[variant.id]"
@@ -391,7 +386,7 @@
         (onClick)="closeServicePicker()">
       </p-button>
     } @else if (servicePickerStep === 'variants') {
-      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+      <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
         <p-button
           type="button"
           label="Cambiar servicio"
@@ -401,11 +396,13 @@
           [disabled]="isLoading()"
           (onClick)="backToServiceList()">
         </p-button>
-        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+        <div class="service-picker-footer__actions u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
           <p-button
             type="button"
             label="Cancelar"
+            icon="pi pi-times"
             severity="secondary"
+            styleClass="service-picker-action--compact-mobile"
             [loading]="isLoading()"
             [disabled]="isLoading()"
             (onClick)="closeServicePicker()">
@@ -413,6 +410,9 @@
           <p-button
             type="button"
             label="Continuar"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            styleClass="service-picker-action--compact-mobile"
             [loading]="isLoading()"
             [disabled]="isLoading()"
             (onClick)="reviewVariantSelection()">
@@ -420,7 +420,7 @@
         </div>
       </div>
     } @else {
-      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+      <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
         <p-button
           type="button"
           label="Editar"
@@ -430,11 +430,13 @@
           [disabled]="isLoading()"
           (onClick)="editVariantSelection()">
         </p-button>
-        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+        <div class="service-picker-footer__actions u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
           <p-button
             type="button"
             label="Cancelar"
+            icon="pi pi-times"
             severity="secondary"
+            styleClass="service-picker-action--compact-mobile"
             [loading]="isLoading()"
             [disabled]="isLoading()"
             (onClick)="closeServicePicker()">
@@ -442,6 +444,8 @@
           <p-button
             type="button"
             label="Confirmar"
+            icon="pi pi-check"
+            styleClass="service-picker-action--compact-mobile"
             [loading]="isLoading()"
             [disabled]="isLoading()"
             (onClick)="confirmVariantSelection()">
@@ -449,6 +453,42 @@
         </div>
       </div>
     }
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  header="Agregar extra"
+  [(visible)]="showExtraPicker"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="service-picker-dialog"
+  (onHide)="closeExtraPicker()">
+  <div class="service-picker-list">
+    <p class="dr-helper-text u-m-all-none">Selecciona un extra para agregarlo a la captura.</p>
+
+    @for (extra of availableExtras(); track extra.id) {
+      <button
+        type="button"
+        class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
+        [disabled]="isLoading()"
+        (click)="addExtraFromList(extra)">
+        <span class="service-picker-item__name u-text-base-bold">{{ extra.name }}</span>
+      </button>
+    } @empty {
+      <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay extras disponibles para agregar.</p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      type="button"
+      label="Cancelar"
+      severity="secondary"
+      [loading]="isLoading()"
+      [disabled]="isLoading()"
+      (onClick)="closeExtraPicker()">
+    </p-button>
   </ng-template>
 </p-dialog>
 

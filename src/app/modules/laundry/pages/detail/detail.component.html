@@ -61,7 +61,7 @@
             </div>
 
             <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
-              <label class="u-text-sm-bold" for="fulfillment_type">Cumplimiento</label>
+              <label class="u-text-sm-bold" for="fulfillment_type">Tipos de delivery</label>
               <p-select
                 inputId="fulfillment_type"
                 class="w-full"
@@ -74,50 +74,46 @@
             </div>
           </div>
 
-          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
-              <label class="u-text-sm-bold" for="distance_km">Distancia (km)</label>
-              <p-inputNumber
-                inputId="distance_km"
-                formControlName="distance_km"
-                mode="decimal"
-                [min]="0"
-                [minFractionDigits]="0"
-                [maxFractionDigits]="2"
-                [useGrouping]="false"
-                styleClass="w-full"
-                [disabled]="!deliveryControlsEnabled()">
-              </p-inputNumber>
-            </div>
+          @if (deliveryControlsEnabled()) {
+            <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+                <label class="u-text-sm-bold" for="distance_km">Distancia (km)</label>
+                <p-inputNumber
+                  inputId="distance_km"
+                  formControlName="distance_km"
+                  mode="decimal"
+                  [min]="0"
+                  [minFractionDigits]="0"
+                  [maxFractionDigits]="2"
+                  [useGrouping]="false"
+                  styleClass="w-full"
+                  [disabled]="distanceControlDisabled()">
+                </p-inputNumber>
+              </div>
 
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
-              <label class="u-text-sm-bold" for="manual_delivery_fee">Delivery manual</label>
-              <p-inputNumber
-                inputId="manual_delivery_fee"
-                formControlName="manual_delivery_fee"
-                mode="currency"
-                currency="USD"
-                locale="en-US"
-                [min]="0"
-                [minFractionDigits]="2"
-                [maxFractionDigits]="2"
-                styleClass="w-full"
-                [disabled]="!deliveryControlsEnabled()">
-              </p-inputNumber>
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+                <label class="u-text-sm-bold" for="manual_delivery_fee">Delivery manual</label>
+                <p-inputNumber
+                  inputId="manual_delivery_fee"
+                  formControlName="manual_delivery_fee"
+                  mode="currency"
+                  currency="USD"
+                  locale="en-US"
+                  [min]="0"
+                  [minFractionDigits]="2"
+                  [maxFractionDigits]="2"
+                  styleClass="w-full">
+                </p-inputNumber>
+              </div>
             </div>
-          </div>
+          }
 
-          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
             <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
               <span class="u-text-sm-bold">Notas operativas</span>
               <p class="u-m-all-none text-color-secondary">
                 {{ data.laundry_service.notes || 'Sin notas registradas.' }}
               </p>
-              @if (!deliveryControlsEnabled()) {
-                <p class="u-m-all-none text-color-secondary">
-                  WALK_IN no cobra delivery. Los campos se envían vacíos.
-                </p>
-              }
             </div>
 
             <div class="u-d-flex u-d-flex-justify-end">
@@ -133,6 +129,121 @@
           </div>
         </form>
       </p-card>
+      
+      
+      
+      
+            <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2">
+              <h2 class="u-text-lg-bold u-m-all-none">Resumen</h2>
+
+              <button
+                pButton
+                type="button"
+                class="summary-copy-button"
+                [class.summary-copy-button--copied]="isSummaryCopied()"
+                [label]="isSummaryCopied() ? 'Copiado' : 'Copiar'"
+                [icon]="isSummaryCopied() ? 'pi pi-check' : 'pi pi-copy'"
+                [severity]="isSummaryCopied() ? 'success' : 'secondary'"
+                [outlined]="!isSummaryCopied()"
+                [text]="false"
+                (click)="copySummaryForWhatsApp()"
+                [disabled]="!summary()">
+              </button>
+            </div>
+          </ng-template>
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+              @if (automaticItems().length) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                  @for (item of automaticItems(); track item.id) {
+                    <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                        <p class="u-m-all-none">{{ item.service_name }}</p>
+                        @if (item.pricing_mode.toUpperCase() !== 'DELIVERY') {
+                          <p-tag
+                            [value]="serviceLabel()"
+                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
+                          </p-tag>
+                        }
+                      </div>
+
+                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                        <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                        <p class="u-m-all-none u-text-grey-70">
+                          {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">No hay cobros automáticos.</p>
+              }
+            </div>
+
+            @if (showWeightServiceSummary()) {
+              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+                <p class="u-m-all-none">Lavado por peso</p>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                  <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
+                  @if (weightService(); as weight) {
+                    <p class="u-m-all-none u-text-grey-70">
+                      {{ formatQuantity(weight.weight_lb) }} lb
+                    </p>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (manualItems().length) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                @for (item of manualItems(); track item.id) {
+                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                    <p class="u-m-all-none">{{ manualSummaryLabel(item) }}</p>
+
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                      <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">
+                        {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
+                      </p>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (extras().length) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                @for (extra of extras(); track extra.id) {
+                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                    <p class="u-m-all-none">{{ extra.extra_name }}</p>
+
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                      <p class="u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">
+                        {{ formatQuantity(extra.quantity) }} x {{ formatMoney(extra.unit_price) }}
+                      </p>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+              <p class="u-text-lg-bold u-m-all-none">Total general</p>
+              <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(data.summary.grand_total) }}</p>
+            </div>
+
+          </div>
+        </p-card>
+      </div>
+      
+      
 
       <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
         <p-card class="u-w-100">
@@ -187,149 +298,46 @@
           </div>
         </p-card>
 
-        <p-card class="u-w-100">
-          <ng-template pTemplate="header">
-            <div class="u-p-all-2 border-bottom-1 surface-border">
-              <h2 class="u-text-lg-bold u-m-all-none">Lavado por peso</h2>
-            </div>
-          </ng-template>
-
-          @if (weightService(); as weight) {
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-              <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
-                <p-tag [value]="'Peso ' + formatQuantity(weight.weight_lb) + ' lb'" severity="info"></p-tag>
-                <p-tag [value]="'Subtotal ' + formatMoney(data.summary.weight_service_subtotal)" severity="contrast"></p-tag>
-                @if (weight.has_other_services) {
-                  <p-tag value="Con otros servicios" severity="secondary"></p-tag>
-                }
+        @if (showWeightServiceSummary()) {
+          <p-card class="u-w-100">
+            <ng-template pTemplate="header">
+              <div class="u-p-all-2 border-bottom-1 surface-border">
+                <h2 class="u-text-lg-bold u-m-all-none">Lavado por peso</h2>
               </div>
+            </ng-template>
 
-              @if (weight.garments.length) {
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                  @for (garment of weight.garments; track garment.garment_type_id) {
-                    <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                      <div>
-                        <p class="u-text-base-bold u-m-all-none">{{ garment.garment_type_name || ('Prenda #' + garment.garment_type_id) }}</p>
-                        <p class="u-m-all-none text-color-secondary">{{ weightGarmentMeta(garment) }}</p>
-                      </div>
-
-                      <p class="u-text-base-bold u-m-all-none">{{ formatQuantity(garment.quantity) }}</p>
-                    </article>
+            @if (weightService(); as weight) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                  <p-tag [value]="'Peso ' + formatQuantity(weight.weight_lb) + ' lb'" severity="info"></p-tag>
+                  <p-tag [value]="'Subtotal ' + formatMoney(data.summary.weight_service_subtotal)" severity="contrast"></p-tag>
+                  @if (weight.has_other_services) {
+                    <p-tag value="Con otros servicios" severity="secondary"></p-tag>
                   }
                 </div>
-              } @else {
-                <p class="u-m-all-none text-color-secondary">Sin desglose de prendas.</p>
-              }
-            </div>
-          } @else {
-            <p class="u-m-all-none text-color-secondary">No se ha capturado servicio por peso.</p>
-          }
-        </p-card>
-      </div>
 
-      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
-        <p-card class="u-w-100">
-          <ng-template pTemplate="header">
-            <div class="u-p-all-2 border-bottom-1 surface-border">
-              <h2 class="u-text-lg-bold u-m-all-none">Resumen</h2>
-            </div>
-          </ng-template>
+                @if (weight.garments.length) {
+                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                    @for (garment of weight.garments; track garment.garment_type_id) {
+                      <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                        <div>
+                          <p class="u-text-base-bold u-m-all-none">{{ garment.garment_type_name || ('Prenda #' + garment.garment_type_id) }}</p>
+                          <p class="u-m-all-none text-color-secondary">{{ weightGarmentMeta(garment) }}</p>
+                        </div>
 
-          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-              @if (automaticItems().length) {
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                  @for (item of automaticItems(); track item.id) {
-                    <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-                        <p class="u-m-all-none">{{ item.service_name }}</p>
-                        @if (item.pricing_mode?.toUpperCase() !== 'DELIVERY') {
-                          <p-tag
-                            [value]="serviceLabel()"
-                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
-                          </p-tag>
-                        }
-                      </div>
-
-                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                        <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                        <p class="u-m-all-none u-text-grey-70">
-                          {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                        </p>
-                      </div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="u-m-all-none text-color-secondary">No hay cobros automáticos.</p>
-              }
-            </div>
-
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
-              <p class="u-m-all-none">Lavado por peso</p>
-
-              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
-                @if (weightService(); as weight) {
-                  <p class="u-m-all-none u-text-grey-70">
-                    {{ formatQuantity(weight.weight_lb) }} lb
-                  </p>
-                }
-              </div>
-            </div>
-
-            @if (manualItems().length) {
-              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                @for (item of manualItems(); track item.id) {
-                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                    <p class="u-m-all-none">{{ manualSummaryLabel(item) }}</p>
-
-                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                      <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                      <p class="u-m-all-none u-text-grey-70">
-                        {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                      </p>
-                    </div>
+                        <p class="u-text-base-bold u-m-all-none">{{ formatQuantity(garment.quantity) }}</p>
+                      </article>
+                    }
                   </div>
+                } @else {
+                  <p class="u-m-all-none text-color-secondary">Sin desglose de prendas.</p>
                 }
-              </div>
-            } @else {
-              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                <p class="u-m-all-none">Servicios manuales</p>
-                <p class="u-m-all-none">{{ formatMoney(data.summary.manual_items_subtotal) }}</p>
               </div>
             }
-
-            @if (extras().length) {
-              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                @for (extra of extras(); track extra.id) {
-                  <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                    <p class="u-m-all-none">{{ extra.extra_name }}</p>
-
-                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                      <p class="u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
-                      <p class="u-m-all-none u-text-grey-70">
-                        {{ formatQuantity(extra.quantity) }} x {{ formatMoney(extra.unit_price) }}
-                      </p>
-                    </div>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
-                <p class="u-m-all-none">Extras</p>
-                <p class="u-m-all-none">{{ formatMoney(data.summary.extras_subtotal) }}</p>
-              </div>
-            }
-
-            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
-              <p class="u-text-lg-bold u-m-all-none">Total general</p>
-              <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(data.summary.grand_total) }}</p>
-            </div>
-
-          </div>
-        </p-card>
+          </p-card>
+        }
       </div>
+
     </div>
   } @else {
     <p-card>
