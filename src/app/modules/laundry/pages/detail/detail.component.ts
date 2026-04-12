@@ -215,19 +215,6 @@ export class DetailComponent implements OnInit {
     }
   }
 
-  openCommercialDetail(): void {
-    const serviceId = this.serviceId();
-    if (!serviceId) {
-      return;
-    }
-
-    this.router.navigate(['/laundry', serviceId, 'form-preview'], {
-      state: {
-        backTo: ['/laundry', serviceId, 'detail']
-      }
-    });
-  }
-
   saveHeader(): void {
     if (this.headerForm.invalid || !this.serviceId()) {
       this.headerForm.markAllAsTouched();

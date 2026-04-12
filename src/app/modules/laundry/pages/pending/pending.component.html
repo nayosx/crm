@@ -9,21 +9,6 @@
     <p-tag class="u-header-counter" [value]="items().length.toString()" severity="warn"></p-tag>
     <p-tag *ngIf="savingOrder()" value="Guardando orden..." severity="info"></p-tag>
     <p-tag *ngIf="updatingStatus()" value="Actualizando servicio..." severity="contrast"></p-tag>
-    <button pButton type="button" label="Nuevo servicio" icon="pi pi-plus" size="small"
-      class="u-mobile-icon-button"
-      [attr.aria-label]="'Nuevo servicio'"
-      [attr.title]="'Nuevo servicio'"
-      [disabled]="savingOrder() || creating() || updatingStatus()" (click)="openCreateDialog()"></button>
-    <button pButton type="button" label="Nuevo cliente + dirección" icon="pi pi-user-plus" size="small" severity="secondary"
-      class="u-mobile-icon-button"
-      [attr.aria-label]="'Nuevo cliente + dirección'"
-      [attr.title]="'Nuevo cliente + dirección'"
-      [disabled]="savingOrder() || creating() || updatingStatus()" (click)="openCreateWithClientAddressDialog()"></button>
-    <button pButton type="button" label="Refrescar" icon="pi pi-refresh" size="small" severity="secondary"
-      class="u-mobile-icon-button"
-      [attr.aria-label]="'Refrescar'"
-      [attr.title]="'Refrescar'"
-      [disabled]="loading() || savingOrder() || creating() || updatingStatus()" (click)="loadPending()"></button>
   </div>
 </div>
 
@@ -128,3 +113,10 @@
 <p-confirmdialog
   [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
   [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }" />
+
+<app-bottom-navigation
+  [actions]="bottomNavigationActions()"
+  [mobileUseOverflow]="false"
+  dialogHeader="Más opciones"
+  (actionSelected)="onBottomNavigationAction($event)">
+</app-bottom-navigation>

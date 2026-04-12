@@ -25,15 +25,6 @@
           <p-tag [value]="serviceLabel()" [severity]="serviceLabelSeverity(data.laundry_service.service_label)"></p-tag>
         </div>
       }
-
-      <button
-        pButton
-        type="button"
-        label="Editar detalle comercial"
-        icon="pi pi-pencil"
-        (click)="openCommercialDetail()"
-        [disabled]="!summary() || isLoading()">
-      </button>
     </div>
   </header>
 

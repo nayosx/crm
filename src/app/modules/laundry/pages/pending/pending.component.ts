@@ -19,6 +19,10 @@ import { PendingCreateClientAddressLaundryFormComponent } from './pending-create
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import {
+  BottomNavigationAction,
+  BottomNavigationComponent
+} from '@shared/components/bottom-navigation/bottom-navigation.component';
 
 type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
 
@@ -38,7 +42,8 @@ type LaundryServiceLabel = 'NORMAL' | 'EXPRESS';
     PendingCreateClientAddressLaundryFormComponent,
     LoaderDialogComponent,
     TruncatePipe,
-    BackButtonComponent
+    BackButtonComponent,
+    BottomNavigationComponent
   ],
   providers: [ConfirmationService],
   templateUrl: './pending.component.html',
@@ -128,6 +133,51 @@ export class PendingComponent implements OnInit {
 
   openCreateWithClientAddressDialog(): void {
     this.createWithClientAddressDialogVisible.set(true);
+  }
+
+  bottomNavigationActions(): BottomNavigationAction[] {
+    return [
+      {
+        id: 'create-service',
+        label: 'Nuevo servicio',
+        icon: 'pi pi-plus',
+        mobileMode: 'primary',
+        disabled: this.savingOrder() || this.creating() || this.updatingStatus()
+      },
+      {
+        id: 'create-client-address',
+        label: 'Nuevo cliente + dirección',
+        icon: 'pi pi-user-plus',
+        severity: 'secondary',
+        mobileMode: 'more',
+        disabled: this.savingOrder() || this.creating() || this.updatingStatus()
+      },
+      {
+        id: 'refresh',
+        label: 'Refrescar',
+        icon: 'pi pi-refresh',
+        severity: 'secondary',
+        mobileMode: 'more',
+        mobileIconOnly: true,
+        disabled: this.loading() || this.savingOrder() || this.creating() || this.updatingStatus()
+      }
+    ];
+  }
+
+  onBottomNavigationAction(actionId: string): void {
+    switch (actionId) {
+      case 'create-service':
+        this.openCreateDialog();
+        break;
+      case 'create-client-address':
+        this.openCreateWithClientAddressDialog();
+        break;
+      case 'refresh':
+        this.loadPending();
+        break;
+      default:
+        break;
+    }
   }
 
   closeCreateWithClientAddressDialog(): void {

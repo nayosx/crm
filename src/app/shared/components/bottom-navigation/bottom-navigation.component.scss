@@ -24,6 +24,12 @@
   gap: 0.75rem;
 }
 
+.bottom-navigation__inner--mobile-direct {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .bottom-navigation__inner--desktop {
   display: none;
   gap: 0.75rem;
@@ -35,6 +41,21 @@
 :host ::ng-deep .bottom-navigation__desktop-button,
 :host ::ng-deep .bottom-navigation__desktop-button .p-button {
   width: 100%;
+}
+
+:host ::ng-deep .bottom-navigation__inner--mobile-direct .bottom-navigation__button .p-button {
+  width: auto;
+}
+
+:host ::ng-deep .bottom-navigation__button--mobile-icon-only .p-button-label {
+  display: none;
+}
+
+:host ::ng-deep .bottom-navigation__button--mobile-icon-only .p-button {
+  width: 3rem;
+  min-width: 3rem;
+  padding-inline: 0;
+  justify-content: center;
 }
 
 .bottom-navigation__dialog-list {

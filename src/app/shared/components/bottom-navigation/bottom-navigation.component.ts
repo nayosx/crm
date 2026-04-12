@@ -11,6 +11,7 @@ export type BottomNavigationAction = {
   disabled?: boolean;
   loading?: boolean;
   mobileMode?: 'primary' | 'more' | 'hidden';
+  mobileIconOnly?: boolean;
   desktopHidden?: boolean;
 };
 
@@ -26,6 +27,7 @@ export class BottomNavigationComponent {
   @Input() moreLabel = 'Más opciones';
   @Input() moreIcon = 'pi pi-ellipsis-h';
   @Input() dialogHeader = 'Más opciones';
+  @Input() mobileUseOverflow = true;
 
   @Output() actionSelected = new EventEmitter<string>();
 
@@ -37,6 +39,10 @@ export class BottomNavigationComponent {
 
   mobilePrimaryActions(): BottomNavigationAction[] {
     return this.actions.filter((action) => action.mobileMode === 'primary');
+  }
+
+  mobileDirectActions(): BottomNavigationAction[] {
+    return this.actions.filter((action) => action.mobileMode !== 'hidden');
   }
 
   mobileOverflowActions(): BottomNavigationAction[] {
