@@ -143,6 +143,15 @@
                 (click)="copySummaryForWhatsApp()"
                 [disabled]="!summary()">
               </button>
+
+              <button
+                pButton
+                type="button"
+                label="Editar precios"
+                icon="pi pi-pencil"
+                [disabled]="isLoading() || !summary()"
+                (click)="enablePriceEditing()">
+              </button>
             </div>
           </ng-template>
 
@@ -336,3 +345,273 @@
     </p-card>
   }
 </section>
+
+<p-dialog
+  header="Editar precios"
+  [visible]="showSummaryDialog()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="true"
+  [style]="{ width: 'min(96vw, 56rem)' }"
+  (onHide)="closeSummaryDialog()">
+  @if (summary(); as data) {
+    <div class="summary-dialog__content">
+      <div class="u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2 u-d-flex-wrap">
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+          <p class="u-text-lg-bold u-m-all-none">Servicio #{{ serviceId() }}</p>
+          <p class="u-m-all-none text-color-secondary">{{ data.client.name }}</p>
+        </div>
+      </div>
+
+      @if (automaticEditableRows().length) {
+        <section class="summary-dialog__section">
+          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+            <h3 class="u-text-base-bold u-m-all-none">Servicios automáticos</h3>
+            <p-tag value="Order items" severity="secondary"></p-tag>
+          </div>
+
+          @for (row of automaticEditableRows(); track row.id) {
+            <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
+              <div class="summary-dialog__row-header">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
+                  @if (row.meta.length) {
+                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                      @for (meta of row.meta; track meta) {
+                        <p-tag [value]="meta" severity="secondary"></p-tag>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (isOrderRowChanged(row)) {
+                  <p-tag value="Modificado" severity="warn"></p-tag>
+                }
+              </div>
+
+              <div class="summary-dialog__price-grid">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Referencia</span>
+                  <span class="text-color-secondary">{{ formatMoney(row.referencePrice) }}</span>
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <label class="u-text-sm-bold" [for]="'order-price-' + row.id">Precio final</label>
+                  <input
+                    pInputText
+                    [id]="'order-price-' + row.id"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    class="u-w-100"
+                    [value]="editableOrderRowPrice(row)"
+                    [disabled]="isLoading() || !isPriceEditMode()"
+                    (input)="updateOrderRowPrice(row, $any($event.target).value)">
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Subtotal</span>
+                  <span>{{ formatMoney(orderRowSubtotal(row)) }}</span>
+                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+
+      @if (weightEditableRow(); as row) {
+        <section class="summary-dialog__section">
+          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+            <h3 class="u-text-base-bold u-m-all-none">Lavado por peso</h3>
+            <p-tag value="Order item" severity="info"></p-tag>
+          </div>
+
+          <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
+            <div class="summary-dialog__row-header">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
+                @if (row.meta.length) {
+                  <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                    @for (meta of row.meta; track meta) {
+                      <p-tag [value]="meta" severity="secondary"></p-tag>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (isOrderRowChanged(row)) {
+                <p-tag value="Modificado" severity="warn"></p-tag>
+              }
+            </div>
+
+            <div class="summary-dialog__price-grid">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <span class="u-text-sm-bold">Referencia</span>
+                <span class="text-color-secondary">{{ formatMoney(row.referencePrice) }}</span>
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold" [for]="'weight-price-' + row.id">Precio final</label>
+                <input
+                  pInputText
+                  [id]="'weight-price-' + row.id"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  class="u-w-100"
+                  [value]="editableOrderRowPrice(row)"
+                  [disabled]="isLoading() || !isPriceEditMode()"
+                  (input)="updateOrderRowPrice(row, $any($event.target).value)">
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <span class="u-text-sm-bold">Subtotal</span>
+                <span>{{ formatMoney(orderRowSubtotal(row)) }}</span>
+                <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
+              </div>
+            </div>
+          </article>
+        </section>
+      }
+
+      @if (manualEditableRows().length) {
+        <section class="summary-dialog__section">
+          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+            <h3 class="u-text-base-bold u-m-all-none">Servicios manuales</h3>
+            <p-tag value="Order items" severity="contrast"></p-tag>
+          </div>
+
+          @for (row of manualEditableRows(); track row.id) {
+            <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
+              <div class="summary-dialog__row-header">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
+                  @if (row.meta.length) {
+                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                      @for (meta of row.meta; track meta) {
+                        <p-tag [value]="meta" severity="secondary"></p-tag>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (isOrderRowChanged(row)) {
+                  <p-tag value="Modificado" severity="warn"></p-tag>
+                }
+              </div>
+
+              <div class="summary-dialog__price-grid">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Referencia</span>
+                  <span class="text-color-secondary">{{ formatMoney(row.referencePrice) }}</span>
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <label class="u-text-sm-bold" [for]="'manual-price-' + row.id">Precio final</label>
+                  <input
+                    pInputText
+                    [id]="'manual-price-' + row.id"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    class="u-w-100"
+                    [value]="editableOrderRowPrice(row)"
+                    [disabled]="isLoading() || !isPriceEditMode()"
+                    (input)="updateOrderRowPrice(row, $any($event.target).value)">
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Subtotal</span>
+                  <span>{{ formatMoney(orderRowSubtotal(row)) }}</span>
+                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+
+      @if (extraEditableRows().length) {
+        <section class="summary-dialog__section">
+          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+            <h3 class="u-text-base-bold u-m-all-none">Extras</h3>
+            <p-tag value="Laundry extras" severity="success"></p-tag>
+          </div>
+
+          @for (row of extraEditableRows(); track row.id) {
+            <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isExtraRowChanged(row)">
+              <div class="summary-dialog__row-header">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
+                  @if (row.meta.length) {
+                    <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                      @for (meta of row.meta; track meta) {
+                        <p-tag [value]="meta" severity="secondary"></p-tag>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (isExtraRowChanged(row)) {
+                  <p-tag value="Modificado" severity="warn"></p-tag>
+                }
+              </div>
+
+              <div class="summary-dialog__price-grid">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Referencia</span>
+                  <span class="text-color-secondary">{{ formatMoney(row.referencePrice) }}</span>
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <label class="u-text-sm-bold" [for]="'extra-price-' + row.id">Precio final</label>
+                  <input
+                    pInputText
+                    [id]="'extra-price-' + row.id"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    class="u-w-100"
+                    [value]="editableExtraRowPrice(row)"
+                    [disabled]="isLoading() || !isPriceEditMode()"
+                    (input)="updateExtraRowPrice(row, $any($event.target).value)">
+                </div>
+
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <span class="u-text-sm-bold">Subtotal estimado</span>
+                  <span>{{ formatMoney(extraRowSubtotal(row)) }}</span>
+                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableExtraRowPrice(row)) }}</small>
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+
+      <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+        <p class="u-text-lg-bold u-m-all-none">Total general actual</p>
+        <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(editedGrandTotal()) }}</p>
+      </div>
+
+      @if (isPriceEditMode()) {
+        <div class="summary-dialog__footer">
+          <button
+            pButton
+            type="button"
+            label="Guardar precios"
+            icon="pi pi-save"
+            [loading]="isLoading()"
+            [disabled]="isLoading() || !hasPriceChanges()"
+            (click)="saveSummaryPrices()">
+          </button>
+        </div>
+      }
+    </div>
+  }
+</p-dialog>

@@ -21,6 +21,8 @@
 - In `src/app/modules/laundry/pages/form-preview`, avoid custom colors and avoid custom classes outside `drstyles` and PrimeNG whenever possible.
 - If `drstyles` does not provide an adequate solution in `src/app/modules/laundry/pages/form-preview`, use PrimeNG classes and PrimeNG color tokens/list before introducing custom styling.
 - Any UI action that triggers async processes (API calls, sockets, state changes) must provide clear loading feedback.
+- If a button triggers an async action (`async/await`, HTTP request, `fetch`, observable subscription, socket event, or similar), the button must be disabled until the action finishes, whether it succeeds or fails.
+- Any failed user-triggered action must show a clear failure message to the user.
 - If the action affects critical business state or may cause double submissions or inconsistent states, use `LoaderDialogComponent` or an equivalent blocking pattern.
 
 ## Laundry Module
@@ -59,7 +61,19 @@
   3. how to verify
 
 ## Compression Modes
+- Required skill: `caveman`.
+- Install command: `npx skills add JuliusBrussee/caveman`.
+- If `caveman` is available, use it as the repository communication rule.
+- If `caveman` is not installed, not available in the session, or cannot be applied, fall back to the short, concise response style already defined in this `AGENTS.md`.
 - Default: `caveman full`.
 - If the user says `caveman`, switch to highly compressed output.
 - If the user says `normal mode`, return to standard concise output.
 - Compression affects wording only, never technical accuracy, safety, or completeness.
+
+## Caveman Reference
+- Reference: https://github.com/JuliusBrussee/caveman
+- Install with: `npx skills add JuliusBrussee/caveman`
+- Treat `caveman` as a communication rule for collaborators, not as a project dependency.
+
+## Repository Rule
+- `AGENTS.md` must remain versioned in this repository so other developers and agents can follow the same collaboration rules.

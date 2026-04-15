@@ -7,7 +7,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
@@ -17,6 +19,7 @@ import {
   LaundryServiceFulfillmentType,
   LaundryServiceHeaderPayload,
   LaundryServiceLabel,
+  LaundryServiceSummaryPricesPatchPayload,
   LaundryServiceSummaryExtra,
   LaundryServiceSummaryItem,
   LaundryServiceSummaryResponse,
@@ -37,6 +40,29 @@ type SelectOption<T> = {
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined;
 
+type EditableOrderSection = 'automatic' | 'weight' | 'manual';
+
+type EditableOrderRow = {
+  section: EditableOrderSection;
+  id: number;
+  label: string;
+  quantity: string | number;
+  referencePrice: string | number;
+  currentPrice: string | number;
+  subtotal: number;
+  meta: string[];
+};
+
+type EditableExtraRow = {
+  id: number;
+  label: string;
+  quantity: string | number;
+  referencePrice: string | number;
+  currentPrice: string | number;
+  subtotal: number;
+  meta: string[];
+};
+
 @Component({
   selector: 'app-laundry-detail-page',
   standalone: true,
@@ -45,7 +71,9 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
     ReactiveFormsModule,
     CardModule,
     ButtonModule,
+    DialogModule,
     InputNumberModule,
+    InputTextModule,
     SelectModule,
     TagModule,
     ToastModule,
@@ -63,6 +91,54 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
     .summary-copy-button--copied {
       animation: summary-copy-pop 420ms ease;
       filter: saturate(1.15);
+    }
+
+    .summary-dialog__content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .summary-dialog__section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .summary-dialog__row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid var(--surface-border);
+      border-radius: 0.75rem;
+      background: var(--surface-card);
+    }
+
+    .summary-dialog__row--changed {
+      border-color: var(--p-orange-300, #fdba74);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-orange-300, #fdba74) 55%, transparent);
+    }
+
+    .summary-dialog__row-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .summary-dialog__price-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+      gap: 0.75rem;
+    }
+
+    .summary-dialog__footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--surface-border);
     }
 
     @keyframes summary-copy-pop {
@@ -91,6 +167,9 @@ export class DetailComponent implements OnInit {
   readonly summary = signal<LaundryServiceSummaryResponse | null>(null);
   readonly serviceId = signal<number>(0);
   readonly isSummaryCopied = signal(false);
+  readonly showSummaryDialog = signal(false);
+  readonly isPriceEditMode = signal(false);
+  readonly priceDrafts = signal<Record<string, string>>({});
 
   readonly headerForm = this.fb.group({
     is_express: this.fb.control(false, { nonNullable: true }),
@@ -122,6 +201,48 @@ export class DetailComponent implements OnInit {
 
   readonly deliveryControlsEnabled = signal(false);
   readonly distanceControlDisabled = signal(false);
+  readonly hasPriceChanges = computed(() => {
+    const summary = this.summary();
+    if (!summary) {
+      return false;
+    }
+
+    const drafts = this.priceDrafts();
+    return [
+      ...summary.automatic_items,
+      ...summary.manual_items,
+      ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
+    ].some((item) => {
+      const key = this.orderPriceKey(item.id);
+      return key in drafts && this.normalizeMoney(drafts[key]) !== this.normalizeMoney(item.applied_price);
+    }) || summary.extras.some((extra) => {
+      const key = this.extraPriceKey(extra.id);
+      return key in drafts && this.normalizeMoney(drafts[key]) !== this.normalizeMoney(extra.unit_price);
+    });
+  });
+
+  readonly editedGrandTotal = computed(() => {
+    const summary = this.summary();
+    if (!summary) {
+      return 0;
+    }
+
+    const orderTotal = [
+      ...summary.automatic_items,
+      ...summary.manual_items,
+      ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
+    ].reduce((total, item) => {
+      const appliedPrice = this.priceDrafts()[this.orderPriceKey(item.id)] ?? this.normalizeMoney(item.applied_price);
+      return total + (Number(item.quantity ?? 0) * Number(this.normalizeMoney(appliedPrice)));
+    }, 0);
+
+    const extrasTotal = summary.extras.reduce((total, extra) => {
+      const unitPrice = this.priceDrafts()[this.extraPriceKey(extra.id)] ?? this.normalizeMoney(extra.unit_price);
+      return total + (Number(extra.quantity ?? 0) * Number(this.normalizeMoney(unitPrice)));
+    }, 0);
+
+    return orderTotal + extrasTotal;
+  });
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -213,6 +334,123 @@ export class DetailComponent implements OnInit {
     } catch {
       this.showError('No se pudo copiar el resumen.');
     }
+  }
+
+  openSummaryDialog(): void {
+    this.showSummaryDialog.set(true);
+  }
+
+  closeSummaryDialog(): void {
+    this.cancelPriceEditing();
+    this.showSummaryDialog.set(false);
+  }
+
+  enablePriceEditing(): void {
+    this.priceDrafts.set({});
+    this.isPriceEditMode.set(true);
+    this.showSummaryDialog.set(true);
+  }
+
+  cancelPriceEditing(): void {
+    this.priceDrafts.set({});
+    this.isPriceEditMode.set(false);
+  }
+
+  automaticEditableRows(): EditableOrderRow[] {
+    return this.automaticItems().map((item) => this.toOrderRow(item, 'automatic', item.service_name));
+  }
+
+  weightEditableRow(): EditableOrderRow | null {
+    const weight = this.weightService();
+    if (!weight || !this.showWeightServiceSummary()) {
+      return null;
+    }
+
+    return this.toOrderRow(
+      weight,
+      'weight',
+      'Lavado por peso',
+      [
+        `${this.formatQuantity(weight.weight_lb)} lb`,
+        ...weight.garments.map((garment) => `${garment.garment_type_name || ('Prenda #' + garment.garment_type_id)}: ${this.formatQuantity(garment.quantity)}`)
+      ]
+    );
+  }
+
+  manualEditableRows(): EditableOrderRow[] {
+    return this.manualItems().map((item) => this.toOrderRow(item, 'manual', this.manualSummaryLabel(item)));
+  }
+
+  extraEditableRows(): EditableExtraRow[] {
+    return this.extras().map((extra) => ({
+      id: extra.id,
+      label: extra.extra_name,
+      quantity: extra.quantity,
+      referencePrice: extra.unit_price,
+      currentPrice: extra.unit_price,
+      subtotal: Number(extra.subtotal ?? 0),
+      meta: this.extraMeta(extra)
+    }));
+  }
+
+  editableOrderRowPrice(row: EditableOrderRow): string {
+    return this.priceDrafts()[this.orderPriceKey(row.id)] ?? this.normalizeMoney(row.currentPrice);
+  }
+
+  editableExtraRowPrice(row: EditableExtraRow): string {
+    return this.priceDrafts()[this.extraPriceKey(row.id)] ?? this.normalizeMoney(row.currentPrice);
+  }
+
+  updateOrderRowPrice(row: EditableOrderRow, value: string): void {
+    this.updateDraft(this.orderPriceKey(row.id), value, this.normalizeMoney(row.currentPrice));
+  }
+
+  updateExtraRowPrice(row: EditableExtraRow, value: string): void {
+    this.updateDraft(this.extraPriceKey(row.id), value, this.normalizeMoney(row.currentPrice));
+  }
+
+  isOrderRowChanged(row: EditableOrderRow): boolean {
+    return this.normalizeMoney(this.editableOrderRowPrice(row)) !== this.normalizeMoney(row.currentPrice);
+  }
+
+  isExtraRowChanged(row: EditableExtraRow): boolean {
+    return this.normalizeMoney(this.editableExtraRowPrice(row)) !== this.normalizeMoney(row.currentPrice);
+  }
+
+  orderRowSubtotal(row: EditableOrderRow): number {
+    return Number(row.quantity ?? 0) * Number(this.normalizeMoney(this.editableOrderRowPrice(row)));
+  }
+
+  extraRowSubtotal(row: EditableExtraRow): number {
+    return Number(row.quantity ?? 0) * Number(this.normalizeMoney(this.editableExtraRowPrice(row)));
+  }
+
+  saveSummaryPrices(): void {
+    const summary = this.summary();
+    if (!summary || !this.serviceId()) {
+      this.showError('No hay resumen disponible para actualizar.');
+      return;
+    }
+
+    const payload = this.buildSummaryPricePayload(summary);
+    if (!payload.order_items.length && !payload.extras.length) {
+      this.showError('No hay cambios de precios para guardar.');
+      return;
+    }
+
+    this.setBusy(true, 'Guardando ajustes de precios...');
+
+    this.laundryService.updateSummaryPrices(this.serviceId(), payload).pipe(
+      finalize(() => this.setBusy(false))
+    ).subscribe({
+      next: (updatedSummary) => {
+        this.applySummary(updatedSummary);
+        this.cancelPriceEditing();
+        this.showSummaryDialog.set(false);
+        this.showSuccess('Precios del resumen actualizados.');
+      },
+      error: (error) => this.showError(this.extractErrorMessage(error, 'No se pudieron guardar los precios del resumen.'))
+    });
   }
 
   saveHeader(): void {
@@ -427,6 +665,7 @@ export class DetailComponent implements OnInit {
 
   private applySummary(summary: LaundryServiceSummaryResponse): void {
     this.summary.set(summary);
+    this.priceDrafts.set({});
     this.headerForm.patchValue(this.buildHeaderFormValue(summary), { emitEvent: false });
     this.syncDeliveryFieldState(
       summary.laundry_service.fulfillment_type,
@@ -552,6 +791,91 @@ export class DetailComponent implements OnInit {
     }
 
     return fallback;
+  }
+
+  private toOrderRow(
+    item: LaundryServiceSummaryItem,
+    section: EditableOrderSection,
+    label: string,
+    extraMeta: string[] = []
+  ): EditableOrderRow {
+    return {
+      section,
+      id: item.id,
+      label,
+      quantity: item.quantity,
+      referencePrice: item.catalog_price,
+      currentPrice: item.applied_price,
+      subtotal: this.itemSubtotal(item),
+      meta: [...this.itemMeta(item), ...extraMeta].filter(Boolean)
+    };
+  }
+
+  private buildSummaryPricePayload(summary: LaundryServiceSummaryResponse): LaundryServiceSummaryPricesPatchPayload {
+    const orderItems = [
+      ...summary.automatic_items,
+      ...summary.manual_items,
+      ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
+    ]
+      .map((item) => {
+        const appliedPrice = this.priceDrafts()[this.orderPriceKey(item.id)] ?? this.normalizeMoney(item.applied_price);
+        return {
+          id: item.id,
+          originalPrice: this.normalizeMoney(item.applied_price),
+          appliedPrice: this.normalizeMoney(appliedPrice)
+        };
+      })
+      .filter((item) => item.appliedPrice !== item.originalPrice)
+      .map((item) => ({
+        id: item.id,
+        applied_price: item.appliedPrice
+      }));
+
+    const extras = summary.extras
+      .map((extra) => {
+        const unitPrice = this.priceDrafts()[this.extraPriceKey(extra.id)] ?? this.normalizeMoney(extra.unit_price);
+        return {
+          id: extra.id,
+          originalPrice: this.normalizeMoney(extra.unit_price),
+          unitPrice: this.normalizeMoney(unitPrice)
+        };
+      })
+      .filter((extra) => extra.unitPrice !== extra.originalPrice)
+      .map((extra) => ({
+        id: extra.id,
+        unit_price: extra.unitPrice
+      }));
+
+    return {
+      order_items: orderItems,
+      extras
+    };
+  }
+
+  private updateDraft(key: string, value: string, originalValue: string): void {
+    const nextDrafts = { ...this.priceDrafts() };
+    const rawValue = String(value ?? '');
+
+    if (this.normalizeMoney(rawValue) === originalValue) {
+      delete nextDrafts[key];
+    } else {
+      nextDrafts[key] = rawValue;
+    }
+
+    this.priceDrafts.set(nextDrafts);
+  }
+
+  private normalizeMoney(value: string | number | null | undefined): string {
+    const normalized = Number(value ?? 0);
+    return Number.isFinite(normalized) ? normalized.toFixed(2) : '0.00';
+  }
+
+  private orderPriceKey(id: number): string {
+    return `order:${id}`;
+  }
+
+  private extraPriceKey(id: number): string {
+    return `extra:${id}`;
   }
 
   private setBusy(value: boolean, text?: string): void {

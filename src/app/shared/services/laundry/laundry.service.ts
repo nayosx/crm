@@ -9,6 +9,7 @@ import {
   LaundryServiceHeaderPayload,
   LaundryServiceResp,
   LaundryServicePagination,
+  LaundryServiceSummaryPricesPatchPayload,
   LaundryServiceStatus,
   LaundryServiceSummaryResponse,
   LaundryServiceUpdatePayload,
@@ -294,6 +295,13 @@ export class LaundryService {
     payload: LaundryServiceCommercialDetailPayload
   ): Observable<LaundryServiceSummaryResponse> {
     return this.http.patch<LaundryServiceSummaryResponse>(`${this.v2BaseUrl}/${id}/commercial-detail`, payload);
+  }
+
+  updateSummaryPrices(
+    id: number,
+    payload: LaundryServiceSummaryPricesPatchPayload
+  ): Observable<LaundryServiceSummaryResponse> {
+    return this.http.patch<LaundryServiceSummaryResponse>(`${this.v2BaseUrl}/${id}/summary/prices`, payload);
   }
 
   getWeightQuote(params: {

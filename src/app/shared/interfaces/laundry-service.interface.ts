@@ -257,6 +257,17 @@ export interface LaundryServiceCommercialDetailPayload {
   }>;
 }
 
+export interface LaundryServiceSummaryPricesPatchPayload {
+  order_items: Array<{
+    id: number;
+    applied_price: string;
+  }>;
+  extras: Array<{
+    id: number;
+    unit_price: string;
+  }>;
+}
+
 export interface LaundryDeliveryQuote {
   fulfillment_type: LaundryServiceFulfillmentType;
   distance_km: string;
