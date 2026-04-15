@@ -402,6 +402,10 @@ export class DetailComponent implements OnInit {
   }
 
   updateOrderRowPrice(row: EditableOrderRow, value: string): void {
+    if (!this.isOrderRowEditable(row)) {
+      return;
+    }
+
     this.updateDraft(this.orderPriceKey(row.id), value, this.normalizeMoney(row.currentPrice));
   }
 
@@ -411,6 +415,10 @@ export class DetailComponent implements OnInit {
 
   isOrderRowChanged(row: EditableOrderRow): boolean {
     return this.normalizeMoney(this.editableOrderRowPrice(row)) !== this.normalizeMoney(row.currentPrice);
+  }
+
+  isOrderRowEditable(row: EditableOrderRow): boolean {
+    return row.section !== 'automatic';
   }
 
   isExtraRowChanged(row: EditableExtraRow): boolean {
@@ -813,7 +821,6 @@ export class DetailComponent implements OnInit {
 
   private buildSummaryPricePayload(summary: LaundryServiceSummaryResponse): LaundryServiceSummaryPricesPatchPayload {
     const orderItems = [
-      ...summary.automatic_items,
       ...summary.manual_items,
       ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
     ]

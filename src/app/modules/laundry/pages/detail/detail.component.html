@@ -349,12 +349,13 @@
 <p-dialog
   header="Editar precios"
   [visible]="showSummaryDialog()"
+  (visibleChange)="$event ? showSummaryDialog.set(true) : closeSummaryDialog()"
   [modal]="true"
   [draggable]="false"
   [resizable]="false"
   [closable]="true"
   [style]="{ width: 'min(96vw, 56rem)' }"
-  (onHide)="closeSummaryDialog()">
+  >
   @if (summary(); as data) {
     <div class="summary-dialog__content">
       <div class="u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2 u-d-flex-wrap">
@@ -370,6 +371,9 @@
             <h3 class="u-text-base-bold u-m-all-none">Servicios automáticos</h3>
             <p-tag value="Order items" severity="secondary"></p-tag>
           </div>
+          <p class="u-m-all-none text-color-secondary">
+            No se puede editar el precio de los elementos automáticos desde esta opción.
+          </p>
 
           @for (row of automaticEditableRows(); track row.id) {
             <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
@@ -407,8 +411,11 @@
                     inputmode="decimal"
                     class="u-w-100"
                     [value]="editableOrderRowPrice(row)"
-                    [disabled]="isLoading() || !isPriceEditMode()"
+                    [disabled]="isLoading() || !isPriceEditMode() || !isOrderRowEditable(row)"
                     (input)="updateOrderRowPrice(row, $any($event.target).value)">
+                  @if (!isOrderRowEditable(row)) {
+                    <small class="text-color-secondary">No editable en esta opción.</small>
+                  }
                 </div>
 
                 <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
