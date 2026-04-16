@@ -64,6 +64,14 @@ type EditableExtraRow = {
   meta: string[];
 };
 
+type SummaryCardRow = {
+  id: string;
+  label: string;
+  amount: number;
+  detail: string;
+  showServiceTag?: boolean;
+};
+
 @Component({
   selector: 'app-laundry-detail-page',
   standalone: true,
@@ -318,6 +326,49 @@ export class DetailComponent implements OnInit {
 
   extras(): LaundryServiceSummaryExtra[] {
     return (this.summary()?.extras ?? []).filter((extra) => this.hasVisibleExtraValues(extra));
+  }
+
+  summaryCardRows(): SummaryCardRow[] {
+    const automaticRows = this.automaticItems().map((item) => ({
+      id: `automatic-${item.id}`,
+      label: item.service_name,
+      amount: this.itemSubtotal(item),
+      detail: `${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)}`,
+      showServiceTag: item.pricing_mode.toUpperCase() !== 'DELIVERY'
+    }));
+
+    const weightRows = this.showWeightServiceSummary() && this.weightService()
+      ? [{
+          id: `weight-${this.weightService()!.id}`,
+          label: 'Lavado por peso',
+          amount: this.toNumericValue(this.summary()?.summary.weight_service_subtotal),
+          detail: `${this.formatQuantity(this.weightService()!.weight_lb)} lb`,
+          showServiceTag: false
+        }]
+      : [];
+
+    const manualRows = this.manualItems().map((item) => ({
+      id: `manual-${item.id}`,
+      label: this.manualSummaryLabel(item),
+      amount: this.itemSubtotal(item),
+      detail: `${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)}`,
+      showServiceTag: false
+    }));
+
+    const extraRows = this.extras().map((extra) => ({
+      id: `extra-${extra.id}`,
+      label: extra.extra_name,
+      amount: this.toNumericValue(extra.subtotal),
+      detail: `${this.formatQuantity(extra.quantity)} x ${this.formatMoney(extra.unit_price)}`,
+      showServiceTag: false
+    }));
+
+    return [
+      ...automaticRows,
+      ...weightRows,
+      ...manualRows,
+      ...extraRows
+    ];
   }
 
   weightService(): LaundryServiceSummaryWeightDetail | null {

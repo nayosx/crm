@@ -156,91 +156,32 @@
           </ng-template>
 
           <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-            <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-              @if (automaticItems().length) {
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                  @for (item of automaticItems(); track item.id; let isOdd = $odd) {
-                    <div
-                      class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2"
-                      [class.u-bg-grey-80]="isOdd"
-                      [class.u-bg-grey-90]="!isOdd">
-                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-                        <p class="u-m-all-none">{{ item.service_name }}</p>
-                        @if (item.pricing_mode.toUpperCase() !== 'DELIVERY') {
-                          <p-tag
-                            [value]="serviceLabel()"
-                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
-                          </p-tag>
-                        }
-                      </div>
-
-                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                        <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                        <p class="u-m-all-none u-text-grey-70">
-                          {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                        </p>
-                      </div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="u-m-all-none text-color-secondary">No hay cobros automáticos.</p>
-              }
-            </div>
-
-            @if (showWeightServiceSummary()) {
-              <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2 u-bg-grey-80">
-                <p class="u-m-all-none">Lavado por peso</p>
-
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                  <p class="u-m-all-none">{{ formatMoney(data.summary.weight_service_subtotal) }}</p>
-                  @if (weightService(); as weight) {
-                    <p class="u-m-all-none u-text-grey-70">
-                      {{ formatQuantity(weight.weight_lb) }} lb
-                    </p>
-                  }
-                </div>
-              </div>
-            }
-
-            @if (manualItems().length) {
+            @if (summaryCardRows().length) {
               <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                @for (item of manualItems(); track item.id; let isOdd = $odd) {
+                @for (row of summaryCardRows(); track row.id; let isOdd = $odd) {
                   <div
                     class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2"
                     [class.u-bg-grey-80]="isOdd"
                     [class.u-bg-grey-90]="!isOdd">
-                    <p class="u-m-all-none">{{ manualSummaryLabel(item) }}</p>
+                    <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                      <p class="u-m-all-none">{{ row.label }}</p>
+                      @if (row.showServiceTag) {
+                        <p-tag
+                          [value]="serviceLabel()"
+                          [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
+                        </p-tag>
+                      }
+                    </div>
 
                     <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                      <p class="u-m-all-none">{{ formatMoney(itemSubtotal(item)) }}</p>
-                      <p class="u-m-all-none u-text-grey-70">
-                        {{ formatQuantity(item.quantity) }} x {{ formatMoney(item.applied_price) }}
-                      </p>
+                      <p class="u-m-all-none">{{ formatMoney(row.amount) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">{{ row.detail }}</p>
                     </div>
                   </div>
                 }
               </div>
-            }
-
-            @if (extras().length) {
-              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
-                @for (extra of extras(); track extra.id; let isOdd = $odd) {
-                  <div
-                    class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2"
-                    [class.u-bg-grey-80]="isOdd"
-                    [class.u-bg-grey-90]="!isOdd">
-                    <p class="u-m-all-none">{{ extra.extra_name }}</p>
-
-                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
-                      <p class="u-m-all-none">{{ formatMoney(extra.subtotal) }}</p>
-                      <p class="u-m-all-none u-text-grey-70">
-                        {{ formatQuantity(extra.quantity) }} x {{ formatMoney(extra.unit_price) }}
-                      </p>
-                    </div>
-                  </div>
-                }
-              </div>
+            } @else {
+              <p class="u-m-all-none text-color-secondary">No hay cobros registrados.</p>
             }
 
             <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
