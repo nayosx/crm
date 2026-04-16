@@ -30,6 +30,7 @@ import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { DialogLoadingService } from '@shared/services/dialog-loading.service';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import { DecimalInputComponent } from '@shared/components/decimal-input/decimal-input.component';
 import { LaundryServiceLabelMap, LaundryStatusLabelMap } from '@shared/i18n/laundry-ui-texts';
 import { ToBackLaundry } from '@modules/laundry/commons/route';
 
@@ -79,7 +80,8 @@ type EditableExtraRow = {
     ToastModule,
     ToggleSwitchModule,
     LoaderDialogComponent,
-    BackButtonComponent
+    BackButtonComponent,
+    DecimalInputComponent
   ],
   providers: [MessageService],
   templateUrl: './detail.component.html',
@@ -112,7 +114,6 @@ type EditableExtraRow = {
       padding: 0.75rem;
       border: 1px solid var(--surface-border);
       border-radius: 0.75rem;
-      background: var(--surface-card);
     }
 
     .summary-dialog__row--changed {
