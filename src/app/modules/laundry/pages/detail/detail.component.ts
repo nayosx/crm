@@ -72,6 +72,21 @@ type SummaryCardRow = {
   showServiceTag?: boolean;
 };
 
+type SummaryDialogRow = {
+  id: string;
+  kind: 'order' | 'extra';
+  orderRow?: EditableOrderRow;
+  extraRow?: EditableExtraRow;
+  label: string;
+  amount: number;
+  detail: string;
+  value: string;
+  disabled: boolean;
+  changed: boolean;
+  inputId: string;
+  helperText?: string;
+};
+
 @Component({
   selector: 'app-laundry-detail-page',
   standalone: true,
@@ -465,6 +480,70 @@ export class DetailComponent implements OnInit {
       subtotal: this.toNumericValue(extra.subtotal),
       meta: this.extraMeta(extra)
     }));
+  }
+
+  summaryDialogRows(): SummaryDialogRow[] {
+    const automaticRows = this.automaticEditableRows().map((row) => ({
+      id: `order-${row.id}`,
+      kind: 'order' as const,
+      orderRow: row,
+      label: row.label,
+      amount: this.orderRowSubtotal(row),
+      detail: `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(row))}`,
+      value: this.editableOrderRowPrice(row),
+      disabled: this.isLoading() || !this.isPriceEditMode() || !this.isOrderRowEditable(row),
+      changed: this.isOrderRowChanged(row),
+      inputId: `order-price-${row.id}`,
+      helperText: !this.isOrderRowEditable(row) ? 'No editable en esta opción.' : undefined
+    }));
+
+    const weightRows = this.weightEditableRow()
+      ? [{
+          id: `order-${this.weightEditableRow()!.id}`,
+          kind: 'order' as const,
+          orderRow: this.weightEditableRow()!,
+          label: this.weightEditableRow()!.label,
+          amount: this.orderRowSubtotal(this.weightEditableRow()!),
+          detail: `${this.formatQuantity(this.weightEditableRow()!.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(this.weightEditableRow()!))}`,
+          value: this.editableOrderRowPrice(this.weightEditableRow()!),
+          disabled: this.isLoading() || !this.isPriceEditMode(),
+          changed: this.isOrderRowChanged(this.weightEditableRow()!),
+          inputId: `weight-price-${this.weightEditableRow()!.id}`
+        }]
+      : [];
+
+    const manualRows = this.manualEditableRows().map((row) => ({
+      id: `order-${row.id}`,
+      kind: 'order' as const,
+      orderRow: row,
+      label: row.label,
+      amount: this.orderRowSubtotal(row),
+      detail: `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(row))}`,
+      value: this.editableOrderRowPrice(row),
+      disabled: this.isLoading() || !this.isPriceEditMode(),
+      changed: this.isOrderRowChanged(row),
+      inputId: `manual-price-${row.id}`
+    }));
+
+    const extraRows = this.extraEditableRows().map((row) => ({
+      id: `extra-${row.id}`,
+      kind: 'extra' as const,
+      extraRow: row,
+      label: row.label,
+      amount: this.extraRowSubtotal(row),
+      detail: `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableExtraRowPrice(row))}`,
+      value: this.editableExtraRowPrice(row),
+      disabled: this.isLoading() || !this.isPriceEditMode(),
+      changed: this.isExtraRowChanged(row),
+      inputId: `extra-price-${row.id}`
+    }));
+
+    return [
+      ...automaticRows,
+      ...weightRows,
+      ...manualRows,
+      ...extraRows
+    ];
   }
 
   editableOrderRowPrice(row: EditableOrderRow): string {

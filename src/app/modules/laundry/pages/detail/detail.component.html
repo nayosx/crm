@@ -315,21 +315,12 @@
         </div>
       </div>
 
-      @if (automaticEditableRows().length) {
+      @if (summaryDialogRows().length) {
         <section class="summary-dialog__section">
-          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-            <h3 class="u-text-base-bold u-m-all-none">Servicios automáticos</h3>
-          </div>
-          <p class="u-m-all-none text-color-secondary">
-            No se puede editar el precio de los elementos automáticos desde esta opción.
-          </p>
-
-          @for (row of automaticEditableRows(); track row.id; let isOdd = $odd) {
-            <article
-              class="summary-dialog__row"
-              [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
+          @for (row of summaryDialogRows(); track row.id) {
+            <article class="summary-dialog__row" [class.summary-dialog__row--changed]="row.changed">
               <div class="summary-dialog__row-header">
-                @if (isOrderRowChanged(row)) {
+                @if (row.changed) {
                   <p-tag value="Modificado" severity="warn"></p-tag>
                 }
               </div>
@@ -341,127 +332,17 @@
 
                 <div class="summary-dialog__row-right">
                   <app-decimal-input
-                    [id]="'order-price-' + row.id"
+                    [id]="row.inputId"
                     inputClass="summary-dialog__row-input"
-                    [value]="editableOrderRowPrice(row)"
-                    [disabled]="isLoading() || !isPriceEditMode() || !isOrderRowEditable(row)"
-                    (valueChange)="updateOrderRowPrice(row, $event)">
+                    [value]="row.value"
+                    [disabled]="row.disabled"
+                    (valueChange)="row.kind === 'extra' ? updateExtraRowPrice(row.extraRow!, $event) : updateOrderRowPrice(row.orderRow!, $event)">
                   </app-decimal-input>
-                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(orderRowSubtotal(row)) }}</p>
-                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
-                  @if (!isOrderRowEditable(row)) {
-                    <small class="text-color-secondary">No editable en esta opción.</small>
+                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(row.amount) }}</p>
+                  <small class="text-color-secondary">{{ row.detail }}</small>
+                  @if (row.helperText) {
+                    <small class="text-color-secondary">{{ row.helperText }}</small>
                   }
-                </div>
-              </div>
-            </article>
-          }
-        </section>
-      }
-
-      @if (weightEditableRow(); as row) {
-        <section class="summary-dialog__section">
-          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-            <h3 class="u-text-base-bold u-m-all-none">Lavado por peso</h3>
-          </div>
-
-          <article class="summary-dialog__row" [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
-            <div class="summary-dialog__row-header">
-              @if (isOrderRowChanged(row)) {
-                <p-tag value="Modificado" severity="warn"></p-tag>
-              }
-            </div>
-
-            <div class="summary-dialog__row-body">
-              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
-              </div>
-
-              <div class="summary-dialog__row-right">
-                <app-decimal-input
-                  [id]="'weight-price-' + row.id"
-                  inputClass="summary-dialog__row-input"
-                  [value]="editableOrderRowPrice(row)"
-                  [disabled]="isLoading() || !isPriceEditMode()"
-                  (valueChange)="updateOrderRowPrice(row, $event)">
-                </app-decimal-input>
-                <p class="u-text-base-bold u-m-all-none">{{ formatMoney(orderRowSubtotal(row)) }}</p>
-                <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
-              </div>
-            </div>
-          </article>
-        </section>
-      }
-
-      @if (manualEditableRows().length) {
-        <section class="summary-dialog__section">
-          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-            <h3 class="u-text-base-bold u-m-all-none">Servicios manuales</h3>
-          </div>
-
-          @for (row of manualEditableRows(); track row.id; let isOdd = $odd) {
-            <article
-              class="summary-dialog__row"
-              [class.summary-dialog__row--changed]="isOrderRowChanged(row)">
-              <div class="summary-dialog__row-header">
-                @if (isOrderRowChanged(row)) {
-                  <p-tag value="Modificado" severity="warn"></p-tag>
-                }
-              </div>
-
-              <div class="summary-dialog__row-body">
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
-                </div>
-
-                <div class="summary-dialog__row-right">
-                  <app-decimal-input
-                    [id]="'manual-price-' + row.id"
-                    inputClass="summary-dialog__row-input"
-                    [value]="editableOrderRowPrice(row)"
-                    [disabled]="isLoading() || !isPriceEditMode()"
-                    (valueChange)="updateOrderRowPrice(row, $event)">
-                  </app-decimal-input>
-                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(orderRowSubtotal(row)) }}</p>
-                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableOrderRowPrice(row)) }}</small>
-                </div>
-              </div>
-            </article>
-          }
-        </section>
-      }
-
-      @if (extraEditableRows().length) {
-        <section class="summary-dialog__section">
-          <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-            <h3 class="u-text-base-bold u-m-all-none">Extras</h3>
-          </div>
-
-          @for (row of extraEditableRows(); track row.id; let isOdd = $odd) {
-            <article
-              class="summary-dialog__row"
-              [class.summary-dialog__row--changed]="isExtraRowChanged(row)">
-              <div class="summary-dialog__row-header">
-                @if (isExtraRowChanged(row)) {
-                  <p-tag value="Modificado" severity="warn"></p-tag>
-                }
-              </div>
-
-              <div class="summary-dialog__row-body">
-                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
-                </div>
-
-                <div class="summary-dialog__row-right">
-                  <app-decimal-input
-                    [id]="'extra-price-' + row.id"
-                    inputClass="summary-dialog__row-input"
-                    [value]="editableExtraRowPrice(row)"
-                    [disabled]="isLoading() || !isPriceEditMode()"
-                    (valueChange)="updateExtraRowPrice(row, $event)">
-                  </app-decimal-input>
-                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(extraRowSubtotal(row)) }}</p>
-                  <small class="text-color-secondary">{{ formatQuantity(row.quantity) }} x {{ formatMoney(editableExtraRowPrice(row)) }}</small>
                 </div>
               </div>
             </article>
