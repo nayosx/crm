@@ -16,7 +16,7 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputTextarea } from 'primeng/inputtextarea';
+import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
@@ -56,7 +56,7 @@ import {
     ButtonModule,
     InputNumberModule,
     InputTextModule,
-    InputTextarea,
+    TextareaModule,
     SelectModule,
     ToggleSwitchModule,
     TagModule,
@@ -100,11 +100,13 @@ export class FormPreviewComponent implements OnInit {
     quantity: number;
   }> = [];
   servicePickerStep: 'list' | 'variants' | 'preview' = 'list';
+  servicePickerMode: 'service' | 'variant' = 'service';
   showExtraPicker = false;
   showGarmentPicker = false;
   garmentSearchTerm = '';
   garmentDraftQuantity = 1;
   selectedGarmentType: LaundryGarmentType | null = null;
+  private suppressPendingSaveNotice = false;
 
   readonly form = this.fb.group({
     notes: [''],
@@ -261,6 +263,20 @@ export class FormPreviewComponent implements OnInit {
     return this.serviceCatalog.find((service) => service.id === serviceId)?.name ?? 'Servicio';
   }
 
+  canAddMoreVariants(serviceId: number): boolean {
+    const service = this.serviceCatalog.find((item) => item.id === serviceId);
+    if (service?.pricing_mode?.toUpperCase() !== 'FIXED') {
+      return false;
+    }
+
+    const variants = this.serviceVariants[serviceId];
+    if (!variants || variants.length <= 1) {
+      return false;
+    }
+
+    return this.getRemainingVariantsForService(serviceId, variants).length > 0;
+  }
+
   serviceGroupHasMultipleVariants(indexes: number[]): boolean {
     return indexes.length > 1;
   }
@@ -299,6 +315,7 @@ export class FormPreviewComponent implements OnInit {
     indexesToRemove.forEach((index) => this.orderItemsArray.removeAt(index));
     this.removeAccordionValue(`service-${serviceId}`);
     this.promptServicePickerWhenOnlyReadOnlyItems();
+    this.notifyPendingSaveChanges();
   }
 
   onAccordionValueChange(value: string | number | string[] | number[]): void {
@@ -308,7 +325,37 @@ export class FormPreviewComponent implements OnInit {
 
   openServicePicker(): void {
     this.resetServicePicker();
+    this.servicePickerMode = 'service';
     this.showServicePicker = true;
+  }
+
+  openAdditionalVariantsPicker(serviceId: number): void {
+    const service = this.serviceCatalog.find((item) => item.id === serviceId);
+    if (!service) {
+      this.showError('No se encontró el servicio seleccionado.');
+      return;
+    }
+
+    const cachedVariants = this.serviceVariants[service.id];
+    if (cachedVariants) {
+      this.handleAdditionalVariantSelection(service, cachedVariants);
+      return;
+    }
+
+    this.setBusy(true, 'Cargando variantes...');
+    this.catalogService.listVariantsByService(service.id).pipe(
+      catchError(() => {
+        this.showError('No se pudieron cargar las variantes.');
+        return of([]);
+      }),
+      finalize(() => this.setBusy(false))
+    ).subscribe((variants) => {
+      this.serviceVariants = {
+        ...this.serviceVariants,
+        [service.id]: variants
+      };
+      this.handleAdditionalVariantSelection(service, variants);
+    });
   }
 
   closeServicePicker(): void {
@@ -358,6 +405,7 @@ export class FormPreviewComponent implements OnInit {
       garment_type_id: this.selectedGarmentType.id,
       quantity
     }));
+    this.notifyPendingSaveChanges();
 
     this.showGarmentPicker = false;
     this.resetGarmentPicker();
@@ -367,6 +415,7 @@ export class FormPreviewComponent implements OnInit {
     if (service.pricing_mode?.toUpperCase() === 'WEIGHT') {
       this.showWeightService.set(true);
       this.addAccordionValue('weight');
+      this.notifyPendingSaveChanges();
       this.closeServicePicker();
       return;
     }
@@ -424,6 +473,7 @@ export class FormPreviewComponent implements OnInit {
         applied_price: this.toMoneyString(variant.catalog_price)
       });
     });
+    this.notifyPendingSaveChanges();
 
     this.closeServicePicker();
   }
@@ -439,6 +489,7 @@ export class FormPreviewComponent implements OnInit {
     this.orderItemsArray.removeAt(index);
     this.removeAccordionValue(panelValue);
     this.promptServicePickerWhenOnlyReadOnlyItems();
+    this.notifyPendingSaveChanges();
   }
 
   removeWeightService(): void {
@@ -449,10 +500,12 @@ export class FormPreviewComponent implements OnInit {
       weight_lb: 0
     });
     this.promptServicePickerWhenOnlyReadOnlyItems();
+    this.notifyPendingSaveChanges();
   }
 
   removeGarment(index: number): void {
     this.garmentsArray.removeAt(index);
+    this.notifyPendingSaveChanges();
   }
 
   addExtra(extra?: LaundryCommercialCatalogExtraItem): void {
@@ -467,6 +520,7 @@ export class FormPreviewComponent implements OnInit {
 
   addExtraFromList(extra: LaundryCommercialCatalogExtraItem): void {
     this.addExtra(extra);
+    this.notifyPendingSaveChanges();
     this.closeExtraPicker();
   }
 
@@ -520,6 +574,7 @@ export class FormPreviewComponent implements OnInit {
 
   removeExtra(index: number): void {
     this.extrasArray.removeAt(index);
+    this.notifyPendingSaveChanges();
   }
 
   save(): void {
@@ -576,6 +631,7 @@ export class FormPreviewComponent implements OnInit {
   }
 
   private patchFormFromSummary(summary: LaundryServiceSummaryResponse): void {
+    this.suppressPendingSaveNotice = true;
     this.garmentsArray.clear();
     this.orderItemsArray.clear();
     this.extrasArray.clear();
@@ -621,6 +677,7 @@ export class FormPreviewComponent implements OnInit {
     });
 
     this.promptServicePickerWhenOnlyReadOnlyItems();
+    this.suppressPendingSaveNotice = false;
   }
 
   private ensureVariantsLoaded(serviceId: number): void {
@@ -690,6 +747,27 @@ export class FormPreviewComponent implements OnInit {
     this.selectedServiceVariants = variants;
     this.serviceVariantQuantities = Object.fromEntries(
       variants.map((variant) => [variant.id, null])
+    );
+    this.servicePickerPreviewItems = [];
+    this.servicePickerStep = 'variants';
+  }
+
+  private handleAdditionalVariantSelection(
+    service: LaundryCommercialCatalogServiceItem,
+    variants: LaundryCommercialCatalogVariantItem[]
+  ): void {
+    const remainingVariants = this.getRemainingVariantsForService(service.id, variants);
+    if (remainingVariants.length === 0) {
+      this.showError('Este servicio ya tiene todas sus variantes agregadas.');
+      return;
+    }
+
+    this.showServicePicker = true;
+    this.servicePickerMode = 'variant';
+    this.selectedServiceForPicker = service;
+    this.selectedServiceVariants = remainingVariants;
+    this.serviceVariantQuantities = Object.fromEntries(
+      remainingVariants.map((variant) => [variant.id, null])
     );
     this.servicePickerPreviewItems = [];
     this.servicePickerStep = 'variants';
@@ -814,6 +892,20 @@ export class FormPreviewComponent implements OnInit {
     return Number.isFinite(variant.catalog_price) ? variant.catalog_price : 0;
   }
 
+  private getRemainingVariantsForService(
+    serviceId: number,
+    variants: LaundryCommercialCatalogVariantItem[]
+  ): LaundryCommercialCatalogVariantItem[] {
+    const selectedVariantIds = new Set(
+      this.orderItemsArray.controls
+        .filter((control) => Number(control.get('service_id')?.value) === serviceId)
+        .map((control) => Number(control.get('service_variant_id')?.value))
+        .filter((variantId) => Boolean(variantId))
+    );
+
+    return variants.filter((variant) => !selectedVariantIds.has(variant.id));
+  }
+
   private addAccordionValue(value: string): void {
     const current = this.activeAccordionValues();
     if (current.includes(value)) {
@@ -846,6 +938,7 @@ export class FormPreviewComponent implements OnInit {
 
   private resetServicePicker(): void {
     this.serviceSearchTerm = '';
+    this.servicePickerMode = 'service';
     this.selectedServiceForPicker = null;
     this.selectedServiceVariants = [];
     this.serviceVariantQuantities = {};
@@ -859,6 +952,21 @@ export class FormPreviewComponent implements OnInit {
 
   private showSuccess(detail: string): void {
     this.messageService.add({ severity: 'success', summary: 'Listo', detail });
+  }
+
+  private notifyPendingSaveChanges(): void {
+    if (this.suppressPendingSaveNotice) {
+      return;
+    }
+
+    this.messageService.clear('pending-save');
+    this.messageService.add({
+      key: 'pending-save',
+      severity: 'info',
+      summary: 'Cambios pendientes',
+      detail: 'Haz clic en Guardar para que los cambios se guarden correctamente.',
+      life: 5000
+    });
   }
 
   private showError(detail: string): void {

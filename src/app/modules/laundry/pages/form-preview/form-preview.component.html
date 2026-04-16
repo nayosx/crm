@@ -1,5 +1,6 @@
 <app-loader-dialog></app-loader-dialog>
 <p-toast></p-toast>
+<p-toast key="pending-save"></p-toast>
 
 <section class="container form-preview-shell u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
   <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
@@ -181,7 +182,23 @@
                     }
                   }
 
-                  <div class="u-d-flex u-d-flex-justify-end">
+                  <div
+                    class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2"
+                    [class.u-d-flex-justify-between]="canAddMoreVariants(group.serviceId)"
+                    [class.u-d-flex-justify-end]="!canAddMoreVariants(group.serviceId)">
+                    @if (canAddMoreVariants(group.serviceId)) {
+                      <p-button
+                        type="button"
+                        icon="pi pi-plus"
+                        label="Agregar variante"
+                        severity="secondary"
+                        [text]="true"
+                        [loading]="isLoading()"
+                        [disabled]="isLoading()"
+                        (onClick)="openAdditionalVariantsPicker(group.serviceId)">
+                      </p-button>
+                    }
+
                     <p-button
                       type="button"
                       icon="pi pi-trash"
@@ -268,7 +285,7 @@
         <label for="commercial_notes" class="u-text-sm-bold">Notas</label>
         <textarea
           id="commercial_notes"
-          pInputTextarea
+          pTextarea
           formControlName="notes"
           rows="4"
           class="u-w-100"
@@ -387,15 +404,17 @@
       </p-button>
     } @else if (servicePickerStep === 'variants') {
       <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
-        <p-button
-          type="button"
-          label="Cambiar servicio"
-          severity="secondary"
-          [text]="true"
-          [loading]="isLoading()"
-          [disabled]="isLoading()"
-          (onClick)="backToServiceList()">
-        </p-button>
+        @if (servicePickerMode === 'service') {
+          <p-button
+            type="button"
+            label="Cambiar servicio"
+            severity="secondary"
+            [text]="true"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="backToServiceList()">
+          </p-button>
+        }
         <div class="service-picker-footer__actions u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
           <p-button
             type="button"

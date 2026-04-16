@@ -6,7 +6,7 @@ import { catchError, finalize, map, Observable, switchMap, throwError } from 'rx
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputTextarea } from 'primeng/inputtextarea';
+import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
 import { Client } from '@shared/interfaces/client.interface';
@@ -29,7 +29,7 @@ type FlowError = {
     CommonModule,
     ReactiveFormsModule,
     InputTextModule,
-    InputTextarea,
+    TextareaModule,
     ToggleSwitchModule,
     ButtonModule,
     DialogModule,

@@ -317,7 +317,7 @@
 
       @if (summaryDialogRows().length) {
         <section class="summary-dialog__section">
-          @for (row of summaryDialogRows(); track row.id) {
+          @for (row of summaryDialogRows(); track row.id; let isOdd = $odd) {
             <article class="summary-dialog__row" [class.summary-dialog__row--changed]="row.changed">
               <div class="summary-dialog__row-header">
                 @if (row.changed) {
@@ -325,7 +325,10 @@
                 }
               </div>
 
-              <div class="summary-dialog__row-body">
+              <div
+                class="summary-dialog__row-body"
+                [class.u-bg-grey-80]="isOdd"
+                [class.u-bg-grey-90]="!isOdd">
                 <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                   <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
                 </div>

@@ -10,11 +10,11 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DatePickerModule } from 'primeng/datepicker';
 import { DividerModule } from 'primeng/divider';
 import { DropdownModule } from 'primeng/dropdown';
-import { Textarea } from 'primeng/inputtextarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
+import { TextareaModule } from 'primeng/textarea';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ToolbarModule } from 'primeng/toolbar';
@@ -33,7 +33,7 @@ import { WorkSessionsBaseComponent } from './work-sessions-base.component';
     DatePickerModule,
     DividerModule,
     DropdownModule,
-    Textarea,
+    TextareaModule,
     MessageModule,
     SkeletonModule,
     TableModule,

@@ -127,14 +127,11 @@ type SummaryDialogRow = {
     .summary-dialog__section {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
     }
 
     .summary-dialog__row {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      padding: 0.75rem;
       border: 1px solid var(--surface-border);
       border-radius: 0.75rem;
     }

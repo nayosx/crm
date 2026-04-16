@@ -17,7 +17,7 @@ import { DialogModule } from 'primeng/dialog';
 import { EditorModule } from 'primeng/editor';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputTextarea } from 'primeng/inputtextarea';
+import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TagModule } from 'primeng/tag';
@@ -47,7 +47,7 @@ import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundr
     SelectButtonModule,
     DialogModule,
     DatePickerModule,
-    InputTextarea,
+    TextareaModule,
     ClientAddressListComponent,
     TransactionFormComponent
   ],
