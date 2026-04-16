@@ -127,6 +127,28 @@ type EditableExtraRow = {
       align-items: flex-start;
     }
 
+    .summary-dialog__row-body {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .summary-dialog__row-right {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-end;
+      text-align: right;
+      min-width: min(100%, 18rem);
+      flex: 1 1 16rem;
+    }
+
+    .summary-dialog__row-input {
+      width: min(100%, 12rem);
+    }
+
     .summary-dialog__price-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
@@ -233,12 +255,12 @@ export class DetailComponent implements OnInit {
       ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
     ].reduce((total, item) => {
       const appliedPrice = this.priceDrafts()[this.orderPriceKey(item.id)] ?? this.normalizeMoney(item.applied_price);
-      return total + (Number(item.quantity ?? 0) * Number(this.normalizeMoney(appliedPrice)));
+      return total + (this.toNumericValue(item.quantity) * this.toNumericValue(this.normalizeMoney(appliedPrice)));
     }, 0);
 
     const extrasTotal = summary.extras.reduce((total, extra) => {
       const unitPrice = this.priceDrafts()[this.extraPriceKey(extra.id)] ?? this.normalizeMoney(extra.unit_price);
-      return total + (Number(extra.quantity ?? 0) * Number(this.normalizeMoney(unitPrice)));
+      return total + (this.toNumericValue(extra.quantity) * this.toNumericValue(this.normalizeMoney(unitPrice)));
     }, 0);
 
     return orderTotal + extrasTotal;
@@ -307,8 +329,8 @@ export class DetailComponent implements OnInit {
       return false;
     }
 
-    const subtotal = Number(summary.summary.weight_service_subtotal ?? 0);
-    const weight = Number(summary.weight_service_detail?.weight_lb ?? 0);
+    const subtotal = this.toNumericValue(summary.summary.weight_service_subtotal);
+    const weight = this.toNumericValue(summary.weight_service_detail?.weight_lb);
     return subtotal > 0 || weight > 0;
   }
 
@@ -388,7 +410,7 @@ export class DetailComponent implements OnInit {
       quantity: extra.quantity,
       referencePrice: extra.unit_price,
       currentPrice: extra.unit_price,
-      subtotal: Number(extra.subtotal ?? 0),
+      subtotal: this.toNumericValue(extra.subtotal),
       meta: this.extraMeta(extra)
     }));
   }
@@ -426,11 +448,11 @@ export class DetailComponent implements OnInit {
   }
 
   orderRowSubtotal(row: EditableOrderRow): number {
-    return Number(row.quantity ?? 0) * Number(this.normalizeMoney(this.editableOrderRowPrice(row)));
+    return this.toNumericValue(row.quantity) * this.toNumericValue(this.normalizeMoney(this.editableOrderRowPrice(row)));
   }
 
   extraRowSubtotal(row: EditableExtraRow): number {
-    return Number(row.quantity ?? 0) * Number(this.normalizeMoney(this.editableExtraRowPrice(row)));
+    return this.toNumericValue(row.quantity) * this.toNumericValue(this.normalizeMoney(this.editableExtraRowPrice(row)));
   }
 
   saveSummaryPrices(): void {
@@ -483,7 +505,7 @@ export class DetailComponent implements OnInit {
   }
 
   itemSubtotal(item: LaundryServiceSummaryItem): number {
-    return Number(item.quantity ?? 0) * Number(item.applied_price ?? 0);
+    return this.toNumericValue(item.quantity) * this.toNumericValue(item.applied_price);
   }
 
   itemMeta(item: LaundryServiceSummaryItem): string[] {
@@ -524,15 +546,15 @@ export class DetailComponent implements OnInit {
   }
 
   private hasVisibleItemValues(item: LaundryServiceSummaryItem): boolean {
-    const quantity = Number(item.quantity ?? 0);
-    const appliedPrice = Number(item.applied_price ?? 0);
+    const quantity = this.toNumericValue(item.quantity);
+    const appliedPrice = this.toNumericValue(item.applied_price);
     return quantity > 0 || appliedPrice > 0 || this.itemSubtotal(item) > 0;
   }
 
   private hasVisibleExtraValues(extra: LaundryServiceSummaryExtra): boolean {
-    const quantity = Number(extra.quantity ?? 0);
-    const unitPrice = Number(extra.unit_price ?? 0);
-    const subtotal = Number(extra.subtotal ?? 0);
+    const quantity = this.toNumericValue(extra.quantity);
+    const unitPrice = this.toNumericValue(extra.unit_price);
+    const subtotal = this.toNumericValue(extra.subtotal);
     return quantity > 0 || unitPrice > 0 || subtotal > 0;
   }
 
@@ -579,7 +601,7 @@ export class DetailComponent implements OnInit {
     }
 
     const extraLines = this.extras().map((extra) =>
-      `- ${extra.extra_name}: ${this.formatMoney(Number(extra.subtotal ?? 0))} (${this.formatQuantity(extra.quantity)} x ${this.formatMoney(extra.unit_price)})`
+      `- ${extra.extra_name}: ${this.formatMoney(this.toNumericValue(extra.subtotal))} (${this.formatQuantity(extra.quantity)} x ${this.formatMoney(extra.unit_price)})`
     );
 
     if (extraLines.length) {
@@ -605,11 +627,11 @@ export class DetailComponent implements OnInit {
   }
 
   formatMoney(value: string | number | null | undefined): string {
-    return `$${Number(value ?? 0).toFixed(2)}`;
+    return `$${this.toNumericValue(value).toFixed(2)}`;
   }
 
   formatQuantity(value: string | number | null | undefined): string {
-    const numericValue = Number(value ?? 0);
+    const numericValue = this.toNumericValue(value);
     return Number.isInteger(numericValue) ? `${numericValue}` : numericValue.toFixed(2);
   }
 
@@ -702,11 +724,11 @@ export class DetailComponent implements OnInit {
 
     if (value.fulfillment_type !== 'WALK_IN') {
       if (value.distance_km != null) {
-        payload.distance_km = Number(value.distance_km);
+        payload.distance_km = this.toNumericValue(value.distance_km);
       }
 
       if (value.manual_delivery_fee != null) {
-        payload.manual_delivery_fee = Number(value.manual_delivery_fee);
+        payload.manual_delivery_fee = this.toNumericValue(value.manual_delivery_fee);
       }
     }
 
@@ -730,7 +752,7 @@ export class DetailComponent implements OnInit {
       return;
     }
 
-    const shouldDisableDistance = Number(manualDeliveryFee ?? 0) > 0;
+    const shouldDisableDistance = this.toNumericValue(manualDeliveryFee) > 0;
     this.distanceControlDisabled.set(shouldDisableDistance);
 
     if (shouldDisableDistance) {
@@ -769,7 +791,7 @@ export class DetailComponent implements OnInit {
       return null;
     }
 
-    const numericValue = Number(value);
+    const numericValue = this.toNumericValue(value);
     return Number.isFinite(numericValue) ? numericValue : null;
   }
 
@@ -873,8 +895,23 @@ export class DetailComponent implements OnInit {
   }
 
   private normalizeMoney(value: string | number | null | undefined): string {
-    const normalized = Number(value ?? 0);
+    const normalized = this.toNumericValue(value);
     return Number.isFinite(normalized) ? normalized.toFixed(2) : '0.00';
+  }
+
+  private toNumericValue(value: unknown): number {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().replace(',', '.');
+      const numericValue = Number(normalized);
+      return Number.isFinite(numericValue) ? numericValue : 0;
+    }
+
+    const numericValue = Number(value ?? 0);
+    return Number.isFinite(numericValue) ? numericValue : 0;
   }
 
   private orderPriceKey(id: number): string {
