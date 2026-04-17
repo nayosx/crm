@@ -4,6 +4,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { switchMap } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -51,6 +52,7 @@ type EditableOrderRow = {
   referencePrice: string | number;
   currentPrice: string | number;
   subtotal: number;
+  usesSubtotalPrice: boolean;
   meta: string[];
 };
 
@@ -69,6 +71,8 @@ type SummaryCardRow = {
   label: string;
   amount: number;
   detail: string;
+  secondaryDetail?: string;
+  badgeLabel?: string;
   showServiceTag?: boolean;
 };
 
@@ -276,6 +280,10 @@ export class DetailComponent implements OnInit {
       ...(summary.weight_service_detail ? [summary.weight_service_detail] : [])
     ].reduce((total, item) => {
       const appliedPrice = this.priceDrafts()[this.orderPriceKey(item.id)] ?? this.normalizeMoney(item.applied_price);
+      if (this.usesCommercialSubtotal(item)) {
+        return total + this.toNumericValue(this.normalizeMoney(appliedPrice));
+      }
+
       return total + (this.toNumericValue(item.quantity) * this.toNumericValue(this.normalizeMoney(appliedPrice)));
     }, 0);
 
@@ -363,7 +371,9 @@ export class DetailComponent implements OnInit {
       id: `manual-${item.id}`,
       label: this.manualSummaryLabel(item),
       amount: this.itemSubtotal(item),
-      detail: `${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)}`,
+      detail: `${this.formatQuantity(item.quantity)} x ${this.formatMoney(this.manualUnitCatalogPrice(item))}`,
+      secondaryDetail: this.manualSecondaryDetail(item),
+      badgeLabel: item.discount_rule?.name ?? undefined,
       showServiceTag: false
     }));
 
@@ -479,6 +489,14 @@ export class DetailComponent implements OnInit {
     }));
   }
 
+  orderRowDetail(row: EditableOrderRow): string {
+    if (row.usesSubtotalPrice) {
+      return `Cantidad ${this.formatQuantity(row.quantity)} · Total comercial`;
+    }
+
+    return `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(row))}`;
+  }
+
   summaryDialogRows(): SummaryDialogRow[] {
     const automaticRows = this.automaticEditableRows().map((row) => ({
       id: `order-${row.id}`,
@@ -486,12 +504,12 @@ export class DetailComponent implements OnInit {
       orderRow: row,
       label: row.label,
       amount: this.orderRowSubtotal(row),
-      detail: `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(row))}`,
+      detail: this.orderRowDetail(row),
       value: this.editableOrderRowPrice(row),
       disabled: this.isLoading() || !this.isPriceEditMode() || !this.isOrderRowEditable(row),
       changed: this.isOrderRowChanged(row),
       inputId: `order-price-${row.id}`,
-      helperText: !this.isOrderRowEditable(row) ? 'No editable en esta opción.' : undefined
+      helperText: this.buildRowHelperText(row, !this.isOrderRowEditable(row) ? 'No editable en esta opción.' : undefined)
     }));
 
     const weightRows = this.weightEditableRow()
@@ -501,11 +519,12 @@ export class DetailComponent implements OnInit {
           orderRow: this.weightEditableRow()!,
           label: this.weightEditableRow()!.label,
           amount: this.orderRowSubtotal(this.weightEditableRow()!),
-          detail: `${this.formatQuantity(this.weightEditableRow()!.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(this.weightEditableRow()!))}`,
+          detail: this.orderRowDetail(this.weightEditableRow()!),
           value: this.editableOrderRowPrice(this.weightEditableRow()!),
           disabled: this.isLoading() || !this.isPriceEditMode(),
           changed: this.isOrderRowChanged(this.weightEditableRow()!),
-          inputId: `weight-price-${this.weightEditableRow()!.id}`
+          inputId: `weight-price-${this.weightEditableRow()!.id}`,
+          helperText: this.buildRowHelperText(this.weightEditableRow()!)
         }]
       : [];
 
@@ -515,11 +534,12 @@ export class DetailComponent implements OnInit {
       orderRow: row,
       label: row.label,
       amount: this.orderRowSubtotal(row),
-      detail: `${this.formatQuantity(row.quantity)} x ${this.formatMoney(this.editableOrderRowPrice(row))}`,
+      detail: this.orderRowDetail(row),
       value: this.editableOrderRowPrice(row),
       disabled: this.isLoading() || !this.isPriceEditMode(),
       changed: this.isOrderRowChanged(row),
-      inputId: `manual-price-${row.id}`
+      inputId: `manual-price-${row.id}`,
+      helperText: this.buildRowHelperText(row)
     }));
 
     const extraRows = this.extraEditableRows().map((row) => ({
@@ -576,6 +596,10 @@ export class DetailComponent implements OnInit {
   }
 
   orderRowSubtotal(row: EditableOrderRow): number {
+    if (row.usesSubtotalPrice) {
+      return this.toNumericValue(this.normalizeMoney(this.editableOrderRowPrice(row)));
+    }
+
     return this.toNumericValue(row.quantity) * this.toNumericValue(this.normalizeMoney(this.editableOrderRowPrice(row)));
   }
 
@@ -622,6 +646,7 @@ export class DetailComponent implements OnInit {
     this.setBusy(true, 'Guardando cabecera operativa...');
 
     this.laundryService.updateHeader(this.serviceId(), payload).pipe(
+      switchMap(() => this.laundryService.getSummary(this.serviceId())),
       finalize(() => this.setBusy(false))
     ).subscribe({
       next: (summary) => {
@@ -633,6 +658,10 @@ export class DetailComponent implements OnInit {
   }
 
   itemSubtotal(item: LaundryServiceSummaryItem): number {
+    if (this.usesCommercialSubtotal(item)) {
+      return this.toNumericValue(item.applied_price);
+    }
+
     return this.toNumericValue(item.quantity) * this.toNumericValue(item.applied_price);
   }
 
@@ -653,6 +682,10 @@ export class DetailComponent implements OnInit {
     const snapshot = this.snapshotMeta(item);
     if (snapshot) {
       meta.push(snapshot);
+    }
+
+    if (item.discount_rule?.name) {
+      meta.push(`Regla ${item.discount_rule.name}`);
     }
 
     return meta.filter(Boolean);
@@ -719,7 +752,13 @@ export class DetailComponent implements OnInit {
     }
 
     const manualLines = this.manualItems().map((item) =>
-      `- ${this.manualSummaryLabel(item)}: ${this.formatMoney(this.itemSubtotal(item))} (${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)})`
+      [
+        `- ${this.manualSummaryLabel(item)}: ${this.formatMoney(this.itemSubtotal(item))}`,
+        `(${this.formatQuantity(item.quantity)} x ${this.formatMoney(this.manualUnitCatalogPrice(item))})`,
+        this.hasCommercialDiscount(item) ? `base ${this.formatMoney(item.catalog_price)}` : '',
+        this.hasCommercialDiscount(item) ? `ahorro ${this.formatMoney(item.discount_amount)}` : '',
+        item.discount_rule?.name ? `regla ${item.discount_rule.name}` : ''
+      ].filter(Boolean).join(' ')
     );
 
     if (manualLines.length) {
@@ -962,11 +1001,52 @@ export class DetailComponent implements OnInit {
       id: item.id,
       label,
       quantity: item.quantity,
-      referencePrice: item.catalog_price,
+      referencePrice: this.usesCommercialSubtotal(item)
+        ? (item.unit_catalog_price ?? item.catalog_price)
+        : item.catalog_price,
       currentPrice: item.applied_price,
       subtotal: this.itemSubtotal(item),
+      usesSubtotalPrice: this.usesCommercialSubtotal(item),
       meta: [...this.itemMeta(item), ...extraMeta].filter(Boolean)
     };
+  }
+
+  manualUnitCatalogPrice(item: LaundryServiceSummaryItem): string | number {
+    return item.unit_catalog_price ?? item.applied_price;
+  }
+
+  hasCommercialDiscount(item: LaundryServiceSummaryItem): boolean {
+    return this.toNumericValue(item.discount_amount) > 0;
+  }
+
+  manualSecondaryDetail(item: LaundryServiceSummaryItem): string | undefined {
+    const parts = [`Base ${this.formatMoney(item.catalog_price)}`];
+
+    if (this.hasCommercialDiscount(item)) {
+      parts.push(`Final ${this.formatMoney(item.applied_price)}`);
+      parts.push(`Ahorro ${this.formatMoney(item.discount_amount)}`);
+    }
+
+    return parts.join(' · ');
+  }
+
+  private buildRowHelperText(row: EditableOrderRow, extraText?: string): string | undefined {
+    const parts = [...row.meta];
+
+    if (row.usesSubtotalPrice) {
+      parts.push(`Precio unitario ${this.formatMoney(row.referencePrice)}`);
+      parts.push(`Subtotal base ${this.formatMoney(this.toNumericValue(row.referencePrice) * this.toNumericValue(row.quantity))}`);
+    }
+
+    if (extraText) {
+      parts.push(extraText);
+    }
+
+    return parts.length ? parts.join(' · ') : undefined;
+  }
+
+  private usesCommercialSubtotal(item: LaundryServiceSummaryItem): boolean {
+    return item.unit_catalog_price != null || item.discount_amount != null || item.discount_rule != null;
   }
 
   private buildSummaryPricePayload(summary: LaundryServiceSummaryResponse): LaundryServiceSummaryPricesPatchPayload {

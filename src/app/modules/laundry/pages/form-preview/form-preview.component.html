@@ -404,7 +404,7 @@
       </p-button>
     } @else if (servicePickerStep === 'variants') {
       <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
-        @if (servicePickerMode === 'service') {
+        @if (canChangeSelectedService()) {
           <p-button
             type="button"
             label="Cambiar servicio"
@@ -428,13 +428,13 @@
           </p-button>
           <p-button
             type="button"
-            label="Continuar"
-            icon="pi pi-arrow-right"
-            iconPos="right"
+            [label]="shouldSkipServicePreview() ? 'Confirmar' : 'Continuar'"
+            [icon]="shouldSkipServicePreview() ? 'pi pi-check' : 'pi pi-arrow-right'"
+            [iconPos]="shouldSkipServicePreview() ? 'left' : 'right'"
             styleClass="service-picker-action--compact-mobile"
             [loading]="isLoading()"
             [disabled]="isLoading()"
-            (onClick)="reviewVariantSelection()">
+            (onClick)="submitVariantSelection()">
           </p-button>
         </div>
       </div>

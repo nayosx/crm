@@ -455,8 +455,41 @@ export class FormPreviewComponent implements OnInit {
     this.servicePickerStep = 'preview';
   }
 
+  shouldSkipServicePreview(): boolean {
+    return this.servicePickerMode === 'service' && this.selectedServiceVariants.length <= 1;
+  }
+
+  canChangeSelectedService(): boolean {
+    return this.servicePickerMode === 'service' && !this.shouldSkipServicePreview();
+  }
+
+  submitVariantSelection(): void {
+    if (this.shouldSkipServicePreview()) {
+      this.confirmVariantSelectionFromDrafts();
+      return;
+    }
+
+    this.reviewVariantSelection();
+  }
+
   editVariantSelection(): void {
     this.servicePickerStep = 'variants';
+  }
+
+  confirmVariantSelectionFromDrafts(): void {
+    this.servicePickerPreviewItems = this.selectedServiceVariants
+      .map((variant) => ({
+        variant,
+        quantity: Number(this.serviceVariantQuantities[variant.id] ?? 0)
+      }))
+      .filter((item) => Number.isFinite(item.quantity) && item.quantity > 0);
+
+    if (this.servicePickerPreviewItems.length === 0) {
+      this.showError('Ingresa al menos una cantidad para continuar.');
+      return;
+    }
+
+    this.confirmVariantSelection();
   }
 
   confirmVariantSelection(): void {
@@ -469,8 +502,7 @@ export class FormPreviewComponent implements OnInit {
       this.addService(this.selectedServiceForPicker!, {
         service_variant_id: variant.id,
         quantity,
-        catalog_price: this.toMoneyString(variant.catalog_price),
-        applied_price: this.toMoneyString(variant.catalog_price)
+        unit_catalog_price: this.toMoneyString(variant.catalog_price)
       });
     });
     this.notifyPendingSaveChanges();
@@ -565,10 +597,8 @@ export class FormPreviewComponent implements OnInit {
       return;
     }
 
-    const price = this.toMoneyString(variantPrice);
     control.patchValue({
-      catalog_price: price,
-      applied_price: price
+      unit_catalog_price: this.toMoneyString(variantPrice)
     });
   }
 
@@ -728,21 +758,6 @@ export class FormPreviewComponent implements OnInit {
     service: LaundryCommercialCatalogServiceItem,
     variants: LaundryCommercialCatalogVariantItem[]
   ): void {
-    if (variants.length <= 1) {
-      const variant = variants[0];
-      this.addService(service, variant
-        ? {
-            service_variant_id: variant.id,
-            quantity: 1,
-            catalog_price: this.toMoneyString(variant.catalog_price),
-            applied_price: this.toMoneyString(variant.catalog_price)
-          }
-        : undefined
-      );
-      this.closeServicePicker();
-      return;
-    }
-
     this.selectedServiceForPicker = service;
     this.selectedServiceVariants = variants;
     this.serviceVariantQuantities = Object.fromEntries(
@@ -777,15 +792,15 @@ export class FormPreviewComponent implements OnInit {
     service: LaundryCommercialCatalogServiceItem,
     item?: Partial<LaundryServiceSummaryItem>
   ): FormGroup {
-    const catalogPrice = this.toMoneyString(item?.catalog_price ?? service.default_catalog_price);
-    const appliedPrice = this.toMoneyString(item?.applied_price ?? service.default_catalog_price);
+    const unitCatalogPrice = this.toMoneyString(
+      item?.unit_catalog_price ?? service.default_catalog_price
+    );
 
     return this.fb.group({
       service_id: [service.id, Validators.required],
       service_variant_id: [item?.service_variant_id ?? null],
       quantity: [Number(item?.quantity ?? 1), [Validators.required, Validators.min(1)]],
-      catalog_price: [catalogPrice, Validators.required],
-      applied_price: [appliedPrice, Validators.required],
+      unit_catalog_price: [unitCatalogPrice, Validators.required],
       is_friendly_discount: [false]
     });
   }
@@ -827,8 +842,7 @@ export class FormPreviewComponent implements OnInit {
           ? Number(control.get('service_variant_id')?.value)
           : null,
         quantity: Number(control.get('quantity')?.value),
-        catalog_price: this.resolveOrderItemPrice(control),
-        applied_price: this.resolveOrderItemPrice(control),
+        unit_catalog_price: this.resolveOrderItemUnitCatalogPrice(control),
         is_friendly_discount: false
       })),
       extras: this.extrasArray.controls.map((control) => ({
@@ -859,21 +873,19 @@ export class FormPreviewComponent implements OnInit {
         return;
       }
 
-      const price = this.toMoneyString(variantPrice);
       control.patchValue({
-        catalog_price: price,
-        applied_price: price
+        unit_catalog_price: this.toMoneyString(variantPrice)
       }, { emitEvent: false });
     });
   }
 
-  private resolveOrderItemPrice(control: AbstractControl): string {
+  private resolveOrderItemUnitCatalogPrice(control: AbstractControl): string {
     const variantPrice = this.resolveVariantPrice(control);
     if (variantPrice != null) {
       return this.toMoneyString(variantPrice);
     }
 
-    return String(control.get('catalog_price')?.value ?? '0.00');
+    return String(control.get('unit_catalog_price')?.value ?? '0.00');
   }
 
   private resolveVariantPrice(control: AbstractControl): number | null {

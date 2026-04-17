@@ -61,8 +61,21 @@ export interface LaundryServiceSummaryItem {
   garment_type_id: number | null;
   garment_type_name: string | null;
   quantity: string | number;
+  unit_catalog_price?: string | number | null;
   catalog_price: string | number;
   applied_price: string | number;
+  discount_amount?: string | number | null;
+  discount_rule?: {
+    id: number;
+    name: string;
+    discount_type: string;
+    application_mode: string;
+    min_quantity?: number | string | null;
+    block_quantity?: number | string | null;
+    discount_value?: string | number | null;
+    full_blocks?: number | string | null;
+    remainder_units?: number | string | null;
+  } | null;
   is_friendly_discount: boolean;
   calculation_snapshot: Record<string, unknown> | string | null;
 }
@@ -245,8 +258,9 @@ export interface LaundryServiceCommercialDetailPayload {
     service_id: number;
     service_variant_id?: number | null;
     quantity: number;
-    catalog_price: string | number;
-    applied_price: string | number;
+    unit_catalog_price?: string | number | null;
+    catalog_price?: string | number;
+    applied_price?: string | number;
     is_friendly_discount: boolean;
   }>;
   extras: Array<{

@@ -5,14 +5,10 @@
   <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3 u-pt-4">
     <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
       <app-back-button [fallbackRoute]="backRoute()" label="Volver"></app-back-button>
-      <p class="u-text-sm-medium u-m-all-none text-color-secondary">Operador lavandería</p>
       <h1 class="u-text-2xl-bold u-leading-tight u-m-all-none">Servicio #{{ serviceId() }}</h1>
 
       @if (summary(); as data) {
         <p class="u-text-lg-bold u-m-all-none">{{ data.client.name }}</p>
-        <p class="u-m-all-none text-color-secondary">
-          Programado: {{ formatDate(data.laundry_service.scheduled_pickup_at) }}
-        </p>
       } @else {
         <p class="u-m-all-none text-color-secondary">Cargando detalle del servicio...</p>
       }
@@ -163,13 +159,22 @@
                     class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2"
                     [class.u-bg-grey-80]="isOdd"
                     [class.u-bg-grey-90]="!isOdd">
-                    <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
-                      <p class="u-m-all-none">{{ row.label }}</p>
-                      @if (row.showServiceTag) {
-                        <p-tag
-                          [value]="serviceLabel()"
-                          [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
-                        </p-tag>
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2 u-d-flex-wrap">
+                        <p class="u-m-all-none">{{ row.label }}</p>
+                        @if (row.showServiceTag) {
+                          <p-tag
+                            [value]="serviceLabel()"
+                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
+                          </p-tag>
+                        }
+                        @if (row.badgeLabel) {
+                          <p-tag [value]="row.badgeLabel" severity="success"></p-tag>
+                        }
+                      </div>
+
+                      @if (row.secondaryDetail) {
+                        <p class="u-m-all-none u-text-grey-70">{{ row.secondaryDetail }}</p>
                       }
                     </div>
 
