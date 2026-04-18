@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '@env/environment';
 import { LoginResponse } from '@shared/interfaces/auth.interface';
+import { NavigationService } from '@shared/services/navigation/navigation.service';
 import { PaymentTypeService } from '@shared/services/transaction/payment-type.service';
 import { Observable, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -17,7 +18,8 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
-    private paymentTypeService: PaymentTypeService
+    private paymentTypeService: PaymentTypeService,
+    private navigationService: NavigationService
   ) {}
 
   login(username: string, password: string): Observable<LoginResponse> {
@@ -76,6 +78,7 @@ export class AuthService {
   }
 
   clearTokens(): void {
+    this.navigationService.clearNavigation();
     sessionStorage.clear();
     this.paymentTypeService.clearCache();
   }

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Role, User } from '@shared/interfaces/user.interface';
+import { RoleMenuCatalogResponse, UpdateRoleMenusPayload } from '@shared/interfaces/menu.interface';
 import { environment } from '@env/environment';
 
 @Injectable({
@@ -33,5 +34,19 @@ export class RolService {
 
   getUsersByRole(roleId: number): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/${roleId}/users`);
+  }
+
+  getMenusByRole(roleId: number): Observable<RoleMenuCatalogResponse> {
+    return this.http.get<RoleMenuCatalogResponse>(`${this.apiUrl}/${roleId}/menus`);
+  }
+
+  updateMenusByRole(
+    roleId: number,
+    payload: UpdateRoleMenusPayload
+  ): Observable<{ message: string; role_id: number; assigned_menu_keys: string[] }> {
+    return this.http.put<{ message: string; role_id: number; assigned_menu_keys: string[] }>(
+      `${this.apiUrl}/${roleId}/menus`,
+      payload
+    );
   }
 }

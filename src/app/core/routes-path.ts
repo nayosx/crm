@@ -19,6 +19,6 @@ export const ROUTE_PATH = {
     USERS: 'users',
     WORK_SESSIONS: 'work-sessions',
     WORK_SESSIONS_ADMIN: 'work-sessions-admin',
-
+    SETTINGS_MENU_ROLES: 'settings/menu-roles',
     LAUNDRY: 'laundry'
 }

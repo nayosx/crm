@@ -95,7 +95,15 @@
   [resizable]="false"
   [style]="{ width: '26rem', maxWidth: 'calc(100vw - 2rem)' }"
 >
-  @if (hasAvailableShortcuts()) {
+  @if (loadingNavigation) {
+    <p class="m-0">
+      Cargando menus...
+    </p>
+  } @else if (navigationError) {
+    <p class="m-0 text-red-500">
+      {{ navigationError }}
+    </p>
+  } @else if (hasAvailableShortcuts()) {
     <p class="mt-0 mb-3">
       Selecciona uno de los accesos disponibles para agregarlo a inicio.
     </p>

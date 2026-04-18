@@ -113,6 +113,11 @@ export const routes: Routes = [
                     import('./modules/work-sessions/work-sessions-admin.component').then(m => m.WorkSessionsAdminComponent)
             },
             {
+                path: ROUTE_PATH.SETTINGS_MENU_ROLES,
+                loadComponent: () =>
+                    import('./modules/settings/menu-role-editor/menu-role-editor.component').then(m => m.MenuRoleEditorComponent)
+            },
+            {
                 path: ROUTE_PATH.LAUNDRY,
                 children: [
                     {

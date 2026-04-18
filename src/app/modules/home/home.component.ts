@@ -1,11 +1,12 @@
-import { computed, Component, inject, signal, ViewEncapsulation } from '@angular/core';
+import { computed, Component, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ConfirmationService, MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { MenuModule } from 'primeng/menu';
-import { AppNavigationItem } from '@shared/config/app-navigation.config';
+import { finalize } from 'rxjs/operators';
+import { NavigationMenuItem } from '@shared/interfaces/menu.interface';
 import { NavigationService } from '@shared/services/navigation/navigation.service';
 
 @Component({
@@ -22,7 +23,7 @@ import { NavigationService } from '@shared/services/navigation/navigation.servic
   encapsulation: ViewEncapsulation.None,
   providers: [ConfirmationService]
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   private readonly navigationService = inject(NavigationService);
   private readonly router = inject(Router);
   private readonly confirmationService = inject(ConfirmationService);
@@ -33,24 +34,35 @@ export class HomeComponent {
   readonly shortcuts = this.navigationService.shortcuts;
   readonly hasAvailableShortcuts = computed(() => this.navigationService.availableShortcuts().length > 0);
   readonly availableShortcutMenuItems = computed<MenuItem[]>(() =>
-    this.navigationService.availableShortcuts().map((item) => ({
-      label: item.label,
-      icon: item.icon,
-      command: () => this.addShortcut(item.id)
-    }))
+    this.toShortcutTreeMenuItems(this.navigationService.getAvailableShortcutTree())
   );
   readonly pendingDeleteShortcutId = signal<string | null>(null);
 
+  loadingNavigation = false;
+  navigationError = '';
   shortcutDialogVisible = false;
   dragOverShortcutId: string | null = null;
   isDraggingShortcut = false;
+
+  ngOnInit(): void {
+    this.loadingNavigation = true;
+    this.navigationError = '';
+
+    this.navigationService.ensureNavigationLoaded()
+      .pipe(finalize(() => this.loadingNavigation = false))
+      .subscribe({
+        error: () => {
+          this.navigationError = 'No se pudieron cargar los menus.';
+        }
+      });
+  }
 
   openShortcutDialog(): void {
     this.shortcutDialogVisible = true;
   }
 
-  addShortcut(id: string): void {
-    this.navigationService.addShortcut(id);
+  addShortcut(key: string): void {
+    this.navigationService.addShortcut(key);
     this.shortcutDialogVisible = false;
   }
 
@@ -62,7 +74,7 @@ export class HomeComponent {
     return !this.isCompactViewport() || this.pendingDeleteShortcutId() === shortcutId;
   }
 
-  confirmRemoveShortcut(shortcut: AppNavigationItem): void {
+  confirmRemoveShortcut(shortcut: NavigationMenuItem): void {
     this.confirmationService.confirm({
       header: 'Eliminar acceso directo',
       message: `¿Estas seguro de quitar "${shortcut.label}" de tus accesos directos? Luego lo puedes agregar nuevamente si asi lo quieres.`,
@@ -79,16 +91,16 @@ export class HomeComponent {
         severity: 'danger'
       },
       accept: () => {
-        this.navigationService.removeShortcut(shortcut.id);
+        this.navigationService.removeShortcut(shortcut.key);
         this.pendingDeleteShortcutId.set(null);
       },
       reject: () => {
-        this.hideDeleteAction(shortcut.id);
+        this.hideDeleteAction(shortcut.key);
       }
     });
   }
 
-  navigateFromCard(shortcut: AppNavigationItem): void {
+  navigateFromCard(shortcut: NavigationMenuItem): void {
     if (this.longPressTriggered || this.isDraggingShortcut) {
       this.longPressTriggered = false;
       return;
@@ -159,7 +171,7 @@ export class HomeComponent {
 
     event.preventDefault();
 
-    const shortcutIds = this.shortcuts().map((shortcut) => shortcut.id);
+    const shortcutIds = this.shortcuts().map((shortcut) => shortcut.key);
     const fromIndex = shortcutIds.indexOf(this.draggedShortcutId);
     const toIndex = shortcutIds.indexOf(targetShortcutId);
 
@@ -184,6 +196,15 @@ export class HomeComponent {
     this.draggedShortcutId = null;
     this.dragOverShortcutId = null;
     this.isDraggingShortcut = false;
+  }
+
+  private toShortcutTreeMenuItems(items: NavigationMenuItem[]): MenuItem[] {
+    return items.map((item) => ({
+      label: item.label,
+      icon: item.icon ?? undefined,
+      command: item.routerLink ? () => this.addShortcut(item.key) : undefined,
+      items: item.items?.length ? this.toShortcutTreeMenuItems(item.items) : undefined
+    }));
   }
 
   private isCompactViewport(): boolean {

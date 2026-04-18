@@ -34,13 +34,23 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   private readonly subscriptions = new Subscription();
 
+  menuItems: MenuItem[] = [];
   sidebarVisible = false;
   hideDesktopSidebar = false;
 
-  menuItems: MenuItem[] = this.navigationService.getMainMenuItems(() => this.sidebarVisible = false);
-
   ngOnInit(): void {
     this.getUser();
+    this.subscriptions.add(
+      this.navigationService.ensureNavigationLoaded().subscribe({
+        next: () => {
+          this.refreshMenuItems();
+        },
+        error: (error) => {
+          console.error('Error loading navigation', error);
+        }
+      })
+    );
+    this.refreshMenuItems();
     this.updateSidebarVisibility(this.router.url);
 
     this.subscriptions.add(
@@ -62,6 +72,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.sidebarVisible = !this.sidebarVisible;
   }
 
+  closeSidebar(): void {
+    this.sidebarVisible = false;
+  }
+
   logout() {
     this.authService.simpleLogout();
   }
@@ -77,5 +91,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   private updateSidebarVisibility(url: string): void {
     this.hideDesktopSidebar = url.startsWith('/laundry/socket-queues');
+  }
+
+  private refreshMenuItems(): void {
+    this.menuItems = this.navigationService.getMainMenuItems(() => this.closeSidebar());
   }
 }
