@@ -19,21 +19,21 @@
   </div>
 
   <div class="shortcuts-grid">
-    @for (shortcut of shortcuts(); track shortcut.id) {
+    @for (shortcut of shortcuts(); track shortcut.key) {
       <article
         class="shortcut-card surface-card shadow-1 border-round-xl p-4"
-        [class.shortcut-card-delete-active]="pendingDeleteShortcutId() === shortcut.id"
-        [class.shortcut-card-drag-over]="dragOverShortcutId === shortcut.id"
+        [class.shortcut-card-delete-active]="pendingDeleteShortcutId() === shortcut.key"
+        [class.shortcut-card-drag-over]="dragOverShortcutId === shortcut.key"
         [class.shortcut-card-dragging]="isDraggingShortcut"
         (click)="navigateFromCard(shortcut)"
-        (pointerdown)="startLongPress(shortcut.id)"
+        (pointerdown)="startLongPress(shortcut.key)"
         (pointerup)="cancelLongPress()"
         (pointerleave)="cancelLongPress()"
         (pointercancel)="cancelLongPress()"
         [draggable]="canDragShortcuts()"
-        (dragstart)="startDrag($event, shortcut.id)"
-        (dragover)="allowDrop($event, shortcut.id)"
-        (drop)="dropShortcut($event, shortcut.id)"
+        (dragstart)="startDrag($event, shortcut.key)"
+        (dragover)="allowDrop($event, shortcut.key)"
+        (drop)="dropShortcut($event, shortcut.key)"
         (dragend)="endDrag()"
       >
         <div class="flex justify-content-between align-items-start gap-3">
@@ -48,7 +48,7 @@
             </div>
           </div>
 
-          @if (showDeleteAction(shortcut.id)) {
+          @if (showDeleteAction(shortcut.key)) {
             <button
               pButton
               type="button"
@@ -70,13 +70,13 @@
           </a>
         </div>
 
-        @if (pendingDeleteShortcutId() === shortcut.id) {
+        @if (pendingDeleteShortcutId() === shortcut.key) {
           <button
             pButton
             type="button"
             label="Cancelar"
             class="p-button-sm p-button-text p-button-secondary mt-3 shortcut-delete-cancel"
-            (click)="hideDeleteAction(shortcut.id); $event.stopPropagation()"
+            (click)="hideDeleteAction(shortcut.key); $event.stopPropagation()"
           ></button>
         }
       </article>
