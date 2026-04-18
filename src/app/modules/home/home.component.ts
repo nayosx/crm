@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { MenuModule } from 'primeng/menu';
+import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { NavigationMenuItem } from '@shared/interfaces/menu.interface';
 import { NavigationService } from '@shared/services/navigation/navigation.service';
@@ -40,6 +41,8 @@ export class HomeComponent implements OnInit {
 
   loadingNavigation = false;
   navigationError = '';
+  shortcutActionError = '';
+  shortcutActionInProgress = false;
   shortcutDialogVisible = false;
   dragOverShortcutId: string | null = null;
   isDraggingShortcut = false;
@@ -48,26 +51,48 @@ export class HomeComponent implements OnInit {
     this.loadingNavigation = true;
     this.navigationError = '';
 
-    this.navigationService.ensureNavigationLoaded()
+    forkJoin([
+      this.navigationService.ensureNavigationLoaded(),
+      this.navigationService.ensureShortcutsLoaded()
+    ])
       .pipe(finalize(() => this.loadingNavigation = false))
       .subscribe({
         error: () => {
-          this.navigationError = 'No se pudieron cargar los menus.';
+          this.navigationError = 'No se pudieron cargar los menus o accesos directos.';
         }
       });
   }
 
   openShortcutDialog(): void {
+    if (this.shortcutActionInProgress) {
+      return;
+    }
+
     this.shortcutDialogVisible = true;
   }
 
   addShortcut(key: string): void {
-    this.navigationService.addShortcut(key);
-    this.shortcutDialogVisible = false;
+    if (this.shortcutActionInProgress) {
+      return;
+    }
+
+    this.shortcutActionInProgress = true;
+    this.shortcutActionError = '';
+
+    this.navigationService.addShortcut(key)
+      .pipe(finalize(() => this.shortcutActionInProgress = false))
+      .subscribe({
+        next: () => {
+          this.shortcutDialogVisible = false;
+        },
+        error: () => {
+          this.shortcutActionError = 'No se pudo agregar el acceso directo.';
+        }
+      });
   }
 
   canDragShortcuts(): boolean {
-    return !this.isCompactViewport();
+    return !this.isCompactViewport() && !this.shortcutActionInProgress;
   }
 
   showDeleteAction(shortcutId: string): boolean {
@@ -91,8 +116,19 @@ export class HomeComponent implements OnInit {
         severity: 'danger'
       },
       accept: () => {
-        this.navigationService.removeShortcut(shortcut.key);
-        this.pendingDeleteShortcutId.set(null);
+        this.shortcutActionInProgress = true;
+        this.shortcutActionError = '';
+
+        this.navigationService.removeShortcut(shortcut.key)
+          .pipe(finalize(() => this.shortcutActionInProgress = false))
+          .subscribe({
+            next: () => {
+              this.pendingDeleteShortcutId.set(null);
+            },
+            error: () => {
+              this.shortcutActionError = 'No se pudo eliminar el acceso directo.';
+            }
+          });
       },
       reject: () => {
         this.hideDeleteAction(shortcut.key);
@@ -175,8 +211,20 @@ export class HomeComponent implements OnInit {
     const fromIndex = shortcutIds.indexOf(this.draggedShortcutId);
     const toIndex = shortcutIds.indexOf(targetShortcutId);
 
-    this.navigationService.reorderShortcuts(fromIndex, toIndex);
-    this.clearDragState();
+    this.shortcutActionInProgress = true;
+    this.shortcutActionError = '';
+
+    this.navigationService.reorderShortcuts(fromIndex, toIndex)
+      .pipe(finalize(() => this.shortcutActionInProgress = false))
+      .subscribe({
+        next: () => {
+          this.clearDragState();
+        },
+        error: () => {
+          this.shortcutActionError = 'No se pudo reordenar los accesos directos.';
+          this.clearDragState();
+        }
+      });
   }
 
   endDrag(): void {

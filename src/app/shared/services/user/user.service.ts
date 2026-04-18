@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ForcePasswordRequest, ForcePasswordResponse, User } from '@shared/interfaces/user.interface';
+import {
+  ForcePasswordRequest,
+  ForcePasswordResponse,
+  ReorderUserShortcutsPayload,
+  User,
+  UserShortcut,
+  UserShortcutsResponse
+} from '@shared/interfaces/user.interface';
 import { environment } from '@env/environment';
 
 @Injectable({
@@ -42,6 +49,22 @@ export class UserService {
 
   updatePasswordByAdmin(userId: number, payload: ForcePasswordRequest): Observable<ForcePasswordResponse> {
     return this.http.put<ForcePasswordResponse>(`${this.apiUrl}/${userId}/force-password`, payload);
+  }
+
+  getShortcuts(): Observable<UserShortcut[]> {
+    return this.http.get<UserShortcut[]>(`${this.apiUrl}/shortcuts`);
+  }
+
+  createShortcut(key: string): Observable<UserShortcutsResponse> {
+    return this.http.post<UserShortcutsResponse>(`${this.apiUrl}/shortcuts`, { key });
+  }
+
+  deleteShortcut(key: string): Observable<UserShortcutsResponse> {
+    return this.http.delete<UserShortcutsResponse>(`${this.apiUrl}/shortcuts/${encodeURIComponent(key)}`);
+  }
+
+  reorderShortcuts(payload: ReorderUserShortcutsPayload): Observable<UserShortcutsResponse> {
+    return this.http.put<UserShortcutsResponse>(`${this.apiUrl}/shortcuts/reorder`, payload);
   }
 
 }

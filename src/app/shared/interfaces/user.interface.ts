@@ -20,3 +20,17 @@ export interface ForcePasswordRequest {
 export interface ForcePasswordResponse {
   message: string;
 }
+
+export interface UserShortcut {
+  key: string;
+  order: number;
+}
+
+export interface UserShortcutsResponse {
+  message: string;
+  shortcuts: UserShortcut[];
+}
+
+export interface ReorderUserShortcutsPayload {
+  shortcut_keys: string[];
+}

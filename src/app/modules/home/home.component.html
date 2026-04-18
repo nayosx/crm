@@ -14,9 +14,15 @@
       icon="pi pi-plus"
       label="Agregar acceso"
       (click)="openShortcutDialog()"
-      [disabled]="!hasAvailableShortcuts()"
+      [disabled]="!hasAvailableShortcuts() || shortcutActionInProgress"
     ></button>
   </div>
+
+  @if (shortcutActionError) {
+    <p class="mt-0 mb-4 text-red-500">
+      {{ shortcutActionError }}
+    </p>
+  }
 
   <div class="shortcuts-grid">
     @for (shortcut of shortcuts(); track shortcut.key) {
@@ -56,6 +62,7 @@
               class="p-button-rounded p-button-text p-button-danger shortcut-delete-button"
               (click)="confirmRemoveShortcut(shortcut); $event.stopPropagation()"
               [attr.aria-label]="'Quitar ' + shortcut.label"
+              [disabled]="shortcutActionInProgress"
             ></button>
           }
         </div>
@@ -65,6 +72,7 @@
             pButton
             class="p-button-sm"
             [routerLink]="shortcut.routerLink!"
+            [class.p-disabled]="shortcutActionInProgress"
           >
             Abrir
           </a>
@@ -77,6 +85,7 @@
             label="Cancelar"
             class="p-button-sm p-button-text p-button-secondary mt-3 shortcut-delete-cancel"
             (click)="hideDeleteAction(shortcut.key); $event.stopPropagation()"
+            [disabled]="shortcutActionInProgress"
           ></button>
         }
       </article>
@@ -107,6 +116,12 @@
     <p class="mt-0 mb-3">
       Selecciona uno de los accesos disponibles para agregarlo a inicio.
     </p>
+
+    @if (shortcutActionError) {
+      <p class="mt-0 mb-3 text-red-500">
+        {{ shortcutActionError }}
+      </p>
+    }
 
     <p-menu [model]="availableShortcutMenuItems()"></p-menu>
   } @else {

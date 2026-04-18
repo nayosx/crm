@@ -1,22 +1,24 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
-import { KEYSTORE } from '@core/keystore';
-import { UserData } from '@shared/interfaces/auth.interface';
 import { BackendMenuNode, NavigationMenuItem } from '@shared/interfaces/menu.interface';
+import { UserShortcut } from '@shared/interfaces/user.interface';
+import { UserService } from '@shared/services/user/user.service';
 import { MenuItem } from 'primeng/api';
 import { Observable, of } from 'rxjs';
-import { finalize, shareReplay, tap } from 'rxjs/operators';
+import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
 import { MenuService } from './menu.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NavigationService {
-  private readonly shortcutStorageKey = 'crm.home.shortcuts';
   private readonly menuStorageKey = 'navigation_menu_tree';
   private readonly menuService = inject(MenuService);
+  private readonly userService = inject(UserService);
   private readonly navigationTree = signal<BackendMenuNode[]>(this.readNavigationTree());
   private readonly hasLoadedNavigation = signal(this.navigationTree().length > 0);
+  private readonly hasLoadedShortcuts = signal(false);
   private loadingNavigation$: Observable<BackendMenuNode[]> | null = null;
+  private loadingShortcuts$: Observable<string[]> | null = null;
   private readonly homeItem: NavigationMenuItem = {
     key: 'home',
     label: 'Inicio',
@@ -32,7 +34,7 @@ export class NavigationService {
       .filter((item) => this.isShortcutCandidate(item))
   );
 
-  private readonly shortcutIds = signal<string[]>(this.readShortcutIds());
+  private readonly shortcutIds = signal<string[]>([this.homeItem.key]);
 
   readonly shortcuts = computed(() =>
     this.shortcutIds()
@@ -75,6 +77,32 @@ export class NavigationService {
     return this.loadNavigation();
   }
 
+  loadShortcuts(): Observable<string[]> {
+    if (this.loadingShortcuts$) {
+      return this.loadingShortcuts$;
+    }
+
+    this.loadingShortcuts$ = this.userService.getShortcuts().pipe(
+      map((shortcuts) => this.normalizeShortcutKeys(shortcuts.map((shortcut) => shortcut.key))),
+      catchError(() => of([this.homeItem.key])),
+      tap((keys) => {
+        this.shortcutIds.set(keys);
+        this.hasLoadedShortcuts.set(true);
+      }),
+      finalize(() => this.loadingShortcuts$ = null),
+      shareReplay(1)
+    );
+
+    return this.loadingShortcuts$;
+  }
+
+  ensureShortcutsLoaded(): Observable<string[]> {
+    if (this.hasLoadedShortcuts()) {
+      return of(this.shortcutIds());
+    }
+    return this.loadShortcuts();
+  }
+
   setNavigationTree(tree: BackendMenuNode[]): void {
     const normalizedTree = this.normalizeNavigationTree(tree);
 
@@ -94,23 +122,29 @@ export class NavigationService {
     sessionStorage.removeItem(this.menuStorageKey);
   }
 
-  addShortcut(key: string): void {
-    const nextIds = [...this.shortcutIds()];
+  clearShortcuts(): void {
+    this.shortcutIds.set([this.homeItem.key]);
+    this.hasLoadedShortcuts.set(false);
+    this.loadingShortcuts$ = null;
+  }
 
-    if (nextIds.includes(key) || !this.shortcutCatalog().some((item) => item.key === key)) {
-      return;
+  addShortcut(key: string): Observable<string[]> {
+    if (this.shortcutIds().includes(key) || !this.shortcutCatalog().some((item) => item.key === key)) {
+      return of(this.shortcutIds());
     }
 
-    nextIds.push(key);
-    this.persistShortcutIds(nextIds);
+    return this.userService.createShortcut(key).pipe(
+      map((response) => this.applyShortcutResponse(response.shortcuts))
+    );
   }
 
-  removeShortcut(key: string): void {
-    const nextIds = this.shortcutIds().filter((currentId) => currentId !== key);
-    this.persistShortcutIds(nextIds);
+  removeShortcut(key: string): Observable<string[]> {
+    return this.userService.deleteShortcut(key).pipe(
+      map((response) => this.applyShortcutResponse(response.shortcuts))
+    );
   }
 
-  reorderShortcuts(fromIndex: number, toIndex: number): void {
+  reorderShortcuts(fromIndex: number, toIndex: number): Observable<string[]> {
     const currentIds = [...this.shortcutIds()];
 
     if (
@@ -120,55 +154,15 @@ export class NavigationService {
       fromIndex >= currentIds.length ||
       toIndex >= currentIds.length
     ) {
-      return;
+      return of(this.shortcutIds());
     }
 
     const [movedId] = currentIds.splice(fromIndex, 1);
     currentIds.splice(toIndex, 0, movedId);
 
-    this.persistShortcutIds(currentIds);
-  }
-
-  private readShortcutIds(): string[] {
-    if (typeof localStorage === 'undefined') {
-      return [this.homeItem.key];
-    }
-
-    const rawData = localStorage.getItem(this.getShortcutStorageKey())
-      ?? localStorage.getItem(this.shortcutStorageKey);
-
-    if (!rawData) {
-      return [this.homeItem.key];
-    }
-
-    try {
-      const parsed = JSON.parse(rawData);
-
-      if (!Array.isArray(parsed)) {
-        return [this.homeItem.key];
-      }
-
-      const validIds = parsed.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
-      return validIds.length ? validIds : [this.homeItem.key];
-    } catch {
-      return [this.homeItem.key];
-    }
-  }
-
-  private persistShortcutIds(ids: string[]): void {
-    const nextIds = ids.filter((id, index) => ids.indexOf(id) === index);
-    this.shortcutIds.set(nextIds);
-
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-
-    localStorage.setItem(this.getShortcutStorageKey(), JSON.stringify(nextIds));
-  }
-
-  private getShortcutStorageKey(): string {
-    const userId = this.getLoggedUserId();
-    return userId ? `${this.shortcutStorageKey}.user.${userId}` : this.shortcutStorageKey;
+    return this.userService.reorderShortcuts({ shortcut_keys: currentIds }).pipe(
+      map((response) => this.applyShortcutResponse(response.shortcuts))
+    );
   }
 
   private readNavigationTree(): BackendMenuNode[] {
@@ -194,25 +188,6 @@ export class NavigationService {
       return;
     }
     sessionStorage.setItem(this.menuStorageKey, JSON.stringify(tree));
-  }
-
-  private getLoggedUserId(): number | null {
-    if (typeof sessionStorage === 'undefined') {
-      return null;
-    }
-
-    const rawUser = sessionStorage.getItem(KEYSTORE.user);
-
-    if (!rawUser) {
-      return null;
-    }
-
-    try {
-      const user = JSON.parse(rawUser) as Partial<UserData>;
-      return typeof user.id === 'number' ? user.id : null;
-    } catch {
-      return null;
-    }
   }
 
   private toNavigationItems(items: BackendMenuNode[]): NavigationMenuItem[] {
@@ -365,5 +340,17 @@ export class NavigationService {
     }
 
     return merged;
+  }
+
+  private applyShortcutResponse(shortcuts: UserShortcut[]): string[] {
+    const nextKeys = this.normalizeShortcutKeys(shortcuts.map((shortcut) => shortcut.key));
+    this.shortcutIds.set(nextKeys);
+    this.hasLoadedShortcuts.set(true);
+    return nextKeys;
+  }
+
+  private normalizeShortcutKeys(keys: string[]): string[] {
+    const normalizedKeys = keys.filter((key, index) => !!key && keys.indexOf(key) === index);
+    return normalizedKeys.length ? normalizedKeys : [this.homeItem.key];
   }
 }

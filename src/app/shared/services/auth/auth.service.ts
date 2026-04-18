@@ -79,6 +79,7 @@ export class AuthService {
 
   clearTokens(): void {
     this.navigationService.clearNavigation();
+    this.navigationService.clearShortcuts();
     sessionStorage.clear();
     this.paymentTypeService.clearCache();
   }
