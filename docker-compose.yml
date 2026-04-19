@@ -1,9 +1,21 @@
+name: drclin-frontend-prod
+
 services:
-  angular-app:
+  drclin-laundry:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: angular-ui
-    ports:
-      - "4200:80"
-    restart: always
+      args:
+        - API_URL=${API_URL} # Toma el valor de las variables de Dokploy
+    networks:
+      - dokploy-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  dokploy-network:
+    external: true
