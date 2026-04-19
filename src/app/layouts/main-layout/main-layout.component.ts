@@ -9,7 +9,9 @@ import { User } from '@shared/interfaces/user.interface';
 import { KEYSTORE } from '@core/keystore';
 import { NavigationService } from '@shared/services/navigation/navigation.service';
 import { NavigationHistoryService } from '@shared/services/navigation/navigation-history.service';
-import { filter, Subscription } from 'rxjs';
+import { filter, finalize, Subscription } from 'rxjs';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { DialogLoadingService } from '@shared/services/dialog-loading.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -18,7 +20,8 @@ import { filter, Subscription } from 'rxjs';
     RouterOutlet,
     ButtonModule,
     PanelMenuModule,
-    DrawerModule
+    DrawerModule,
+    LoaderDialogComponent
 
   ],
   templateUrl: './main-layout.component.html',
@@ -30,6 +33,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   navigationService = inject(NavigationService);
   navigationHistoryService = inject(NavigationHistoryService);
+  dialogLoadingService = inject(DialogLoadingService);
   router = inject(Router);
 
   private readonly subscriptions = new Subscription();
@@ -40,15 +44,18 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.getUser();
+    this.dialogLoadingService.show('Cargando menus...');
     this.subscriptions.add(
-      this.navigationService.ensureNavigationLoaded().subscribe({
-        next: () => {
-          this.refreshMenuItems();
-        },
-        error: (error) => {
-          console.error('Error loading navigation', error);
-        }
-      })
+      this.navigationService.ensureNavigationLoaded()
+        .pipe(finalize(() => this.dialogLoadingService.hide()))
+        .subscribe({
+          next: () => {
+            this.refreshMenuItems();
+          },
+          error: (error) => {
+            console.error('Error loading navigation', error);
+          }
+        })
     );
     this.refreshMenuItems();
     this.updateSidebarVisibility(this.router.url);
