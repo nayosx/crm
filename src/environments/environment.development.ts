@@ -1,5 +1,5 @@
 export const environment = {
-    API: 'http://192.168.1.135:5000',
+    API: 'https://api.drclin.website',
     socketPath: '/socket.io',
     isEncripted: false,
     version: "1.0.2"

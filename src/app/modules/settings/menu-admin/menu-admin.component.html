@@ -113,7 +113,8 @@
   [modal]="true"
   [draggable]="false"
   [resizable]="false"
-  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)', height: 'calc(100vh - 2rem)' }"
+  [contentStyle]="{ height: '100%', overflow: 'auto' }"
   (onHide)="closeDialog()"
 >
   <form [formGroup]="form" class="flex flex-column gap-3" (ngSubmit)="save()">
@@ -164,6 +165,7 @@
             optionLabel="label"
             optionValue="value"
             formControlName="parent_id"
+            appendTo="body"
             class="w-full"
           />
         </div>
