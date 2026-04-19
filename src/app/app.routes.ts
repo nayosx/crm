@@ -113,9 +113,69 @@ export const routes: Routes = [
                     import('./modules/work-sessions/work-sessions-admin.component').then(m => m.WorkSessionsAdminComponent)
             },
             {
+                path: ROUTE_PATH.SETTINGS_MENUS,
+                loadComponent: () =>
+                    import('./modules/settings/menu-admin/menu-admin.component').then(m => m.MenuAdminComponent)
+            },
+            {
                 path: ROUTE_PATH.SETTINGS_MENU_ROLES,
                 loadComponent: () =>
                     import('./modules/settings/menu-role-editor/menu-role-editor.component').then(m => m.MenuRoleEditorComponent)
+            },
+            {
+                path: ROUTE_PATH.SETTINGS_MENU_ROLES_LEGACY,
+                redirectTo: ROUTE_PATH.SETTINGS_MENU_ROLES,
+                pathMatch: 'full'
+            },
+            {
+                path: ROUTE_PATH.CATALOGS,
+                children: [
+                    {
+                        path: 'extras',
+                        loadComponent: () =>
+                            import('./modules/catalogs/catalog-page.component').then(m => m.CatalogPageComponent),
+                        data: {
+                            kind: 'extras',
+                            title: 'Extras',
+                            subtitle: 'Administra extras, precio base y estado.'
+                        }
+                    },
+                    {
+                        path: 'service-categories',
+                        loadComponent: () =>
+                            import('./modules/catalogs/catalog-page.component').then(m => m.CatalogPageComponent),
+                        data: {
+                            kind: 'service-categories',
+                            title: 'Categorias de servicio',
+                            subtitle: 'Administra categorias activas para servicios de catalogo.'
+                        }
+                    },
+                    {
+                        path: 'services',
+                        loadComponent: () =>
+                            import('./modules/catalogs/catalog-page.component').then(m => m.CatalogPageComponent),
+                        data: {
+                            kind: 'services',
+                            title: 'Servicios',
+                            subtitle: 'Administra servicios, categoria y modo de precio.'
+                        }
+                    },
+                    {
+                        path: 'service-variants',
+                        loadComponent: () =>
+                            import('./modules/catalogs/catalog-page.component').then(m => m.CatalogPageComponent),
+                        data: {
+                            kind: 'service-variants',
+                            title: 'Variantes de servicio',
+                            subtitle: 'Administra variantes y precio por servicio.'
+                        }
+                    },
+                    {
+                        path: '',
+                        redirectTo: 'extras',
+                        pathMatch: 'full'
+                    }
+                ]
             },
             {
                 path: ROUTE_PATH.LAUNDRY,

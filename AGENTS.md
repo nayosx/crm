@@ -21,6 +21,7 @@
 - In `src/app/modules/laundry/pages/form-preview`, avoid custom colors and avoid custom classes outside `drstyles` and PrimeNG whenever possible.
 - If `drstyles` does not provide an adequate solution in `src/app/modules/laundry/pages/form-preview`, use PrimeNG classes and PrimeNG color tokens/list before introducing custom styling.
 - Any UI action that triggers async processes (API calls, sockets, state changes) must provide clear loading feedback.
+- Any screen that loads data asynchronously on init, route change, filter change, refresh, or similar flow must include `LoaderDialogComponent` or an equivalent blocking loader while that data is being fetched.
 - If a button triggers an async action (`async/await`, HTTP request, `fetch`, observable subscription, socket event, or similar), the button must be disabled until the action finishes, whether it succeeds or fails.
 - Any failed user-triggered action must show a clear failure message to the user.
 - If the action affects critical business state or may cause double submissions or inconsistent states, use `LoaderDialogComponent` or an equivalent blocking pattern.

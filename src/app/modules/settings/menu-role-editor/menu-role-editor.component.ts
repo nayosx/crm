@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { TreeNode } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
@@ -16,6 +17,7 @@ import { RolService } from '@shared/services/user/rol.service';
   imports: [
     CommonModule,
     FormsModule,
+    LoaderDialogComponent,
     ButtonModule,
     SelectModule,
     TreeModule
@@ -24,6 +26,8 @@ import { RolService } from '@shared/services/user/rol.service';
 })
 export class MenuRoleEditorComponent {
   private readonly rolService = inject(RolService);
+
+  @ViewChild(LoaderDialogComponent) loader?: LoaderDialogComponent;
 
   roles: Role[] = [];
   selectedRoleId: number | null = null;
@@ -36,14 +40,18 @@ export class MenuRoleEditorComponent {
   loadingCatalog = false;
   saving = false;
 
-  constructor() {
+  ngOnInit(): void {
     this.loadRoles();
   }
 
   loadRoles(): void {
     this.loadingRoles = true;
+    this.loader?.open('Cargando roles...');
     this.rolService.getRoles()
-      .pipe(finalize(() => this.loadingRoles = false))
+      .pipe(finalize(() => {
+        this.loadingRoles = false;
+        this.loader?.close();
+      }))
       .subscribe({
         next: (roles) => {
           this.roles = roles;
@@ -66,8 +74,12 @@ export class MenuRoleEditorComponent {
     }
 
     this.loadingCatalog = true;
+    this.loader?.open('Cargando menus del rol...');
     this.rolService.getMenusByRole(this.selectedRoleId)
-      .pipe(finalize(() => this.loadingCatalog = false))
+      .pipe(finalize(() => {
+        this.loadingCatalog = false;
+        this.loader?.close();
+      }))
       .subscribe({
         next: (response) => {
           this.roleMenuCatalog = response;

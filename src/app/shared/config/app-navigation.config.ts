@@ -35,6 +35,37 @@ export const APP_NAVIGATION_TREE: AppNavigationItem[] = [
     routerLink: ['/users']
   },
   {
+    id: 'catalogs',
+    label: 'Catalogos',
+    icon: 'pi pi-book',
+    items: [
+      {
+        id: 'catalogs-extras',
+        label: 'Extras',
+        icon: 'pi pi-star',
+        routerLink: ['/catalogs', 'extras']
+      },
+      {
+        id: 'catalogs-service-categories',
+        label: 'Categorias de servicio',
+        icon: 'pi pi-tags',
+        routerLink: ['/catalogs', 'service-categories']
+      },
+      {
+        id: 'catalogs-services',
+        label: 'Servicios',
+        icon: 'pi pi-briefcase',
+        routerLink: ['/catalogs', 'services']
+      },
+      {
+        id: 'catalogs-service-variants',
+        label: 'Variantes de servicio',
+        icon: 'pi pi-list',
+        routerLink: ['/catalogs', 'service-variants']
+      }
+    ]
+  },
+  {
     id: 'work-sessions',
     label: 'Jornadas',
     icon: 'pi pi-clock',

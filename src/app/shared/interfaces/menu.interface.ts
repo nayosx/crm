@@ -39,6 +39,18 @@ export interface UpdateRoleMenusPayload {
   menu_keys: string[];
 }
 
+export interface CreateMenuPayload {
+  key?: string | null;
+  label: string;
+  path?: string | null;
+  icon?: string | null;
+  show_in_sidebar?: boolean;
+  order?: number | null;
+  parent_id?: number | null;
+}
+
+export type UpdateMenuPayload = Partial<CreateMenuPayload>;
+
 export interface NavigationMenuItem {
   key: string;
   label: string;

@@ -1,0 +1,313 @@
+<section class="p-4 flex flex-column gap-4">
+  <p-toast />
+  <p-confirmdialog [style]="{ width: 'calc(100vw - 2rem)', maxWidth: '32rem' }" />
+  <app-loader-dialog />
+
+  <div class="flex flex-column gap-2 lg:flex-row lg:justify-content-between lg:align-items-center">
+    <div>
+      <p class="m-0 text-sm text-500">Catalogos</p>
+      <h1 class="m-0">{{ title }}</h1>
+      <p class="mt-2 mb-0 text-600">{{ subtitle }}</p>
+    </div>
+
+    <button
+      pButton
+      type="button"
+      icon="pi pi-plus"
+      label="Nuevo registro"
+      [disabled]="!canCreate() || loading || saving"
+      (click)="openCreateDialog()"
+    ></button>
+  </div>
+
+  @if (!canCreate()) {
+    <div class="p-3 border-1 border-orange-300 border-round bg-orange-50 text-orange-700">
+      @if (kind === 'services') {
+        Necesitas categorias activas para crear servicios.
+      } @else if (kind === 'service-variants') {
+        Necesitas servicios activos para crear variantes.
+      }
+    </div>
+  }
+
+  <div class="surface-card border-round shadow-1 p-3 flex flex-column gap-3">
+    <div class="flex flex-column gap-3 lg:flex-row lg:align-items-end">
+      <div class="flex flex-column gap-2 w-full lg:w-16rem">
+        <label for="activeFilter" class="font-medium">Estado</label>
+        <p-select
+          inputId="activeFilter"
+          [options]="activeFilterOptions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="activeFilter"
+          placeholder="Filtrar por estado"
+          class="w-full"
+          (onChange)="onFiltersChange()"
+        />
+      </div>
+
+      @if (kind === 'services') {
+        <div class="flex flex-column gap-2 w-full lg:w-18rem">
+          <label for="categoryFilter" class="font-medium">Categoria</label>
+          <p-select
+            inputId="categoryFilter"
+            [options]="categoryOptions"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="selectedCategoryFilter"
+            [showClear]="true"
+            placeholder="Todas"
+            class="w-full"
+            (onChange)="onFiltersChange()"
+          />
+        </div>
+      }
+
+      @if (kind === 'service-variants') {
+        <div class="flex flex-column gap-2 w-full lg:w-20rem">
+          <label for="serviceFilter" class="font-medium">Servicio</label>
+          <p-select
+            inputId="serviceFilter"
+            [options]="serviceOptions"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="selectedServiceFilter"
+            [showClear]="true"
+            placeholder="Todos"
+            class="w-full"
+            (onChange)="onFiltersChange()"
+          />
+        </div>
+      }
+
+      <button
+        pButton
+        type="button"
+        label="Recargar"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="loading || saving"
+        (click)="loadData()"
+      ></button>
+    </div>
+
+    @if (loadError) {
+      <div class="p-3 border-1 border-red-300 border-round bg-red-50 text-red-700">
+        {{ loadError }}
+      </div>
+    }
+
+    <p-table
+      [value]="items"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="10"
+      dataKey="id"
+      responsiveLayout="scroll"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          @if (kind === 'extras') {
+            <th>Precio base</th>
+          }
+          @if (kind === 'services') {
+            <th>Categoria</th>
+            <th>Modo</th>
+          }
+          @if (kind === 'service-variants') {
+            <th>Servicio</th>
+            <th>Precio</th>
+          }
+          <th>Estado</th>
+          <th style="width: 10rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+        <tr [attr.data-index]="rowIndex">
+          <td>{{ item.name }}</td>
+
+          @if (kind === 'extras') {
+            <td>{{ item.default_price ?? '0.00' }}</td>
+          }
+
+          @if (kind === 'services') {
+            <td>{{ getCategoryName(item.category_id) }}</td>
+            <td>
+              <p-tag [value]="item.pricing_mode ?? 'FIXED'" severity="info" />
+            </td>
+          }
+
+          @if (kind === 'service-variants') {
+            <td>{{ getServiceName(item.service_id) }}</td>
+            <td>{{ item.price ?? '0.00' }}</td>
+          }
+
+          <td>
+            <p-tag
+              [value]="item.is_active ? 'Activo' : 'Inactivo'"
+              [severity]="item.is_active ? 'success' : 'secondary'"
+            />
+          </td>
+
+          <td>
+            <div class="flex gap-2">
+              <button
+                pButton
+                type="button"
+                icon="pi pi-pencil"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="saving || deletingId === item.id"
+                (click)="openEditDialog(item)"
+              ></button>
+              <button
+                pButton
+                type="button"
+                icon="pi pi-trash"
+                severity="danger"
+                [loading]="deletingId === item.id"
+                [disabled]="saving || deletingId === item.id"
+                (click)="confirmDelete(item)"
+              ></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6">No hay registros para mostrar.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<p-dialog
+  [header]="dialogTitle"
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '36rem', maxWidth: 'calc(100vw - 2rem)' }"
+  (onHide)="closeDialog()"
+>
+  <form [formGroup]="form" class="flex flex-column gap-3" (ngSubmit)="save()">
+    <div class="flex flex-column gap-2">
+      <label for="catalogName" class="font-medium">Nombre</label>
+      <input
+        id="catalogName"
+        pInputText
+        formControlName="name"
+        [attr.maxlength]="nameMaxLength"
+        [disabled]="saving"
+      />
+      @if (form.controls.name.invalid && form.controls.name.touched) {
+        <small class="text-red-500">Nombre requerido.</small>
+      }
+    </div>
+
+    @if (kind === 'extras') {
+      <div class="flex flex-column gap-2">
+        <label for="defaultPrice" class="font-medium">Precio base</label>
+        <app-decimal-input
+          id="defaultPrice"
+          [value]="form.controls.default_price.value"
+          (valueChange)="form.controls.default_price.setValue($event)"
+          [disabled]="saving"
+          inputClass="w-full"
+        />
+      </div>
+    }
+
+    @if (kind === 'services') {
+      <div class="flex flex-column gap-2">
+        <label for="categoryId" class="font-medium">Categoria</label>
+        <p-select
+          inputId="categoryId"
+          [options]="categoryOptions"
+          optionLabel="label"
+          optionValue="value"
+          formControlName="category_id"
+          placeholder="Selecciona una categoria"
+          class="w-full"
+        />
+        @if (form.controls.category_id.invalid && form.controls.category_id.touched) {
+          <small class="text-red-500">Categoria requerida.</small>
+        }
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="pricingMode" class="font-medium">Modo de precio</label>
+        <p-select
+          inputId="pricingMode"
+          [options]="pricingModeOptions"
+          optionLabel="label"
+          optionValue="value"
+          formControlName="pricing_mode"
+          class="w-full"
+        />
+      </div>
+    }
+
+    @if (kind === 'service-variants') {
+      <div class="flex flex-column gap-2">
+        <label for="serviceId" class="font-medium">Servicio</label>
+        <p-select
+          inputId="serviceId"
+          [options]="serviceOptions"
+          optionLabel="label"
+          optionValue="value"
+          formControlName="service_id"
+          placeholder="Selecciona un servicio"
+          class="w-full"
+        />
+        @if (form.controls.service_id.invalid && form.controls.service_id.touched) {
+          <small class="text-red-500">Servicio requerido.</small>
+        }
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="price" class="font-medium">Precio</label>
+        <app-decimal-input
+          id="price"
+          [value]="form.controls.price.value"
+          (valueChange)="form.controls.price.setValue($event)"
+          [disabled]="saving"
+          inputClass="w-full"
+        />
+      </div>
+    }
+
+    <div class="flex align-items-center gap-2">
+      <p-checkbox
+        inputId="isActive"
+        [binary]="true"
+        formControlName="is_active"
+      />
+      <label for="isActive" class="m-0">Activo</label>
+    </div>
+
+    <div class="flex justify-content-end gap-2 pt-2">
+      <button
+        pButton
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="saving"
+        (click)="closeDialog()"
+      ></button>
+      <button
+        pButton
+        type="submit"
+        label="Guardar"
+        icon="pi pi-save"
+        [loading]="saving"
+        [disabled]="saving"
+      ></button>
+    </div>
+  </form>
+</p-dialog>
