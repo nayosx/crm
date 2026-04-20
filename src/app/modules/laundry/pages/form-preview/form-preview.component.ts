@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   AbstractControl,
@@ -625,7 +626,14 @@ export class FormPreviewComponent implements OnInit {
         this.patchFormFromSummary(summary);
         this.showSuccess('Captura comercial guardada.');
       },
-      error: () => this.showError('No se pudo guardar. Revisa conexión o intenta de nuevo.')
+      error: (error: HttpErrorResponse) => {
+        if (error.status === 409) {
+          this.showError('Alguien mas ha editado esta orden de trabajo, por favor, refresca tu navegador');
+          return;
+        }
+
+        this.showError('No se pudo guardar. Revisa conexión o intenta de nuevo.');
+      }
     });
   }
 
@@ -826,6 +834,7 @@ export class FormPreviewComponent implements OnInit {
 
   private buildPayload(): LaundryServiceCommercialDetailPayload {
     return {
+      expected_updated_at: this.summary?.laundry_service.updated_at ?? null,
       notes: String(this.form.get('notes')?.value ?? '').trim() || null,
       weight_service: this.showWeightService()
         ? {

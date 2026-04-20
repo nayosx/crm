@@ -885,6 +885,7 @@ export class DetailComponent implements OnInit {
   private buildHeaderPayload(): LaundryServiceHeaderPayload {
     const value = this.headerForm.getRawValue();
     const payload: LaundryServiceHeaderPayload = {
+      expected_updated_at: this.summary()?.laundry_service.updated_at ?? null,
       service_label: value.is_express ? 'EXPRESS' : 'NORMAL',
       fulfillment_type: value.fulfillment_type
     };

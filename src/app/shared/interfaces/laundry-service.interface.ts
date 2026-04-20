@@ -211,6 +211,7 @@ export interface LaundryServiceSummaryResponse {
     fulfillment_type: LaundryServiceFulfillmentType;
     transaction_id: number | null;
     notes: string | null;
+    updated_at: string | null;
   };
   client: {
     id: number;
@@ -239,6 +240,7 @@ export interface LaundryServiceCreatePayload {
 export type LaundryServiceUpdatePayload = Partial<LaundryServiceCreatePayload>;
 
 export interface LaundryServiceHeaderPayload {
+  expected_updated_at: string | null;
   service_label?: LaundryServiceLabel;
   fulfillment_type?: LaundryServiceFulfillmentType;
   distance_km?: number;
@@ -246,6 +248,7 @@ export interface LaundryServiceHeaderPayload {
 }
 
 export interface LaundryServiceCommercialDetailPayload {
+  expected_updated_at: string | null;
   notes?: string | null;
   weight_service: {
     weight_lb: number;
