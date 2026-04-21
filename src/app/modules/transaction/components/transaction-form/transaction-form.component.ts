@@ -17,6 +17,7 @@ import { DialogModule } from 'primeng/dialog';
 import { UserData } from '@shared/interfaces/auth.interface';
 import { TransactionService } from '@shared/services/transaction/transaction.service';
 import { Router } from '@angular/router';
+import { LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
 
 @Component({
   selector: 'app-transaction-form',
@@ -71,6 +72,8 @@ export class TransactionFormComponent implements OnInit {
   @Input() transaction: Transaction | null = null;
   @Input() submitLabel = 'Guardar';
   @Input() client: Client | null | undefined = null;
+  @Input() submitting = false;
+  @Input() prefill: LaundryTransactionPrefill | null = null;
 
   @Output() onSubmit = new EventEmitter<Partial<Transaction>>();
 
@@ -108,9 +111,9 @@ export class TransactionFormComponent implements OnInit {
         payment_type_id: [this.transaction?.payment_type_id || null, Validators.required],
         category_id: [{ value: this.transaction?.category_id || null, disabled: true }],
         client_id: [{ value: isAutoMode ? this.client?.id : this.transaction?.client_id || null, disabled: isAutoMode }],
-        detail: [this.transaction?.detail || null],
+        detail: [this.transaction?.detail || this.prefill?.detail || null],
         amount: [
-          this.transaction?.amount || '',
+          this.transaction?.amount || this.prefill?.amount || '',
           [
             Validators.required,
             Validators.min(0.01),
@@ -225,6 +228,10 @@ export class TransactionFormComponent implements OnInit {
   }
 
   submit(): void {
+    if (this.submitting) {
+      return;
+    }
+
     if (this.form.valid) {
       const formValue = this.form.getRawValue();
       formValue.user_id = this.userId;

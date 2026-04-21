@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LaundryServiceResp, LaundryServiceLog, LaundryServiceUpdatePayload } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceResp, LaundryServiceLog, LaundryServiceSummaryResponse, LaundryServiceUpdatePayload } from '@shared/interfaces/laundry-service.interface';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
 import { LaundryFormComponent } from '../laundry-form/laundry-form.component';
@@ -10,6 +10,8 @@ import { CommonModule } from '@angular/common';
 import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list.component';
 import { LaundryNoteComponent } from '../laundry-note/laundry-note.component';
 import { ButtonModule } from 'primeng/button';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { buildLaundryTransactionPrefill, LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
 
 @Component({
   selector: 'app-laundry-edit',
@@ -23,6 +25,7 @@ import { ButtonModule } from 'primeng/button';
     LaundryNoteComponent,
     BackButtonComponent,
     ButtonModule,
+    LoaderDialogComponent,
   ],
   templateUrl: './laundry-edit.component.html',
   encapsulation: ViewEncapsulation.None,
@@ -30,6 +33,7 @@ import { ButtonModule } from 'primeng/button';
 export class LaundryEditComponent implements OnInit {
   initialData?: LaundryServiceResp;
   loading = true;
+  transactionPrefill: LaundryTransactionPrefill | null = null;
 
   notesDialogVisible = false;
   latestNote: LaundryServiceLog | null = null;
@@ -47,6 +51,7 @@ export class LaundryEditComponent implements OnInit {
         next: data => {
           this.initialData = data;
           this.loading = false;
+          this.loadTransactionPrefill(data.id);
         },
         error: () => {
           this.loading = false;
@@ -79,6 +84,22 @@ export class LaundryEditComponent implements OnInit {
 
   onCancelNotes() {
     this.notesDialogVisible = false;
+  }
+
+  private loadTransactionPrefill(serviceId: number): void {
+    this.laundryService.getSummary(serviceId).subscribe({
+      next: (summary: LaundryServiceSummaryResponse) => {
+        this.transactionPrefill = buildLaundryTransactionPrefill(summary);
+      },
+      error: () => {
+        this.transactionPrefill = this.initialData?.grand_total != null
+          ? {
+              detail: this.initialData.notes ?? `Cobro servicio #${serviceId}`,
+              amount: Number(this.initialData.grand_total).toFixed(2)
+            }
+          : null;
+      }
+    });
   }
 
   // Opcional: reacción al eliminar una nota

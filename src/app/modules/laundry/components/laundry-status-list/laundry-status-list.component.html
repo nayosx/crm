@@ -41,7 +41,7 @@
         <div
           class="border-bottom-1 surface-border py-3 px-2 rounded-lg"
           [ngClass]="{ 'mt-3': !first }"
-          (click)="onSelect(item)"
+          (click)="handleCardClick(item)"
           *ngFor="let item of items; let first = first; trackBy: trackById"
         >
           <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3">
@@ -85,6 +85,32 @@
                 }
             </div>
           </div>
+
+          @if (showActionButtons) {
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button
+                pButton
+                type="button"
+                icon="pi pi-eye"
+                label="Ver detalles"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="actionsDisabled"
+                (click)="onViewDetail(item); $event.stopPropagation()"
+              ></button>
+
+              <button
+                pButton
+                type="button"
+                icon="pi pi-check-circle"
+                label="Finalizar"
+                severity="success"
+                [loading]="actionLoadingId === item.id"
+                [disabled]="actionsDisabled"
+                (click)="onFinalize(item); $event.stopPropagation()"
+              ></button>
+            </div>
+          }
         </div>
     </div>
   </ng-template>

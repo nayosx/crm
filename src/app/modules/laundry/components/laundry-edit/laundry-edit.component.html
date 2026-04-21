@@ -1,7 +1,7 @@
 <!-- parent.component.html -->
 <div class="flex align-items-center gap-2 pt-4 pb-4">
   <h2>
-    <app-back-button [path]="'/laundry'" />
+    <app-back-button [fallbackRoute]="'/laundry'" />
     Editar Servicio
   </h2>
 </div>
@@ -13,6 +13,7 @@
       <ng-container *ngIf="!loading && initialData">
         <app-laundry-form
           [initialData]="initialData"
+          [transactionPrefill]="transactionPrefill"
           [isEditMode]="true"
           (formSubmit)="onFormSubmit($event)">
         </app-laundry-form>
@@ -67,3 +68,5 @@
     </p-card>
   </div>
 </div>
+
+<app-loader-dialog></app-loader-dialog>

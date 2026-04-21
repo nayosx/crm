@@ -24,12 +24,12 @@ import { TagModule } from 'primeng/tag';
 import { ClientAddressService } from '@shared/services/client/client-address.service';
 import { ClientAddress } from '@shared/interfaces/client.interface';
 import { ClientAddressListComponent } from '@modules/client/components/client-address-list/client-address-list.component';
-import { PaymentType, Transaction, TransactionCategory } from '@shared/interfaces/transaction.interface';
-import { TransactionFormComponent } from '@modules/transaction/components/transaction-form/transaction-form.component';
-import { TransactionService } from '@shared/services/transaction/transaction.service';
+import { Transaction } from '@shared/interfaces/transaction.interface';
 import { combineDateAndTime, formatToSQLDateTime } from '@shared/utils/datetime.util';
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
 import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
+import { LaundryTransactionDialogComponent } from '../laundry-transaction-dialog/laundry-transaction-dialog.component';
+import { LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
 
 @Component({
   selector: 'app-laundry-form',
@@ -49,15 +49,14 @@ import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundr
     DatePickerModule,
     TextareaModule,
     ClientAddressListComponent,
-    TransactionFormComponent
+    LaundryTransactionDialogComponent
   ],
   templateUrl: './laundry-form.component.html',
   encapsulation: ViewEncapsulation.None
 })
 export class LaundryFormComponent implements OnInit {
   @Input() initialData?: Partial<LaundryServiceResp>;
-  @Input() paymentTypes: PaymentType[] = [];
-  @Input() categories: TransactionCategory[] = [];
+  @Input() transactionPrefill: LaundryTransactionPrefill | null = null;
   @Input() isEditMode = false;
   @Input() autoInProgress = false;
   @Output() formSubmit = new EventEmitter<(LaundryServiceUpdatePayload & { isRedirect?: boolean })>();
@@ -86,7 +85,6 @@ export class LaundryFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private clientServ: ClientAddressService,
-    private transactionServ: TransactionService,
     private garmentTypesService: LaundryGarmentTypesService,
     private extraTypesService: LaundryServiceExtraTypesService
   ) {}
@@ -133,15 +131,8 @@ export class LaundryFormComponent implements OnInit {
       this.selectedAddress = this.initialData.client_address.address_text;
     }
 
-    if (this.isEditMode && this.initialData?.transaction?.id) {
-      this.transactionServ.getTransaction(this.initialData.transaction.id).subscribe({
-        next: (tx) => {
-          this.createdTransaction = tx;
-        },
-        error: () => {
-          console.warn('No se pudo cargar la transacción');
-        }
-      });
+    if (this.isEditMode && this.initialData?.transaction) {
+      this.createdTransaction = this.initialData.transaction as Transaction;
     }
 
     this.garmentTypesService.getAll().subscribe({
@@ -267,15 +258,10 @@ export class LaundryFormComponent implements OnInit {
     this.displayTransactionDialog = true;
   }
 
-  onTransactionSetter(transaction: Partial<Transaction>): void {
-    this.transactionServ.createTransaction(transaction).subscribe({
-      next: (resp) => {
-        this.form.patchValue({ transaction_id: resp.transaction.id });
-        this.createdTransaction = resp.transaction;
-        this.displayTransactionDialog = false;
-        this.submit(false);
-      }
-    });
+  onTransactionLinked(transaction: Transaction): void {
+    this.form.patchValue({ transaction_id: transaction.id });
+    this.createdTransaction = transaction;
+    this.displayTransactionDialog = false;
   }
 
   get canCreateTransaction(): boolean {

@@ -23,7 +23,12 @@ export class LaundryStatusListComponent implements OnInit, OnChanges {
   private readonly defaultPerPage = 10;
 
   @Input() status!: LaundryServiceStatus;
+  @Input() showActionButtons = false;
+  @Input() actionsDisabled = false;
+  @Input() actionLoadingId: number | null = null;
   @Output() select = new EventEmitter<LaundryServiceCompact>();
+  @Output() viewDetail = new EventEmitter<LaundryServiceCompact>();
+  @Output() finalize = new EventEmitter<LaundryServiceCompact>();
 
   items = signal<LaundryServiceCompact[]>([]);
   total = signal(0);
@@ -113,6 +118,22 @@ export class LaundryStatusListComponent implements OnInit, OnChanges {
 
   onSelect(item: LaundryServiceCompact): void {
     this.select.emit(item);
+  }
+
+  handleCardClick(item: LaundryServiceCompact): void {
+    if (this.showActionButtons) {
+      return;
+    }
+
+    this.onSelect(item);
+  }
+
+  onViewDetail(item: LaundryServiceCompact): void {
+    this.viewDetail.emit(item);
+  }
+
+  onFinalize(item: LaundryServiceCompact): void {
+    this.finalize.emit(item);
   }
 
 

@@ -113,6 +113,6 @@
   </p-card>
 
   <div class="flex flex-column align-items-start gap-2">
-    <button pButton type="submit" [label]="submitLabel" [disabled]="form.invalid" class="p-button-success"></button>
+    <button pButton type="submit" [label]="submitLabel" [disabled]="form.invalid || submitting" [loading]="submitting" class="p-button-success"></button>
   </div>
 </form>

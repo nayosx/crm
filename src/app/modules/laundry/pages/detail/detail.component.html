@@ -126,28 +126,42 @@
             <div class="u-p-all-2 border-bottom-1 surface-border u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2">
               <h2 class="u-text-lg-bold u-m-all-none">Resumen</h2>
 
-              <button
-                pButton
-                type="button"
-                class="summary-copy-button"
-                [class.summary-copy-button--copied]="isSummaryCopied()"
-                [label]="isSummaryCopied() ? 'Copiado' : 'Copiar'"
-                [icon]="isSummaryCopied() ? 'pi pi-check' : 'pi pi-copy'"
-                [severity]="isSummaryCopied() ? 'success' : 'secondary'"
-                [outlined]="!isSummaryCopied()"
-                [text]="false"
-                (click)="copySummaryForWhatsApp()"
-                [disabled]="!summary()">
-              </button>
+              <div class="u-d-flex u-d-flex-wrap u-d-flex-justify-end u-d-flex-gap-2">
+                @if (canRegisterTransaction()) {
+                  <button
+                    pButton
+                    type="button"
+                    [label]="hasTransaction() ? 'Ver/editar cobro' : 'Registrar cobro'"
+                    [icon]="hasTransaction() ? 'pi pi-credit-card' : 'pi pi-plus-circle'"
+                    severity="secondary"
+                    [outlined]="!hasTransaction()"
+                    (click)="openTransactionDialog()">
+                  </button>
+                }
 
-              <button
-                pButton
-                type="button"
-                label="Editar precios"
-                icon="pi pi-pencil"
-                [disabled]="isLoading() || !summary()"
-                (click)="enablePriceEditing()">
-              </button>
+                <button
+                  pButton
+                  type="button"
+                  class="summary-copy-button"
+                  [class.summary-copy-button--copied]="isSummaryCopied()"
+                  [label]="isSummaryCopied() ? 'Copiado' : 'Copiar'"
+                  [icon]="isSummaryCopied() ? 'pi pi-check' : 'pi pi-copy'"
+                  [severity]="isSummaryCopied() ? 'success' : 'secondary'"
+                  [outlined]="!isSummaryCopied()"
+                  [text]="false"
+                  (click)="copySummaryForWhatsApp()"
+                  [disabled]="!summary()">
+                </button>
+
+                <button
+                  pButton
+                  type="button"
+                  label="Editar precios"
+                  icon="pi pi-pencil"
+                  [disabled]="isLoading() || !summary()"
+                  (click)="enablePriceEditing()">
+                </button>
+              </div>
             </div>
           </ng-template>
 
@@ -300,6 +314,16 @@
     </p-card>
   }
 </section>
+
+<app-laundry-transaction-dialog
+  [visible]="transactionDialogVisible()"
+  (visibleChange)="transactionDialogVisible.set($event)"
+  [serviceId]="serviceId()"
+  [client]="summary()?.client ?? null"
+  [prefill]="transactionPrefill()"
+  [transactionId]="summary()?.laundry_service?.transaction_id ?? null"
+  (transactionLinked)="onTransactionLinked($event)">
+</app-laundry-transaction-dialog>
 
 <p-dialog
   header="Editar precios"

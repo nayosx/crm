@@ -1,3 +1,5 @@
+<p-toast></p-toast>
+
 <div class="flex align-items-center gap-2 pt-4 pb-4" [class]="statusColorMap['READY_FOR_DELIVERY']">
     <h2 class="pl-4">
         <app-back-button [fallbackRoute]="'/laundry'" />
@@ -8,6 +10,14 @@
 <div class="mb-4">
     <p-card class="border-round shadow-2">
         <app-laundry-status-list [status]="'READY_FOR_DELIVERY'"
-            (select)="handleSelect($event)"></app-laundry-status-list>
+            [showActionButtons]="true"
+            [actionsDisabled]="finalizingId() !== null"
+            [actionLoadingId]="finalizingId()"
+            (viewDetail)="handleViewDetail($event)"
+            (finalize)="handleFinalize($event)"></app-laundry-status-list>
     </p-card>
 </div>
+
+<app-loader-dialog></app-loader-dialog>
+<p-confirmdialog [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+    [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }"></p-confirmdialog>

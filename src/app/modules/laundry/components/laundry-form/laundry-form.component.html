@@ -195,9 +195,11 @@
     (select)="onAddressSelected($event)" />
 </p-dialog>
 
-<p-dialog header="Registrar Transacción" [(visible)]="displayTransactionDialog" [modal]="true"
-  [style]="{ width: '50rem' }">
-  <app-transaction-form [client]="initialData?.client" [submitLabel]="'Guardar'"
-    (onSubmit)="onTransactionSetter($event)" *ngIf="displayTransactionDialog">
-  </app-transaction-form>
-</p-dialog>
+<app-laundry-transaction-dialog
+  [(visible)]="displayTransactionDialog"
+  [serviceId]="initialData?.id ?? null"
+  [client]="initialData?.client"
+  [prefill]="transactionPrefill"
+  [transactionId]="createdTransaction?.id ?? initialData?.transaction?.id ?? null"
+  (transactionLinked)="onTransactionLinked($event)">
+</app-laundry-transaction-dialog>

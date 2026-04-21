@@ -34,6 +34,9 @@ import { BackButtonComponent } from '@shared/components/back/back-button.compone
 import { DecimalInputComponent } from '@shared/components/decimal-input/decimal-input.component';
 import { LaundryServiceLabelMap, LaundryStatusLabelMap } from '@shared/i18n/laundry-ui-texts';
 import { ToBackLaundry } from '@modules/laundry/commons/route';
+import { LaundryTransactionDialogComponent } from '@modules/laundry/components/laundry-transaction-dialog/laundry-transaction-dialog.component';
+import { Transaction } from '@shared/interfaces/transaction.interface';
+import { buildLaundryTransactionPrefill, buildLaundryWhatsAppSummary } from '@shared/utils/laundry-transaction.util';
 
 type SelectOption<T> = {
   label: string;
@@ -108,7 +111,8 @@ type SummaryDialogRow = {
     ToggleSwitchModule,
     LoaderDialogComponent,
     BackButtonComponent,
-    DecimalInputComponent
+    DecimalInputComponent,
+    LaundryTransactionDialogComponent
   ],
   providers: [MessageService],
   templateUrl: './detail.component.html',
@@ -244,6 +248,23 @@ export class DetailComponent implements OnInit {
   readonly backRoute = computed(() => {
     const status = this.summary()?.laundry_service.status ?? (this.route.snapshot.queryParamMap.get('status') as LaundryServiceStatus | null);
     return status ? `/${ToBackLaundry(status)}` : '/laundry';
+  });
+  readonly canRegisterTransaction = computed(() => {
+    const currentSummary = this.summary();
+    if (!currentSummary) {
+      return false;
+    }
+
+    return currentSummary.laundry_service.status === 'READY_FOR_DELIVERY';
+  });
+  readonly hasTransaction = computed(() => {
+    const currentSummary = this.summary();
+    return Boolean(currentSummary?.laundry_service.transaction_id);
+  });
+  readonly transactionDialogVisible = signal(false);
+  readonly transactionPrefill = computed(() => {
+    const currentSummary = this.summary();
+    return currentSummary ? buildLaundryTransactionPrefill(currentSummary) : null;
   });
 
   readonly deliveryControlsEnabled = signal(false);
@@ -415,7 +436,7 @@ export class DetailComponent implements OnInit {
       return;
     }
 
-    const content = this.buildWhatsAppSummary(summary);
+    const content = buildLaundryWhatsAppSummary(summary);
 
     try {
       if (navigator.clipboard?.writeText) {
@@ -430,6 +451,21 @@ export class DetailComponent implements OnInit {
     } catch {
       this.showError('No se pudo copiar el resumen.');
     }
+  }
+
+  openTransactionDialog(): void {
+    if (!this.serviceId()) {
+      this.showError('No se encontró el servicio de lavandería.');
+      return;
+    }
+
+    this.transactionDialogVisible.set(true);
+  }
+
+  onTransactionLinked(transaction: Transaction): void {
+    this.showSuccess(`Cobro registrado con transacción #${transaction.id}.`);
+    this.transactionDialogVisible.set(false);
+    this.loadSummary();
   }
 
   openSummaryDialog(): void {
@@ -717,68 +753,6 @@ export class DetailComponent implements OnInit {
     const unitPrice = this.toNumericValue(extra.unit_price);
     const subtotal = this.toNumericValue(extra.subtotal);
     return quantity > 0 || unitPrice > 0 || subtotal > 0;
-  }
-
-  private buildWhatsAppSummary(summary: LaundryServiceSummaryResponse): string {
-    const lines: string[] = [
-      `*Resumen servicio #${summary.laundry_service.id}*`,
-      `*Cliente:* ${summary.client.name}`,
-      `*Programado:* ${this.formatDate(summary.laundry_service.scheduled_pickup_at)}`,
-      `*Estado:* ${this.statusLabel()}`,
-      `*Tipo:* ${this.serviceLabel()}`,
-      ''
-    ];
-
-    const automaticLines = this.automaticItems().map((item) =>
-      `- ${item.service_name}: ${this.formatMoney(this.itemSubtotal(item))} (${this.formatQuantity(item.quantity)} x ${this.formatMoney(item.applied_price)})`
-    );
-
-    if (automaticLines.length) {
-      lines.push('*Servicios automáticos:*');
-      lines.push(...automaticLines);
-      lines.push('');
-    }
-
-    if (this.showWeightServiceSummary()) {
-      const weight = this.weightService();
-      lines.push('*Lavado por peso:*');
-      lines.push(`- Subtotal: ${this.formatMoney(summary.summary.weight_service_subtotal)}`);
-
-      if (weight) {
-        lines.push(`- Peso: ${this.formatQuantity(weight.weight_lb)} lb`);
-      }
-
-      lines.push('');
-    }
-
-    const manualLines = this.manualItems().map((item) =>
-      [
-        `- ${this.manualSummaryLabel(item)}: ${this.formatMoney(this.itemSubtotal(item))}`,
-        `(${this.formatQuantity(item.quantity)} x ${this.formatMoney(this.manualUnitCatalogPrice(item))})`,
-        this.hasCommercialDiscount(item) ? `base ${this.formatMoney(item.catalog_price)}` : '',
-        this.hasCommercialDiscount(item) ? `ahorro ${this.formatMoney(item.discount_amount)}` : '',
-        item.discount_rule?.name ? `regla ${item.discount_rule.name}` : ''
-      ].filter(Boolean).join(' ')
-    );
-
-    if (manualLines.length) {
-      lines.push('*Servicios manuales:*');
-      lines.push(...manualLines);
-      lines.push('');
-    }
-
-    const extraLines = this.extras().map((extra) =>
-      `- ${extra.extra_name}: ${this.formatMoney(this.toNumericValue(extra.subtotal))} (${this.formatQuantity(extra.quantity)} x ${this.formatMoney(extra.unit_price)})`
-    );
-
-    if (extraLines.length) {
-      lines.push('*Extras:*');
-      lines.push(...extraLines);
-      lines.push('');
-    }
-
-    lines.push(`*Total general:* ${this.formatMoney(summary.summary.grand_total)}`);
-    return lines.join('\n').trim();
   }
 
   private copyTextWithTextarea(content: string): void {
