@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '@shared/services/auth/auth.service';
@@ -31,6 +32,7 @@ import { DialogLoadingService } from '@shared/services/dialog-loading.service';
 export class MainLayoutComponent implements OnInit, OnDestroy {
 
   authService = inject(AuthService);
+  document: Document = inject(DOCUMENT);
   navigationService = inject(NavigationService);
   navigationHistoryService = inject(NavigationHistoryService);
   dialogLoadingService = inject(DialogLoadingService);
@@ -65,6 +67,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe((event) => {
           this.updateSidebarVisibility(event.urlAfterRedirects);
+          this.scrollToTop();
         })
     );
   }
@@ -102,5 +105,18 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   private refreshMenuItems(): void {
     this.menuItems = this.navigationService.getMainMenuItems(() => this.closeSidebar());
+  }
+
+  private scrollToTop(): void {
+    setTimeout(() => {
+      const principalContainer = this.document.getElementById('principal-container');
+      const scrollingElement = this.document.scrollingElement as HTMLElement | null;
+
+      principalContainer?.scrollTo({ top: 0, behavior: 'auto' });
+      scrollingElement?.scrollTo({ top: 0, behavior: 'auto' });
+      this.document.documentElement?.scrollTo({ top: 0, behavior: 'auto' });
+      this.document.body?.scrollTo({ top: 0, behavior: 'auto' });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
   }
 }

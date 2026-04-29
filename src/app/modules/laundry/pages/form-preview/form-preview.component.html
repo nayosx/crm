@@ -1,6 +1,10 @@
 <app-loader-dialog></app-loader-dialog>
 <p-toast></p-toast>
-<p-toast key="pending-save"></p-toast>
+<p-toast
+  key="pending-save"
+  [position]="isMobileViewport() ? 'bottom-center' : 'top-right'"
+  styleClass="pending-save-toast">
+</p-toast>
 
 <section class="container form-preview-shell u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
   <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
@@ -17,9 +21,6 @@
   <form [formGroup]="form" (ngSubmit)="save()" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
     <p-card styleClass="services-captured-card">
       <ng-template pTemplate="title">Servicios capturados</ng-template>
-      <ng-template pTemplate="subtitle">
-        <span class="dr-helper-text">El frontend captura datos. El backend calcula precios.</span>
-      </ng-template>
 
       <p-accordion
         [multiple]="true"
@@ -125,7 +126,9 @@
 
         <ng-container formArrayName="order_items">
           @for (group of serviceGroups(); track group.serviceId) {
-            <p-accordion-panel [value]="'service-' + group.serviceId">
+            <p-accordion-panel
+              [value]="'service-' + group.serviceId"
+              [attr.id]="'service-panel-' + group.serviceId">
               <p-accordion-header>{{ serviceGroupTitle(group.serviceId) }}</p-accordion-header>
               <p-accordion-content>
                 <article class="u-d-flex u-d-flex-column u-d-flex-gap-3">
@@ -275,7 +278,7 @@
     }
 
     @if (showNotesCard()) {
-      <p-card>
+      <p-card id="notes-section">
       <ng-template pTemplate="title">Notas</ng-template>
       <ng-template pTemplate="subtitle">
         <span class="dr-helper-text">Observaciones operativas para esta captura comercial.</span>
@@ -294,6 +297,8 @@
       </div>
       </p-card>
     }
+
+
   </form>
 
   <app-bottom-navigation

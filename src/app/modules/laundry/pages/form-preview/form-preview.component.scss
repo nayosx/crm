@@ -85,6 +85,12 @@
 }
 
 @media (max-width: 767px) {
+  :host ::ng-deep .pending-save-toast {
+    margin-bottom: 5.5rem;
+  }
+}
+
+@media (max-width: 767px) {
   .service-picker-footer {
     flex-direction: row;
     align-items: center;

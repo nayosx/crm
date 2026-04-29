@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import {
@@ -73,6 +73,7 @@ import {
 })
 export class FormPreviewComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly document = inject(DOCUMENT);
   private readonly route = inject(ActivatedRoute);
   private readonly laundryService = inject(LaundryService);
   private readonly garmentTypesService = inject(LaundryGarmentTypesService);
@@ -152,6 +153,14 @@ export class FormPreviewComponent implements OnInit {
 
   canAddNote(): boolean {
     return !this.showNotesCard();
+  }
+
+  isMobileViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.matchMedia('(max-width: 767px)').matches;
   }
 
   bottomNavigationActions(): BottomNavigationAction[] {
@@ -499,22 +508,33 @@ export class FormPreviewComponent implements OnInit {
       return;
     }
 
+    const serviceId = this.selectedServiceForPicker.id;
+
     this.servicePickerPreviewItems.forEach(({ variant, quantity }) => {
       this.addService(this.selectedServiceForPicker!, {
         service_variant_id: variant.id,
         quantity,
         unit_catalog_price: this.toMoneyString(variant.catalog_price)
-      });
+      }, false);
     });
     this.notifyPendingSaveChanges();
+    this.scrollToServicePanel(serviceId);
 
     this.closeServicePicker();
   }
 
-  addService(service: LaundryCommercialCatalogServiceItem, item?: Partial<LaundryServiceSummaryItem>): void {
+  addService(
+    service: LaundryCommercialCatalogServiceItem,
+    item?: Partial<LaundryServiceSummaryItem>,
+    scrollToPanel = false
+  ): void {
     this.orderItemsArray.push(this.createOrderItemGroup(service, item));
     this.ensureVariantsLoaded(service.id);
     this.addAccordionValue(`service-${service.id}`);
+
+    if (scrollToPanel) {
+      this.scrollToServicePanel(service.id);
+    }
   }
 
   removeService(index: number): void {
@@ -566,7 +586,7 @@ export class FormPreviewComponent implements OnInit {
         this.openExtraPicker();
         break;
       case 'add-note':
-        this.showNotesCard.set(true);
+        this.showNotesAndScroll();
         break;
       case 'save':
         this.save();
@@ -635,6 +655,26 @@ export class FormPreviewComponent implements OnInit {
         this.showError('No se pudo guardar. Revisa conexión o intenta de nuevo.');
       }
     });
+  }
+
+  private showNotesAndScroll(): void {
+    this.showNotesCard.set(true);
+
+    setTimeout(() => {
+      this.document.getElementById('notes-section')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 220);
+  }
+
+  private scrollToServicePanel(serviceId: number): void {
+    setTimeout(() => {
+      this.document.getElementById(`service-panel-${serviceId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 220);
   }
 
   private loadInitialData(): void {
