@@ -20,7 +20,8 @@ import { LaundrySocketService } from '@shared/services/socket/laundry/laundry-so
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import {
   type LaundryServiceCompact,
-  type LaundryServiceStatus
+  type LaundryServiceStatus,
+  type LaundryServiceSummaryExtra
 } from '@shared/interfaces/laundry-service.interface';
 import {
   LaundryPendingQueueTexts,
@@ -31,6 +32,7 @@ import {
 import { getLaundryStatusSeverity } from '@shared/utils/color.util';
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined;
+type ConfirmationDialogMode = 'complete' | 'error';
 
 @Component({
   selector: 'app-pending-queue',
@@ -61,8 +63,13 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
   readonly items = signal<LaundryServiceCompact[]>([]);
   readonly loading = signal<boolean>(true);
   readonly updatingStatus = signal<boolean>(false);
+  readonly preparingConfirmation = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
   readonly total = computed(() => this.items().length);
+  readonly confirmationDialogMode = signal<ConfirmationDialogMode>('complete');
+  readonly confirmDialogHasNote = signal<boolean>(true);
+  readonly confirmDialogExtras = signal<LaundryServiceSummaryExtra[]>([]);
+  readonly confirmDialogHasExtras = computed(() => this.confirmDialogExtras().length > 0);
 
   readonly connected$;
   readonly reconnecting$;
@@ -97,27 +104,28 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
   }
 
   confirmCompleteStep(item: LaundryServiceCompact): void {
-    const clientName = item.client?.name || this.texts.unnamedClient;
-    const currentStatusLabel = this.getStatusLabel(item.status);
-    const nextStatusLabel = this.getStatusLabel('READY_FOR_DELIVERY');
+    this.preparingConfirmation.set(true);
+    this.errorMessage.set(null);
+    this.loader?.open('Cargando extras del servicio...');
 
-    this.confirmationService.confirm({
-      header: 'Confirmar cambio de estado',
-      message: `Vas a completar el paso actual del servicio #${item.id} del cliente ${clientName}. Su estado actual es ${currentStatusLabel} y pasará a ${nextStatusLabel}.`,
-      closable: true,
-      closeOnEscape: true,
-      icon: 'pi pi-check-circle',
-      rejectButtonProps: {
-        label: 'Cancelar',
-        severity: 'secondary',
-        outlined: true,
+    this.laundryService.getSummary(item.id).pipe(
+      finalize(() => {
+        this.preparingConfirmation.set(false);
+        this.loader?.close();
+      })
+    ).subscribe({
+      next: (summary) => {
+        if (!this.hasAssociatedServices(summary)) {
+          this.showMissingServicesError(item);
+          return;
+        }
+
+        const hasNote = typeof summary.laundry_service.notes === 'string'
+          && summary.laundry_service.notes.trim().length > 0;
+        this.openCompleteStepConfirmation(item, summary.extras ?? [], hasNote);
       },
-      acceptButtonProps: {
-        label: 'Sí, completar',
-        severity: 'warn',
-      },
-      accept: () => {
-        this.updateCurrentStatus(item.id, 'READY_FOR_DELIVERY');
+      error: () => {
+        this.errorMessage.set('No se pudieron cargar los extras del servicio para confirmar el cambio de estado.');
       }
     });
   }
@@ -160,6 +168,7 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
   private updateCurrentStatus(id: number, status: LaundryServiceStatus): void {
     this.updatingStatus.set(true);
     this.errorMessage.set(null);
+    this.clearConfirmationContext();
     this.loader?.open('Actualizando estado del servicio...');
 
     this.laundryService.updateStatus(id, status).pipe(
@@ -234,5 +243,83 @@ export class PendingQueueComponent implements OnInit, OnDestroy {
 
       return a.id - b.id;
     });
+  }
+
+  private openCompleteStepConfirmation(
+    item: LaundryServiceCompact,
+    extras: LaundryServiceSummaryExtra[],
+    hasNote: boolean
+  ): void {
+    const clientName = item.client?.name || this.texts.unnamedClient;
+    const currentStatusLabel = this.getStatusLabel(item.status);
+    const nextStatusLabel = this.getStatusLabel('READY_FOR_DELIVERY');
+
+    this.confirmationDialogMode.set('complete');
+    this.confirmDialogHasNote.set(hasNote);
+    this.confirmDialogExtras.set(extras.filter((extra) => this.hasVisibleExtra(extra)));
+
+    this.confirmationService.confirm({
+      header: 'Confirmar cambio de estado',
+      message: `Servicio #${item.id} del cliente ${clientName}.`,
+      closable: true,
+      closeOnEscape: true,
+      icon: 'pi pi-check-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        outlined: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, completar',
+        severity: 'warn',
+      },
+      accept: () => {
+        this.updateCurrentStatus(item.id, 'READY_FOR_DELIVERY');
+      },
+      reject: () => {
+        this.clearConfirmationContext();
+      }
+    });
+  }
+
+  private showMissingServicesError(item: LaundryServiceCompact): void {
+    const clientName = item.client?.name || this.texts.unnamedClient;
+
+    this.confirmationDialogMode.set('error');
+    this.clearConfirmationContext();
+
+    this.confirmationService.confirm({
+      header: 'No se puede completar el paso',
+      message: `El servicio #${item.id} del cliente ${clientName} no tiene ningun servicio asociado.`,
+      closable: true,
+      closeOnEscape: true,
+      icon: 'pi pi-exclamation-triangle',
+      rejectVisible: false,
+      acceptButtonProps: {
+        label: 'Entendido',
+        severity: 'danger',
+      },
+      accept: () => {
+        this.clearConfirmationContext();
+      }
+    });
+  }
+
+  private hasAssociatedServices(summary: {
+    manual_items: unknown[];
+    weight_service_detail: unknown | null;
+  }): boolean {
+    return summary.manual_items.length > 0
+      || summary.weight_service_detail != null;
+  }
+
+  private hasVisibleExtra(extra: LaundryServiceSummaryExtra): boolean {
+    return Number(extra.quantity ?? 0) > 0;
+  }
+
+  private clearConfirmationContext(): void {
+    this.confirmationDialogMode.set('complete');
+    this.confirmDialogHasNote.set(true);
+    this.confirmDialogExtras.set([]);
   }
 }

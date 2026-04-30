@@ -9,6 +9,7 @@
 
   <div class="queue-header__status u-flex-min-w-0 u-mobile-wrap-start flex align-items-center gap-2">
       <p-tag [value]="total().toString()" severity="warn"></p-tag>
+      <p-tag *ngIf="preparingConfirmation()" value="Cargando extras..." severity="contrast"></p-tag>
       <p-tag *ngIf="updatingStatus()" value="Actualizando servicio..." severity="contrast"></p-tag>
       <p-tag
         [value]="(connected$ | async) ? connectionTexts.connected : connectionTexts.disconnected"
@@ -46,10 +47,6 @@
               [value]="getServiceLabel(item.service_label)"
               [severity]="getServiceSeverity(item.service_label)"
             ></p-tag>
-            <p-tag
-              [value]="getStatusLabel(item.status)"
-              [severity]="getSeverity(item.status)"
-            ></p-tag>
           </div>
         </div>
 
@@ -76,7 +73,7 @@
           class="queue-item__action u-mobile-full"
           severity="warn"
           size="small"
-          [disabled]="updatingStatus()"
+          [disabled]="updatingStatus() || preparingConfirmation()"
           (click)="confirmCompleteStep(item)"
         ></button>
 
@@ -88,7 +85,7 @@
           class="queue-item__action u-mobile-full"
           severity="secondary"
           size="small"
-          [disabled]="updatingStatus()"
+          [disabled]="updatingStatus() || preparingConfirmation()"
           (click)="openDetail(item)"
         ></button>
       </article>
@@ -103,4 +100,56 @@
 <app-loader-dialog></app-loader-dialog>
 <p-confirmdialog
   [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
-  [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }" />
+  [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }">
+  <ng-template pTemplate="message" let-message>
+    <div class="queue-confirmation">
+      <ng-container *ngIf="confirmationDialogMode() === 'error'; else completionContent">
+        <p class="queue-confirmation__summary m-0">{{ message.message }}</p>
+        <div class="queue-confirmation__empty queue-confirmation__empty--error">
+          <p class="queue-confirmation__empty-title m-0">No puedes proceder todavía.</p>
+          <p class="queue-confirmation__empty-copy m-0">
+            Este servicio no tiene servicios asociados en su captura comercial.
+          </p>
+          <p class="queue-confirmation__empty-copy m-0">
+            Antes de completar el paso debes registrar al menos un servicio para que el proceso tenga informacion comercial valida.
+          </p>
+        </div>
+      </ng-container>
+
+      <ng-template #completionContent>
+        <p class="queue-confirmation__summary m-0">{{ message.message }}</p>
+
+        <div class="queue-confirmation__panel">
+          <p class="queue-confirmation__panel-title m-0">Antes de continuar, asegúrate de:</p>
+          <ul class="queue-confirmation__checklist m-0">
+            <li *ngIf="!confirmDialogHasNote()">
+              Haber agregado cualquier nota importante.
+            </li>
+            <li>
+              Haber registrado todos los servicios o productos extras.
+            </li>
+          </ul>
+        </div>
+
+        <div class="queue-confirmation__section">
+          <p class="queue-confirmation__section-title m-0">Extras actuales en este servicio:</p>
+
+          <div *ngIf="confirmDialogHasExtras(); else noExtrasWarning" class="queue-confirmation__chips">
+            <span *ngFor="let extra of confirmDialogExtras()" class="queue-confirmation__chip">
+              {{ extra.extra_name }} &nbsp;<span *ngIf="extra.quantity > 1">x{{ extra.quantity }}</span>
+            </span>
+          </div>
+        </div>
+
+        <ng-template #noExtrasWarning>
+          <div class="queue-confirmation__empty">
+            <p class="queue-confirmation__empty-title m-0">Este servicio no tiene extras agregados.</p>
+            <p class="queue-confirmation__empty-copy m-0">
+              Si no vas a agregar extras como remojo, perlitas de olor u otros adicionales, confirma si deseas completar el paso de todos modos.
+            </p>
+          </div>
+        </ng-template>
+      </ng-template>
+    </div>
+  </ng-template>
+</p-confirmdialog>
