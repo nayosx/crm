@@ -20,11 +20,21 @@ export class WorkSessionsApiService {
   private readonly usersUrl = `${environment.API}/users`;
 
   start(): Observable<WorkSessionMutationResponse> {
-    return this.http.post<WorkSessionMutationResponse>(`${this.baseUrl}/start`, {});
+    const idempotencyKey = crypto.randomUUID();
+    return this.http.post<WorkSessionMutationResponse>(
+      `${this.baseUrl}/start`,
+      {},
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
   }
 
   end(): Observable<WorkSessionMutationResponse> {
-    return this.http.post<WorkSessionMutationResponse>(`${this.baseUrl}/end`, {});
+    const idempotencyKey = crypto.randomUUID();
+    return this.http.post<WorkSessionMutationResponse>(
+      `${this.baseUrl}/end`,
+      {},
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
   }
 
   latest(): Observable<WorkSessionLatestResponse> {
@@ -38,7 +48,12 @@ export class WorkSessionsApiService {
   }
 
   forceEnd(payload: { user_id: number; comments: string }): Observable<WorkSessionMutationResponse> {
-    return this.http.post<WorkSessionMutationResponse>(`${this.baseUrl}/force_end`, payload);
+    const idempotencyKey = crypto.randomUUID();
+    return this.http.post<WorkSessionMutationResponse>(
+      `${this.baseUrl}/force_end`,
+      payload,
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
   }
 
   report(filters: { start_date: string; end_date: string; user_id?: number }): Observable<WorkSessionReportResponse> {

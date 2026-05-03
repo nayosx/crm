@@ -23,6 +23,7 @@
           <th>Tipo</th>
           <th>Monto</th>
           <th>Cliente /<br />Proveedor</th>
+          <th>Acciones</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-t>
@@ -40,11 +41,14 @@
             </div>
           </td>
           <td>{{ t.client_name || t.category_name || '-'}} </td>
+          <td>
+            <button pButton icon="pi pi-pencil" label="Editar" class="p-button-sm p-button-secondary" (click)="onEdit(t.id)" type="button"></button>
+          </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6">No se encontraron transacciones.</td>
+          <td colspan="7">No se encontraron transacciones.</td>
         </tr>
       </ng-template>
     </p-table>

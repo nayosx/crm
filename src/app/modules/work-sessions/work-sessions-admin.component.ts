@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, ViewEncapsulation, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -26,6 +27,7 @@ import { WorkSessionsBaseComponent } from './work-sessions-base.component';
     CommonModule,
     FormsModule,
     BackButtonComponent,
+    LoaderDialogComponent,
     ButtonModule,
     CardModule,
     ChipModule,
@@ -48,6 +50,26 @@ import { WorkSessionsBaseComponent } from './work-sessions-base.component';
   encapsulation: ViewEncapsulation.None
 })
 export class WorkSessionsAdminComponent extends WorkSessionsBaseComponent implements OnInit, OnDestroy {
+  @ViewChild(LoaderDialogComponent) loader?: LoaderDialogComponent;
+
+  constructor() {
+    super();
+
+    effect(() => {
+      const isLoading = this.forceCloseLoading();
+      const text = 'Cerrando jornada...';
+
+      queueMicrotask(() => {
+        if (isLoading) {
+          this.loader?.open(text);
+          return;
+        }
+
+        this.loader?.close();
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.initBase({ users: true, history: true, report: true });
   }

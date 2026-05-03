@@ -55,7 +55,14 @@
 
   <div class="flex flex-column align-items-start gap-2">
     <label for="amount">Monto</label>
-    <input id="amount" pInputText formControlName="amount" type="number" min="0.01" class="w-full" />
+    <app-decimal-input
+      id="amount"
+      [value]="form.get('amount')?.value"
+      (valueChange)="form.get('amount')?.setValue($event)"
+      [disabled]="submitting"
+      placeholder="0.00"
+      inputClass="w-full">
+    </app-decimal-input>
 
     <small *ngIf="form.get('amount')?.errors?.['required'] && form.get('amount')?.touched" class="text-danger">
       Monto requerido
@@ -70,7 +77,7 @@
     </small>
   </div>
 
-  <p-card *ngIf="selectedPaymentType" header="Resumen de cobro" styleClass="surface-50 border-1 surface-border transaction-charge-card">
+  <p-card *ngIf="selectedPaymentType && form.get('transaction_type')?.value === 'IN'" header="Resumen de cobro" styleClass="surface-50 border-1 surface-border transaction-charge-card">
     <div class="flex flex-column gap-2">
       <div class="flex justify-content-between gap-3">
         <span>Monto a registrar</span>

@@ -88,6 +88,10 @@ export class TransactionComponent {
     this.router.navigate(['/transactions/create']);
   }
 
+  onEdit(id: number): void {
+    this.router.navigate(['/transactions', id, 'edit']);
+  }
+
   getPaymentTypeIcon(paymentTypeName?: string | null): string {
     const normalized = this.normalizePaymentTypeName(paymentTypeName);
 

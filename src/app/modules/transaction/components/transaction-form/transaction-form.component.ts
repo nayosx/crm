@@ -18,6 +18,7 @@ import { UserData } from '@shared/interfaces/auth.interface';
 import { TransactionService } from '@shared/services/transaction/transaction.service';
 import { Router } from '@angular/router';
 import { LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
+import { DecimalInputComponent } from '@shared/components/decimal-input/decimal-input.component';
 
 @Component({
   selector: 'app-transaction-form',
@@ -34,7 +35,8 @@ import { LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.uti
     EditorModule,
     SelectButtonModule,
     DialogModule,
-    CurrencyPipe
+    CurrencyPipe,
+    DecimalInputComponent,
   ],
   templateUrl: './transaction-form.component.html',
   styleUrl: './transaction-form.component.scss',

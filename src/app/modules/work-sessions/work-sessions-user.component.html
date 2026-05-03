@@ -75,6 +75,7 @@
                   label="Finalizar jornada"
                   icon="pi pi-stop"
                   [disabled]="!canEndSession()"
+                  [loading]="currentSessionMutating()"
                   (click)="endSession()"
                 ></button>
                 <button
@@ -92,6 +93,7 @@
                   label="Iniciar jornada"
                   icon="pi pi-play"
                   [disabled]="!canStartSession()"
+                  [loading]="currentSessionMutating()"
                   (click)="startSession()"
                 ></button>
               }
