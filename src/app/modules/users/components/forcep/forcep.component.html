@@ -1,0 +1,10 @@
+<h3 class="mb-2">{{username}}</h3>
+<form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
+    <div class="flex flex-column align-items-start gap-2">
+    <label>Nueva contraseña</label>
+    <input type="password" pInputText formControlName="new_password" class="w-full" />
+    </div>
+    <div class="mt-2">
+    <button pButton type="submit" label="Actualizar" [disabled]="form.invalid"></button>
+    </div>
+</form>

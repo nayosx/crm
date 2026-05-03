@@ -1,0 +1,59 @@
+<form #addressForm="ngForm" (ngSubmit)="onSubmit()" class="flex flex-column gap-3">
+  <input
+    pInputText
+    type="text"
+    placeholder="Dirección"
+    [(ngModel)]="model.address_text"
+    name="address_text"
+    required
+  />
+
+  <input
+    pInputText
+    type="text"
+    placeholder="Enlace al mapa"
+    [(ngModel)]="model.map_link"
+    (blur)="extractLatLngFromMapLink()"
+    name="map_link"
+  />
+
+  <input
+    pInputText
+    type="text"
+    placeholder="Latitud"
+    [(ngModel)]="model.latitude"
+    name="latitude"
+  />
+
+  <input
+    pInputText
+    type="text"
+    placeholder="Longitud"
+    [(ngModel)]="model.longitude"
+    name="longitude"
+  />
+
+  <input
+    pInputText
+    type="text"
+    placeholder="Ruta de imagen"
+    [(ngModel)]="model.image_path"
+    name="image_path"
+  />
+
+  <div class="flex align-items-center gap-2">
+    <label>Es principal</label>
+    <p-inputSwitch
+      [(ngModel)]="model.is_primary"
+      name="is_primary"
+    ></p-inputSwitch>
+  </div>
+
+  <button
+    pButton
+    type="submit"
+    label="Guardar Dirección"
+    icon="pi pi-save"
+    [disabled]="loading || !clientId"
+  ></button>
+</form>

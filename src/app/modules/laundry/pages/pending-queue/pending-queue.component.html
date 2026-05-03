@@ -1,0 +1,155 @@
+<div class="queue-header u-flex-min-w-0 u-mobile-stack-left flex align-items-center justify-content-between gap-3 px-4 py-4 border-bottom-1 surface-border">
+  <div class="queue-header__copy u-flex-min-w-0 u-mobile-full-left flex flex-column gap-2">
+    <div class="flex align-items-center gap-2">
+      <app-back-button [fallbackRoute]="'/laundry'" />
+      <i class="pi pi-sort-alt text-yellow-600 text-xl"></i>
+      <h2 class="m-0">{{ texts.title }}</h2>
+    </div>
+  </div>
+
+  <div class="queue-header__status u-flex-min-w-0 u-mobile-wrap-start flex align-items-center gap-2">
+      <p-tag [value]="total().toString()" severity="warn"></p-tag>
+      <p-tag *ngIf="preparingConfirmation()" value="Cargando extras..." severity="contrast"></p-tag>
+      <p-tag *ngIf="updatingStatus()" value="Actualizando servicio..." severity="contrast"></p-tag>
+      <p-tag
+        [value]="(connected$ | async) ? connectionTexts.connected : connectionTexts.disconnected"
+        [severity]="(connected$ | async) ? 'success' : 'danger'"
+      ></p-tag>
+      <p-tag *ngIf="reconnecting$ | async" [value]="connectionTexts.reconnecting" severity="warn"></p-tag>
+  </div>
+</div>
+
+<div class="queue-message px-4 py-3">
+  <p-message *ngIf="errorMessage()" severity="error" [text]="errorMessage() ?? ''"></p-message>
+</div>
+
+<div *ngIf="loading()" class="queue-loading-shell px-4 pb-4">
+  <div class="flex justify-content-center py-6 border-round-xl surface-card shadow-2">
+    <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+  </div>
+</div>
+
+<div *ngIf="!loading()" class="queue-list-shell px-4 pb-4">
+  <div class="row">
+    <div
+      *ngFor="let item of items(); trackBy: trackByLaundryId"
+      [class]="getItemColumnClass()"
+    >
+      <article class="queue-item u-flex-min-w-0 border-1 surface-border surface-card border-round-lg px-3 py-3 shadow-1">
+        <div class="queue-item__top u-flex-min-w-0 u-mobile-wrap flex align-items-start justify-content-between gap-3">
+          <div class="u-flex-min-w-0 u-flex-1-auto">
+            <p class="m-0 text-sm text-color-secondary">#{{ item.id }}</p>
+            <h3 class="m-0 mt-2 text-lg u-text-break">{{ item.client.name || texts.unnamedClient }}</h3>
+          </div>
+
+          <div class="queue-item__tags u-mobile-full flex flex-wrap gap-2">
+            <p-tag
+              [value]="getServiceLabel(item.service_label)"
+              [severity]="getServiceSeverity(item.service_label)"
+            ></p-tag>
+          </div>
+        </div>
+
+        <div class="flex flex-column gap-2">
+          <div class="queue-item__meta text-sm text-color-secondary flex align-items-start gap-2">
+            <i class="pi pi-map-marker mt-1" aria-hidden="true"></i>
+            <div class="u-flex-min-w-0 u-flex-1-auto">
+              <p class="m-0 u-text-break">{{ (item.client_address?.address_text || texts.noAddress) | truncate:50 }}</p>
+            </div>
+          </div>
+          <div class="queue-item__meta text-sm text-color-secondary flex align-items-start gap-2">
+            <i class="pi pi-id-card mt-1" aria-hidden="true"></i>
+            <div class="u-flex-min-w-0 u-flex-1-auto">
+              <p class="m-0 u-text-break">{{ item.created_by_user.name || texts.systemUser }}</p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          pButton
+          type="button"
+          label="Completar paso"
+          icon="pi pi-check"
+          class="queue-item__action u-mobile-full"
+          severity="warn"
+          size="small"
+          [disabled]="updatingStatus() || preparingConfirmation()"
+          (click)="confirmCompleteStep(item)"
+        ></button>
+
+        <button
+          pButton
+          type="button"
+          [label]="texts.openDetail"
+          icon="pi pi-arrow-right"
+          class="queue-item__action u-mobile-full"
+          severity="secondary"
+          size="small"
+          [disabled]="updatingStatus() || preparingConfirmation()"
+          (click)="openDetail(item)"
+        ></button>
+      </article>
+    </div>
+  </div>
+
+  <div *ngIf="items().length === 0" class="text-center py-5 text-color-secondary border-round-xl surface-card shadow-2">
+    {{ texts.empty }}
+  </div>
+</div>
+
+<app-loader-dialog></app-loader-dialog>
+<p-confirmdialog
+  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [breakpoints]="{ '640px': 'calc(100vw - 2rem)' }">
+  <ng-template pTemplate="message" let-message>
+    <div class="queue-confirmation">
+      <ng-container *ngIf="confirmationDialogMode() === 'error'; else completionContent">
+        <p class="queue-confirmation__summary m-0">{{ message.message }}</p>
+        <div class="queue-confirmation__empty queue-confirmation__empty--error">
+          <p class="queue-confirmation__empty-title m-0">No puedes proceder todavía.</p>
+          <p class="queue-confirmation__empty-copy m-0">
+            Este servicio no tiene servicios asociados en su captura comercial.
+          </p>
+          <p class="queue-confirmation__empty-copy m-0">
+            Antes de completar el paso debes registrar al menos un servicio para que el proceso tenga informacion comercial valida.
+          </p>
+        </div>
+      </ng-container>
+
+      <ng-template #completionContent>
+        <p class="queue-confirmation__summary m-0">{{ message.message }}</p>
+
+        <div class="queue-confirmation__panel">
+          <p class="queue-confirmation__panel-title m-0">Antes de continuar, asegúrate de:</p>
+          <ul class="queue-confirmation__checklist m-0">
+            <li *ngIf="!confirmDialogHasNote()">
+              Haber agregado cualquier nota importante.
+            </li>
+            <li>
+              Haber registrado todos los servicios o productos extras.
+            </li>
+          </ul>
+        </div>
+
+        <div class="queue-confirmation__section">
+          <p class="queue-confirmation__section-title m-0">Extras actuales en este servicio:</p>
+
+          <div *ngIf="confirmDialogHasExtras(); else noExtrasWarning" class="queue-confirmation__chips">
+            <span *ngFor="let extra of confirmDialogExtras()" class="queue-confirmation__chip">
+              {{ extra.extra_name }} &nbsp;<span *ngIf="extra.quantity > 1">x{{ extra.quantity }}</span>
+            </span>
+          </div>
+        </div>
+
+        <ng-template #noExtrasWarning>
+          <div class="queue-confirmation__empty">
+            <p class="queue-confirmation__empty-title m-0">Este servicio no tiene extras agregados.</p>
+            <p class="queue-confirmation__empty-copy m-0">
+              Si no vas a agregar extras como remojo, perlitas de olor u otros adicionales, confirma si deseas completar el paso de todos modos.
+            </p>
+          </div>
+        </ng-template>
+      </ng-template>
+    </div>
+  </ng-template>
+</p-confirmdialog>

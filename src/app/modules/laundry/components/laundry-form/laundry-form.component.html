@@ -1,0 +1,205 @@
+<form *ngIf="form" [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Cliente</label>
+    @if (!initialData?.id) {
+    <button pButton label="Seleccionar Cliente" icon="pi pi-user" class="p-button-sm" (click)="openClientDialog()"
+      type="button"></button>
+    }
+    <div *ngIf="selectedClientName" class="mt-2">
+      <p-tag severity="info" [value]="selectedClientName"></p-tag>
+    </div>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Dirección</label>
+    <button pButton label="Seleccionar Dirección" icon="pi pi-map-marker"
+      (click)="onChangeAddress(form.get('client_id')?.value)" class="p-button-sm" severity="secondary" type="button"
+      [disabled]="!form.get('client_id')?.value"></button>
+    <div *ngIf="selectedAddress" class="mt-2">
+      <p-tag severity="secondary" [value]="selectedAddress"></p-tag>
+    </div>
+  </div>
+
+  @if(!isPending) {
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Fecha de recolección</label>
+    <p-tag severity="secondary">
+      {{ scheduledPickupDate | date: 'dd MMM yyyy' }} •
+      {{ scheduledPickupDate | date: 'hh:mm a' }}
+    </p-tag>
+  </div>
+
+  } @else {
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Fecha de recolección</label>
+    <p-datepicker formControlName="pickup_date" dateFormat="yy-mm-dd" showIcon [showOnFocus]="false"></p-datepicker>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Hora de recolección</label>
+    <p-datepicker formControlName="pickup_time" [showTime]="true" [timeOnly]="true" hourFormat="12" [stepMinute]="15"
+      showIcon ></p-datepicker>
+  </div>
+  }
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Tipo de servicio</label>
+    <p-select class="w-full" formControlName="service_label"
+      [options]="[{ label: 'Normal', value: 'NORMAL' }, { label: 'Express', value: 'EXPRESS' }]" optionLabel="label"
+      optionValue="value" placeholder="Selecciona un tipo">
+    </p-select>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Estado</label>
+    <p-select class="w-full" formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value"
+      placeholder="Selecciona un estado">
+    </p-select>
+    <small *ngIf="form.get('status')?.disabled" class="text-muted">
+      Este campo solo se puede modificar luego de crear el servicio.
+    </small>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Peso (lb)</label>
+    <input pInputText class="w-full" type="number" min="0" step="0.01" formControlName="weight_lb" placeholder="18.5">
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Notas generales</label>
+    <textarea pTextarea class="w-full" rows="4" formControlName="notes"
+      placeholder="Observaciones del servicio"></textarea>
+  </div>
+
+  <div class="flex flex-column gap-3" formArrayName="items">
+    <div class="flex justify-content-between align-items-center">
+      <label class="m-0">Prendas recibidas</label>
+      <button pButton type="button" icon="pi pi-plus" label="Agregar prenda" class="p-button-sm"
+        severity="secondary" (click)="addItem()"></button>
+    </div>
+
+    @for(item of itemsArray.controls; track $index) {
+    <div class="border-1 surface-border border-round p-3" [formGroupName]="$index">
+      <div class="grid">
+        <div class="col-12 md:col-6">
+          <label>Tipo de prenda</label>
+          <p-select class="w-full" formControlName="garment_type_id" [options]="garmentTypes" optionLabel="name"
+            optionValue="id" placeholder="Selecciona una prenda" (onChange)="onGarmentTypeChange($index)">
+          </p-select>
+        </div>
+
+        <div class="col-12 md:col-3">
+          <label>Cantidad</label>
+          <input pInputText class="w-full" type="number" min="1" step="1" formControlName="quantity">
+        </div>
+
+        <div class="col-12 md:col-3">
+          <label>Unidad</label>
+          <p-select class="w-full" formControlName="unit_type" [options]="unitTypeOptions" optionLabel="label"
+            optionValue="value" placeholder="Unidad">
+          </p-select>
+        </div>
+
+        <div class="col-12 md:col-4">
+          <label>Precio unitario</label>
+          <input pInputText class="w-full" type="number" min="0" step="0.01" formControlName="unit_price">
+        </div>
+
+        <div class="col-12 md:col-8">
+          <label>Notas</label>
+          <input pInputText class="w-full" type="text" formControlName="notes" placeholder="Detalle opcional">
+        </div>
+      </div>
+
+      <div class="flex justify-content-end">
+        <button pButton type="button" icon="pi pi-trash" label="Eliminar" class="p-button-sm"
+          severity="danger" text (click)="removeItem($index)"></button>
+      </div>
+    </div>
+    }
+  </div>
+
+  <div class="flex flex-column gap-3" formArrayName="extras">
+    <div class="flex justify-content-between align-items-center">
+      <label class="m-0">Extras</label>
+      <button pButton type="button" icon="pi pi-plus" label="Agregar extra" class="p-button-sm"
+        severity="secondary" (click)="addExtra()"></button>
+    </div>
+
+    @for(extra of extrasArray.controls; track $index) {
+    <div class="border-1 surface-border border-round p-3" [formGroupName]="$index">
+      <div class="grid">
+        <div class="col-12 md:col-6">
+          <label>Extra</label>
+          <p-select class="w-full" formControlName="service_extra_type_id" [options]="extraTypes" optionLabel="name"
+            optionValue="id" placeholder="Selecciona un extra" (onChange)="onExtraTypeChange($index)">
+          </p-select>
+        </div>
+
+        <div class="col-12 md:col-3">
+          <label>Cantidad</label>
+          <input pInputText class="w-full" type="number" min="1" step="1" formControlName="quantity">
+        </div>
+
+        <div class="col-12 md:col-3">
+          <label>Precio unitario</label>
+          <input pInputText class="w-full" type="number" min="0" step="0.01" formControlName="unit_price">
+        </div>
+
+        <div class="col-12">
+          <label>Notas</label>
+          <input pInputText class="w-full" type="text" formControlName="notes" placeholder="Detalle opcional">
+        </div>
+      </div>
+
+      <div class="flex justify-content-end">
+        <button pButton type="button" icon="pi pi-trash" label="Eliminar" class="p-button-sm"
+          severity="danger" text (click)="removeExtra($index)"></button>
+      </div>
+    </div>
+    }
+  </div>
+
+  @if(canCreateTransaction) {
+  <div class="flex flex-column align-items-start gap-2">
+    <label>Transacción</label>
+
+    <ng-container *ngIf="isEditMode && !createdTransaction && canCreateTransaction">
+      <button pButton icon="pi pi-plus" label="Crear Transacción" type="button" (click)="openTransactionDialog()"
+        [disabled]="!initialData?.id">
+      </button>
+    </ng-container>
+
+    <div *ngIf="createdTransaction" class="p-3 border-1 surface-border border-round w-full">
+      <div class="text-sm mb-2 text-primary font-medium">Transacción registrada</div>
+      <div class="flex flex-column gap-1">
+        <div><strong>ID:</strong> {{ createdTransaction.id }}</div>
+        <div><strong>Monto:</strong> {{ createdTransaction.amount | currency }}</div>
+        <div><strong>Tipo de pago:</strong> {{ createdTransaction.payment_type_name || 'No disponible' }}</div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <div class="flex flex-column align-items-start gap-2">
+    <button pButton type="submit" label="Guardar" [disabled]="form.invalid"></button>
+  </div>
+</form>
+
+<p-dialog header="Seleccione Cliente" [(visible)]="displayClientDialog" [modal]="true" [style]="{ width: '40rem' }">
+  <app-client-list (clientSelected)="onClientSelected($event)" [showActions]="false" *ngIf="displayClientDialog" />
+</p-dialog>
+
+<p-dialog header="Seleccione Dirección" [(visible)]="displayAddressDialog" [modal]="true" [style]="{ width: '40rem' }">
+  <app-client-address-list [addresses]="addresses" [loading]="isLoading" [selectionMode]="true"
+    (select)="onAddressSelected($event)" />
+</p-dialog>
+
+<app-laundry-transaction-dialog
+  [(visible)]="displayTransactionDialog"
+  [serviceId]="initialData?.id ?? null"
+  [client]="initialData?.client"
+  [prefill]="transactionPrefill"
+  [transactionId]="createdTransaction?.id ?? initialData?.transaction?.id ?? null"
+  (transactionLinked)="onTransactionLinked($event)">
+</app-laundry-transaction-dialog>

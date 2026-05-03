@@ -1,0 +1,122 @@
+<div class="flex flex-wrap align-items-center justify-content-end gap-2 p-3 pb-2 pr-0">
+  <div class="flex align-items-center gap-2 flex-wrap">
+    <label for="laundry-status-per-page" class="text-sm text-color-secondary">Mostrar</label>
+    <p-select
+      inputId="laundry-status-per-page"
+      [options]="perPageOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="perPage()"
+      (ngModelChange)="onPerPageChange($event)"
+      [style]="{ width: '10rem' }"
+    ></p-select>
+  </div>
+
+  <button
+    pButton
+    type="button"
+    icon="pi pi-refresh"
+    label="Actualizar"
+    severity="secondary"
+    [outlined]="true"
+    [loading]="loading()"
+    (click)="refresh()"
+  ></button>
+</div>
+
+<p-dataView
+  [value]="items()"
+  [paginator]="dataViewPaginatorEnabled()"
+  [rows]="dataViewRows()"
+  [totalRecords]="total()"
+  [loading]="loading()"
+  [pageLinks]="2"
+  [lazy]="dataViewPaginatorEnabled()"
+  layout="list"
+  (onLazyLoad)="onLazyLoad($event)"
+>
+
+  <ng-template #list let-items>
+    <div class="p-dataview-list p-3">
+        <div
+          class="border-bottom-1 surface-border py-3 px-2 rounded-lg"
+          [ngClass]="{ 'mt-3': !first }"
+          (click)="handleCardClick(item)"
+          *ngFor="let item of items; let first = first; trackBy: trackById"
+        >
+          <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3">
+            <div class="flex flex-column gap-1">
+              <div class="font-bold text-lg text-color">
+                <em class="pi pi-user mr-2"></em> {{ item.client?.name || 'Cliente no definido' }}
+              </div>
+              <div class="text-sm text-secondary">
+                <em class="pi pi-map-marker mr-2"></em> {{ item.client_address.address_text || 'Dirección no definida' }}
+              </div>
+
+              @if(status === 'READY_FOR_DELIVERY') {
+                @if(item.has_transaction) {
+                  <div class="text-sm text-green-500">
+                    <em class="pi pi-dollar mr-2"></em> Se ha registrado pago
+                  </div>
+                } @else {
+                  <div class="text-sm text-red-500">
+                    <em class="pi pi-dollar mr-2"></em> NO SE HA REGISTRADO PAGO
+                  </div>
+                }
+              }
+
+              <div class="text-sm text-secondary">
+                <em class="pi pi-calendar-clock mr-2"></em> {{ item.scheduled_pickup_at | date: 'short' }}
+              </div>
+              <div class="text-sm text-300">
+                <em class="pi pi-user-edit mr-2 "></em> {{ item.created_by_user.name || 'User System' }}
+              </div>
+              @if (item.pending_order) {
+                <div class="text-sm text-secondary">
+                  <em class="pi pi-sort-numeric-up mr-2"></em> Orden: {{ item.pending_order }}
+                </div>
+              }
+            </div>
+            <div>
+                @if(item.service_label === 'NORMAL') {
+                    <p-tag [value]="item.service_label" severity="secondary"></p-tag>
+                } @else {
+                    <p-tag [value]="item.service_label" severity="success"></p-tag>
+                }
+            </div>
+          </div>
+
+          @if (showActionButtons) {
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button
+                pButton
+                type="button"
+                icon="pi pi-eye"
+                label="Ver detalles"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="actionsDisabled"
+                (click)="onViewDetail(item); $event.stopPropagation()"
+              ></button>
+
+              <button
+                pButton
+                type="button"
+                icon="pi pi-check-circle"
+                label="Finalizar"
+                severity="success"
+                [loading]="actionLoadingId === item.id"
+                [disabled]="actionsDisabled"
+                (click)="onFinalize(item); $event.stopPropagation()"
+              ></button>
+            </div>
+          }
+        </div>
+    </div>
+  </ng-template>
+  <ng-template #emptymessage>
+    <div class="text-center p-5">
+      <p>No hay servicios disponibles para este estado.</p>
+    </div>
+  </ng-template>
+</p-dataView>

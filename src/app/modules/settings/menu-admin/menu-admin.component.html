@@ -1,0 +1,200 @@
+<section class="p-4 flex flex-column gap-4">
+  <p-toast />
+  <p-confirmdialog [style]="{ width: 'calc(100vw - 2rem)', maxWidth: '32rem' }" />
+  <app-loader-dialog />
+
+  <div class="flex flex-column gap-2 lg:flex-row lg:justify-content-between lg:align-items-center">
+    <div>
+      <p class="m-0 text-sm text-500">Configuraciones</p>
+      <h1 class="m-0">Menus</h1>
+      <p class="mt-2 mb-0 text-600">
+        Administra menus base del sistema y su jerarquia.
+      </p>
+    </div>
+
+    <div class="flex gap-2">
+      <button
+        pButton
+        type="button"
+        label="Recargar"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="loading || saving"
+        (click)="loadMenus()"
+      ></button>
+      <button
+        pButton
+        type="button"
+        icon="pi pi-plus"
+        label="Nuevo menu"
+        [disabled]="loading || saving"
+        (click)="openCreateDialog()"
+      ></button>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="p-3 border-1 border-red-300 border-round bg-red-50 text-red-700">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <div class="surface-card border-round shadow-1 p-3">
+    <p-table
+      [value]="menus"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="10"
+      dataKey="id"
+      responsiveLayout="scroll"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Label</th>
+          <th>Key</th>
+          <th>Path</th>
+          <th>Padre</th>
+          <th>Orden</th>
+          <th>Sidebar</th>
+          <th style="width: 10rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-menu>
+        <tr>
+          <td>{{ menu.label }}</td>
+          <td><code>{{ menu.key }}</code></td>
+          <td>{{ menu.path || '-' }}</td>
+          <td>{{ getParentLabel(menu.parent_id) }}</td>
+          <td>{{ menu.order }}</td>
+          <td>
+            <p-tag
+              [value]="menu.show_in_sidebar ? 'Visible' : 'Oculto'"
+              [severity]="menu.show_in_sidebar ? 'success' : 'secondary'"
+            />
+          </td>
+          <td>
+            <div class="flex gap-2">
+              <button
+                pButton
+                type="button"
+                icon="pi pi-pencil"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="saving || deletingId === menu.id"
+                (click)="openEditDialog(menu)"
+              ></button>
+              <button
+                pButton
+                type="button"
+                icon="pi pi-trash"
+                severity="danger"
+                [loading]="deletingId === menu.id"
+                [disabled]="saving || deletingId === menu.id"
+                (click)="confirmDelete(menu)"
+              ></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7">No hay menus registrados.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+
+<p-dialog
+  [header]="editingMenuId ? 'Editar menu' : 'Crear menu'"
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '40rem', maxWidth: 'calc(100vw - 2rem)', height: 'calc(100vh - 2rem)' }"
+  [contentStyle]="{ height: '100%', overflow: 'auto' }"
+  (onHide)="closeDialog()"
+>
+  <form [formGroup]="form" class="flex flex-column gap-3" (ngSubmit)="save()">
+    <div class="flex flex-column gap-2">
+      <label for="menuLabel" class="font-medium">Label</label>
+      <input id="menuLabel" pInputText formControlName="label" [disabled]="saving" />
+      @if (form.controls.label.invalid && form.controls.label.touched) {
+        <small class="text-red-500">Label requerido.</small>
+      }
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label for="menuKey" class="font-medium">Key</label>
+      <input id="menuKey" pInputText formControlName="key" [disabled]="saving" />
+      <small class="text-500">Opcional. Backend la genera si no la envias.</small>
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label for="menuPath" class="font-medium">Path</label>
+      <input id="menuPath" pInputText formControlName="path" [disabled]="saving" />
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label for="menuIcon" class="font-medium">Icon</label>
+      <input id="menuIcon" pInputText formControlName="icon" [disabled]="saving" />
+    </div>
+
+    <div class="grid">
+      <div class="col-12 md:col-6">
+        <div class="flex flex-column gap-2">
+          <label for="menuOrder" class="font-medium">Orden</label>
+          <p-inputNumber
+            inputId="menuOrder"
+            formControlName="order"
+            [useGrouping]="false"
+            [min]="0"
+            class="w-full"
+          />
+        </div>
+      </div>
+
+      <div class="col-12 md:col-6">
+        <div class="flex flex-column gap-2">
+          <label for="menuParent" class="font-medium">Padre</label>
+          <p-select
+            inputId="menuParent"
+            [options]="parentOptions"
+            optionLabel="label"
+            optionValue="value"
+            formControlName="parent_id"
+            appendTo="body"
+            class="w-full"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="flex align-items-center gap-2">
+      <p-checkbox inputId="showSidebar" [binary]="true" formControlName="show_in_sidebar" />
+      <label for="showSidebar" class="m-0">Mostrar en sidebar</label>
+    </div>
+
+    <div class="flex justify-content-end gap-2 pt-2">
+      <button
+        pButton
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="saving"
+        (click)="closeDialog()"
+      ></button>
+      <button
+        pButton
+        type="submit"
+        label="Guardar"
+        icon="pi pi-save"
+        [loading]="saving"
+        [disabled]="saving"
+      ></button>
+    </div>
+  </form>
+</p-dialog>

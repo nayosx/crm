@@ -1,0 +1,37 @@
+.transaction-charge-card {
+  border-radius: 1rem;
+}
+
+.transaction-charge-total {
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out, background 180ms ease-out;
+}
+
+.transaction-charge-total-extra {
+  border-color: color-mix(in srgb, var(--p-primary-color) 38%, var(--p-content-border-color));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--p-primary-color) 10%, var(--p-content-background)),
+      var(--p-content-background) 60%
+    );
+  position: relative;
+}
+
+.transaction-charge-total-extra::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.35rem;
+  border-radius: 1rem 0 0 1rem;
+  background: var(--p-primary-color);
+}
+
+.transaction-charge-total-value {
+  font-size: 1.25rem;
+  color: inherit;
+}

@@ -1,0 +1,26 @@
+<p-dialog
+  header="Registrar Transacción"
+  [visible]="visible"
+  (visibleChange)="onVisibleChange($event)"
+  [modal]="true"
+  [style]="{ width: '50rem' }"
+  [closable]="!submitting && !loadingTransaction"
+  [closeOnEscape]="!submitting && !loadingTransaction"
+>
+  <p-message *ngIf="errorMessage" severity="error" [text]="errorMessage"></p-message>
+
+  <div *ngIf="loadingTransaction" class="flex justify-content-center py-6">
+    <p-progress-spinner strokeWidth="4"></p-progress-spinner>
+  </div>
+
+  <app-transaction-form
+    *ngIf="visible && !loadingTransaction"
+    [transaction]="currentTransaction"
+    [client]="client"
+    [prefill]="prefill"
+    [submitLabel]="currentTransaction?.id ? 'Actualizar' : 'Guardar'"
+    [submitting]="submitting"
+    (onSubmit)="onTransactionSubmit($event)"
+  >
+  </app-transaction-form>
+</p-dialog>

@@ -1,0 +1,67 @@
+<section *ngIf="!loading && notes.length" class="u-card-group">
+
+  @for(note of notes; track note.id) {
+  <div class="surface-border responsive-card">
+    <div class="hidden md:flex flex-grow-1 w-full min-w-0 justify-content-between align-items-center">
+      
+      <p-tag [value]="note.status" [class]="statusColorMap[note.status]" severity="secondary" class="text-xs w-max"></p-tag>
+      <div class="flex align-items-center gap-2">
+
+        <small class="flex">
+          {{ note.created_by?.name || '–' }} •
+          {{ note.created_at | date: 'dd MMM yyyy, hh:mm a' }}
+        </small>
+
+        <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger" type="button"
+          (click)="deleteLog(note.id)">
+        </button>
+      </div>
+
+    </div>
+
+    <div class="flex flex-column md:hidden w-full justify-content-center align-items-start">
+      <div class="flex align-items-center justify-content-between w-full gap-2">
+
+        <small class="flex">
+          {{ note.created_by?.name || '–' }} •
+          {{ note.created_at | date: 'dd MMM yyyy, hh:mm a' }}
+        </small>
+  
+        <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger" type="button"
+          (click)="deleteLog(note.id)">
+        </button>
+      </div>
+    </div>
+
+    <div class="html-content mb-4 mt-4" [innerHTML]="note.detail"></div>
+
+    <div class="flex flex-column md:hidden w-full align-items-start mb-2">
+      <p-tag [value]="note.status" [class]="statusColorMap[note.status]" severity="secondary" class="text-xs w-max"></p-tag>
+    </div>
+
+  </div>
+  }
+</section>
+
+<div *ngIf="!loading && !notes.length">
+  <p>No hay notas registradas.</p>
+</div>
+
+
+<p-dialog
+  [(visible)]="isErrorOnDelete"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [showHeader]="false"
+  [style]="{ width: '300px', height: '200px' }"
+  contentStyleClass="flex justify-content-center align-items-center flex-column"
+>
+  <i class="pi pi-times-circle text-red-500 mb-4" [style]="{ 'font-size': '4rem' }"></i>
+  <p class="text-lg font-medium text-center">Error al eliminar la nota.</p>
+  <p>
+    <button (click)="doCloseErrDialog()" pButton pRipple type="button" class="p-button-text">
+      <span class="ml-2">Cerrar</span>
+    </button>
+  </p>
+</p-dialog>

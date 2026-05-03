@@ -1,0 +1,118 @@
+<form *ngIf="form && ready" [formGroup]="form" (ngSubmit)="submit()" class="flex flex-column gap-3">
+  <div class="flex flex-column align-items-start gap-2" *ngIf="!client">
+    <label for="transactionType">Tipo de Transacción</label>
+    <p-selectbutton formControlName="transaction_type" [options]="[
+        { label: 'Ingreso', value: 'IN' },
+        { label: 'Egreso', value: 'OUT' }
+      ]" optionLabel="label" optionValue="value" class="w-full"></p-selectbutton>
+  </div>
+
+  <div *ngIf="form.get('transaction_type')?.value === 'OUT'" class="flex flex-column align-items-start gap-2">
+    <label for="category">Categoría</label>
+    <p-select id="category" [options]="categories" formControlName="category_id" placeholder="Seleccione categoría"
+      optionLabel="category_name" optionValue="id" class="w-full"></p-select>
+    <small *ngIf="form.get('category_id')?.invalid && form.get('category_id')?.touched" class="p-error">
+      Requerido
+    </small>
+  </div>
+
+  <div *ngIf="form.get('transaction_type')?.value === 'IN'" class="flex flex-column align-items-start gap-2">
+    <label>Cliente</label>
+
+    <ng-container *ngIf="client; else clientSelector">
+      <p-tag severity="info" [value]="client.name"></p-tag>
+    </ng-container>
+
+    <ng-template #clientSelector>
+      <button pButton label="Seleccionar Cliente" icon="pi pi-user" (click)="openClientDialog()" type="button"></button>
+      <div *ngIf="selectedClientName" class="p-mt-2">
+        <p-tag severity="info" [value]="selectedClientName"></p-tag>
+      </div>
+      <small *ngIf="form.get('client_id')?.invalid && form.get('client_id')?.touched" class="p-error">
+        Requerido
+      </small>
+    </ng-template>
+  </div>
+
+  <p-dialog header="Seleccione Cliente" [(visible)]="displayClientDialog" [modal]="true" [style]="{ width: '40rem' }">
+    <app-client-list (clientSelected)="onClientSelected($event)" [showActions]="false"></app-client-list>
+  </p-dialog>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label for="paymentType">Forma de Pago</label>
+    <p-select id="paymentType" [options]="paymentTypes" formControlName="payment_type_id"
+      placeholder="Seleccione forma de pago" optionLabel="name" optionValue="id" class="w-full"></p-select>
+    <small *ngIf="form.get('payment_type_id')?.invalid && form.get('payment_type_id')?.touched" class="p-error">
+      Requerido
+    </small>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label for="detail">Detalle</label>
+    <p-editor id="detail" formControlName="detail" [style]="{ height: '200px' }" placeholder="Describa la transacción"
+      class="w-full"></p-editor>
+  </div>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <label for="amount">Monto</label>
+    <input id="amount" pInputText formControlName="amount" type="number" min="0.01" class="w-full" />
+
+    <small *ngIf="form.get('amount')?.errors?.['required'] && form.get('amount')?.touched" class="text-danger">
+      Monto requerido
+    </small>
+
+    <small *ngIf="form.get('amount')?.errors?.['min'] && form.get('amount')?.touched" class="text-danger">
+      El monto debe ser mayor a 0
+    </small>
+
+    <small *ngIf="form.get('amount')?.errors?.['pattern'] && form.get('amount')?.touched" class="text-danger">
+      Máximo dos decimales permitidos
+    </small>
+  </div>
+
+  <p-card *ngIf="selectedPaymentType" header="Resumen de cobro" styleClass="surface-50 border-1 surface-border transaction-charge-card">
+    <div class="flex flex-column gap-2">
+      <div class="flex justify-content-between gap-3">
+        <span>Monto a registrar</span>
+        <strong>{{ baseAmount | currency }}</strong>
+      </div>
+      <div class="flex justify-content-between gap-3">
+        <span>Método de pago</span>
+        <strong>{{ selectedPaymentType.name }}</strong>
+      </div>
+      <div class="flex justify-content-between gap-3">
+        <span>Tipo de recargo</span>
+        <strong>{{ surchargeTypeLabel }}</strong>
+      </div>
+      <div class="flex justify-content-between gap-3">
+        <span>Valor del recargo</span>
+        <strong>
+          <ng-container *ngIf="selectedPaymentType.surcharge_type === 'PERCENT'; else fixedSurchargeValue">
+            {{ surchargeValue }}%
+          </ng-container>
+          <ng-template #fixedSurchargeValue>
+            {{ surchargeValue | currency }}
+          </ng-template>
+        </strong>
+      </div>
+      <div class="flex justify-content-between gap-3" *ngIf="surchargeAmount > 0">
+        <span>Recargo visual</span>
+        <strong>{{ surchargeAmount | currency }}</strong>
+      </div>
+      <p-divider />
+      <div
+        class="flex justify-content-between align-items-center gap-3 transaction-charge-total"
+        [class.transaction-charge-total-extra]="surchargeAmount > 0"
+        [@customerPriceReveal]="customerPriceAnimationState"
+      >
+        <span>Total a pagar</span>
+        <strong class="transaction-charge-total-value">{{ totalToCharge | currency }}</strong>
+      </div>
+      <small class="text-600">Se registrará solo {{ baseAmount | currency }} como monto base.</small>
+    </div>
+  </p-card>
+
+  <div class="flex flex-column align-items-start gap-2">
+    <button pButton type="submit" [label]="submitLabel" [disabled]="form.invalid || submitting" [loading]="submitting" class="p-button-success"></button>
+  </div>
+</form>

@@ -1,0 +1,86 @@
+<div class="bottom-navigation">
+  <div
+    class="bottom-navigation__inner bottom-navigation__inner--mobile"
+    [class.bottom-navigation__inner--mobile-direct]="!mobileUseOverflow">
+    @if (mobileUseOverflow) {
+      @for (action of mobilePrimaryActions(); track action.id) {
+        <p-button
+          type="button"
+          [label]="action.label"
+          [icon]="action.icon"
+          [severity]="action.severity"
+          styleClass="bottom-navigation__button bottom-navigation__button--primary"
+          [loading]="action.loading"
+          [disabled]="action.disabled"
+          (onClick)="handleAction(action.id)">
+        </p-button>
+      }
+
+      @if (hasMobileOverflowActions()) {
+        <p-button
+          type="button"
+          [label]="moreLabel"
+          [icon]="moreIcon"
+          severity="secondary"
+          styleClass="bottom-navigation__button"
+          (onClick)="showMoreDialog = true">
+        </p-button>
+      }
+    } @else {
+      @for (action of mobileDirectActions(); track action.id) {
+        <p-button
+          type="button"
+          [label]="action.label"
+          [icon]="action.icon"
+          [severity]="action.severity"
+          styleClass="bottom-navigation__button"
+          [class.bottom-navigation__button--mobile-icon-only]="action.mobileIconOnly"
+          [loading]="action.loading"
+          [disabled]="action.disabled"
+          (onClick)="handleAction(action.id)">
+        </p-button>
+      }
+    }
+  </div>
+
+  <div class="bottom-navigation__inner bottom-navigation__inner--desktop">
+    @for (action of desktopActions(); track action.id) {
+      <p-button
+        type="button"
+        [label]="action.label"
+        [icon]="action.icon"
+        [severity]="action.severity"
+        styleClass="bottom-navigation__desktop-button"
+        [loading]="action.loading"
+        [disabled]="action.disabled"
+        (onClick)="handleAction(action.id)">
+      </p-button>
+    }
+  </div>
+</div>
+
+@if (mobileUseOverflow) {
+  <p-dialog
+    [(visible)]="showMoreDialog"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: 'min(92vw, 26rem)' }"
+    [header]="dialogHeader"
+    (onHide)="showMoreDialog = false">
+    <div class="bottom-navigation__dialog-list">
+      @for (action of mobileOverflowActions(); track action.id) {
+        <p-button
+          type="button"
+          [label]="action.label"
+          [icon]="action.icon"
+          [severity]="action.severity"
+          styleClass="bottom-navigation__dialog-button"
+          [loading]="action.loading"
+          [disabled]="action.disabled"
+          (onClick)="handleAction(action.id, true)">
+        </p-button>
+      }
+    </div>
+  </p-dialog>
+}

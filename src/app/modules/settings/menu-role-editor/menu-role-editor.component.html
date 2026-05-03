@@ -1,0 +1,90 @@
+<section class="p-4 flex flex-column gap-4">
+  <app-loader-dialog />
+
+  <div>
+    <p class="m-0 text-sm text-500">Configuraciones</p>
+    <h1 class="m-0">Roles y menus</h1>
+    <p class="mt-2 mb-0 text-600">
+      Selecciona un rol, define menus visibles y guarda la configuracion en una sola operacion.
+    </p>
+  </div>
+
+  <div class="flex flex-column gap-3 lg:flex-row lg:align-items-end">
+    <div class="flex flex-column gap-2 w-full lg:w-20rem">
+      <label for="roleSelect" class="font-medium">Rol</label>
+      <p-select
+        inputId="roleSelect"
+        [options]="roles"
+        optionLabel="name"
+        optionValue="id"
+        [(ngModel)]="selectedRoleId"
+        [loading]="loadingRoles"
+        [showClear]="true"
+        placeholder="Selecciona un rol"
+        class="w-full"
+        (onChange)="onRoleChange()"
+      />
+    </div>
+
+    <div class="flex gap-2">
+      <button
+        pButton
+        type="button"
+        label="Seleccionar todo"
+        severity="secondary"
+        [disabled]="!roleMenuCatalog || loadingCatalog || saving"
+        (click)="selectAll()"
+      ></button>
+
+      <button
+        pButton
+        type="button"
+        label="Limpiar"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="!roleMenuCatalog || loadingCatalog || saving"
+        (click)="clearSelection()"
+      ></button>
+
+      <button
+        pButton
+        type="button"
+        label="Guardar"
+        icon="pi pi-save"
+        [loading]="saving"
+        [disabled]="!roleMenuCatalog || loadingCatalog || saving"
+        (click)="save()"
+      ></button>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="p-3 border-1 border-red-300 border-round bg-red-50 text-red-700">
+      {{ errorMessage }}
+    </div>
+  }
+
+  @if (successMessage) {
+    <div class="p-3 border-1 border-green-300 border-round bg-green-50 text-green-700">
+      {{ successMessage }}
+    </div>
+  }
+
+  @if (loadingCatalog) {
+    <div class="p-4 border-round surface-100">
+      Cargando catalogo del rol...
+    </div>
+  } @else if (roleMenuCatalog) {
+    <div class="surface-card border-round p-3 shadow-1">
+      <p-tree
+        [value]="treeNodes"
+        selectionMode="checkbox"
+        [(selection)]="selection"
+      />
+    </div>
+  } @else {
+    <div class="p-4 border-round surface-100">
+      Selecciona un rol para cargar su catalogo de menus.
+    </div>
+  }
+</section>

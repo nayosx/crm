@@ -1,0 +1,626 @@
+<app-loader-dialog></app-loader-dialog>
+<p-toast></p-toast>
+<p-toast
+  key="pending-save"
+  [position]="isMobileViewport() ? 'bottom-center' : 'top-right'"
+  styleClass="pending-save-toast">
+</p-toast>
+
+<section class="container form-preview-shell u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
+  <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+      <p class="dr-helper-text u-m-all-none">Captura operativa comercial</p>
+      <h1 class="u-text-2xl-bold u-leading-tight u-m-all-none">Servicio #{{ serviceId }}</h1>
+      @if (summary?.client) {
+        <p class="u-text-lg-bold u-m-all-none">{{ summary?.client?.name }}</p>
+      }
+    </div>
+
+  </header>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+    <p-card styleClass="services-captured-card">
+      <ng-template pTemplate="title">Servicios capturados</ng-template>
+
+      <p-accordion
+        [multiple]="true"
+        [value]="activeAccordionValues()"
+        (valueChange)="onAccordionValueChange($event)">
+        @if (showWeightService()) {
+          <p-accordion-panel value="weight">
+            <p-accordion-header>Servicio por peso</p-accordion-header>
+            <p-accordion-content>
+              <div formGroupName="weight_service" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <label for="weight_lb" class="u-text-sm-bold">Peso (lb)</label>
+                  <p-inputnumber
+                    inputId="weight_lb"
+                    formControlName="weight_lb"
+                    mode="decimal"
+                    [min]="0"
+                    [minFractionDigits]="0"
+                    [maxFractionDigits]="2"
+                    styleClass="u-w-100"
+                    inputStyleClass="dr-bolder-input u-w-100">
+                  </p-inputnumber>
+                  <small class="dr-helper-text">Peso real recibido en libras.</small>
+                </div>
+
+                <div formArrayName="garments" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                  <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                    <div>
+                      <h3 class="u-text-base-bold u-m-all-none">Desglose de prendas</h3>
+                    </div>
+                    <p-button
+                      type="button"
+                      icon="pi pi-plus"
+                      label="Prenda"
+                      severity="secondary"
+                      [loading]="isLoading()"
+                      [disabled]="isLoading()"
+                      (onClick)="openGarmentPicker()">
+                    </p-button>
+                  </div>
+
+                  @for (garment of garmentsArray.controls; track $index) {
+                    <article class="capture-card u-p-all-2 u-bg-grey-80" [formGroupName]="$index">
+                      <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+                        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                          <label class="u-text-sm-bold">Tipo de prenda</label>
+                          <p-select
+                            class="u-w-100"
+                            formControlName="garment_type_id"
+                            [options]="garmentTypes"
+                            optionLabel="name"
+                            optionValue="id"
+                            appendTo="body"
+                            placeholder="Selecciona prenda">
+                          </p-select>
+                        </div>
+
+                        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                          <label class="u-text-sm-bold">Cantidad</label>
+                          <p-inputnumber
+                            formControlName="quantity"
+                            [min]="1"
+                            [showButtons]="true"
+                            styleClass="u-w-100">
+                          </p-inputnumber>
+                        </div>
+                      </div>
+
+                      <div class="u-d-flex u-d-flex-justify-end u-mt-2">
+                        <p-button
+                          type="button"
+                          icon="pi pi-trash"
+                          label="Eliminar"
+                          severity="danger"
+                          [text]="true"
+                          [loading]="isLoading()"
+                          [disabled]="isLoading()"
+                          (onClick)="removeGarment($index)">
+                        </p-button>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">Sin prendas agregadas.</p>
+                  }
+                </div>
+
+                <div class="u-d-flex u-d-flex-justify-end">
+                  <p-button
+                    type="button"
+                    icon="pi pi-trash"
+                    label="Quitar servicio"
+                    severity="danger"
+                    [text]="true"
+                    [loading]="isLoading()"
+                    [disabled]="isLoading()"
+                    (onClick)="removeWeightService()">
+                  </p-button>
+                </div>
+              </div>
+            </p-accordion-content>
+          </p-accordion-panel>
+        }
+
+        <ng-container formArrayName="order_items">
+          @for (group of serviceGroups(); track group.serviceId) {
+            <p-accordion-panel
+              [value]="'service-' + group.serviceId"
+              [attr.id]="'service-panel-' + group.serviceId">
+              <p-accordion-header>{{ serviceGroupTitle(group.serviceId) }}</p-accordion-header>
+              <p-accordion-content>
+                <article class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                  @if (selectedServiceMode(group.indexes[0]) === 'FIXED') {
+                    @if (serviceGroupHasMultipleVariants(group.indexes)) {
+                      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                        @for (itemIndex of group.indexes; track itemIndex) {
+                          <article class="capture-card u-bg-grey-80 u-p-all-2" [formGroupName]="itemIndex">
+                            <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+                              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                                <label class="u-text-sm-bold">{{ selectedVariantName(itemIndex) }}</label>
+                              </div>
+
+                              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                                <label class="u-text-sm-bold">Cantidad</label>
+                                <p-inputnumber
+                                  formControlName="quantity"
+                                  [min]="1"
+                                  [showButtons]="true"
+                                  styleClass="u-w-100">
+                                </p-inputnumber>
+                              </div>
+                            </div>
+
+                            <div class="u-d-flex u-d-flex-justify-end u-mt-2">
+                              <p-button
+                                type="button"
+                                icon="pi pi-trash"
+                                label="Eliminar"
+                                severity="danger"
+                                [text]="true"
+                                [loading]="isLoading()"
+                                [disabled]="isLoading()"
+                                (onClick)="removeService(itemIndex)">
+                              </p-button>
+                            </div>
+                          </article>
+                        }
+                      </div>
+                    } @else {
+                      @for (itemIndex of group.indexes; track itemIndex) {
+                        <div class="o-grid o-grid--cols-1 o-grid--gap-2" [formGroupName]="itemIndex">
+                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                            <label class="u-text-sm-bold">Cantidad</label>
+                            <p-inputnumber
+                              formControlName="quantity"
+                              [min]="1"
+                              [showButtons]="true"
+                              styleClass="u-w-100">
+                            </p-inputnumber>
+                          </div>
+                        </div>
+                      }
+                    }
+                  }
+
+                  <div
+                    class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2"
+                    [class.u-d-flex-justify-between]="canAddMoreVariants(group.serviceId)"
+                    [class.u-d-flex-justify-end]="!canAddMoreVariants(group.serviceId)">
+                    @if (canAddMoreVariants(group.serviceId)) {
+                      <p-button
+                        type="button"
+                        icon="pi pi-plus"
+                        label="Agregar variante"
+                        severity="secondary"
+                        [text]="true"
+                        [loading]="isLoading()"
+                        [disabled]="isLoading()"
+                        (onClick)="openAdditionalVariantsPicker(group.serviceId)">
+                      </p-button>
+                    }
+
+                    <p-button
+                      type="button"
+                      icon="pi pi-trash"
+                      label="Quitar servicio"
+                      severity="danger"
+                      [text]="true"
+                      [loading]="isLoading()"
+                      [disabled]="isLoading()"
+                      (onClick)="removeServiceGroup(group.serviceId)">
+                    </p-button>
+                  </div>
+                </article>
+              </p-accordion-content>
+            </p-accordion-panel>
+          }
+        </ng-container>
+      </p-accordion>
+    </p-card>
+
+    @if (extrasArray.length) {
+      <p-card>
+      <ng-template pTemplate="title">Extras</ng-template>
+      <ng-template pTemplate="subtitle">
+        <span class="dr-helper-text">Agrega ítems operativos. Sin cálculo local de totales.</span>
+      </ng-template>
+
+      <div formArrayName="extras" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        @for (extra of extrasArray.controls; track $index) {
+          <article class="capture-card u-p-all-2" [formGroupName]="$index">
+            <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold">Extra</label>
+                <p-select
+                  class="u-w-100"
+                  formControlName="extra_id"
+                  [options]="extrasCatalog"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Selecciona extra"
+                  (onChange)="onExtraChange($index)">
+                </p-select>
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold">Cantidad</label>
+                <p-inputnumber
+                  formControlName="quantity"
+                  [min]="1"
+                  [showButtons]="true"
+                  styleClass="u-w-100">
+                </p-inputnumber>
+              </div>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-end u-mt-2">
+              <p-button
+                type="button"
+                icon="pi pi-trash"
+                label="Eliminar"
+                severity="danger"
+                [text]="true"
+                [loading]="isLoading()"
+                [disabled]="isLoading()"
+                (onClick)="removeExtra($index)">
+              </p-button>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">Sin extras agregados.</p>
+        }
+      </div>
+      </p-card>
+    }
+
+    @if (showNotesCard()) {
+      <p-card id="notes-section">
+      <ng-template pTemplate="title">Notas</ng-template>
+      <ng-template pTemplate="subtitle">
+        <span class="dr-helper-text">Observaciones operativas para esta captura comercial.</span>
+      </ng-template>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <label for="commercial_notes" class="u-text-sm-bold">Notas</label>
+        <textarea
+          id="commercial_notes"
+          pTextarea
+          formControlName="notes"
+          rows="4"
+          class="u-w-100"
+          placeholder="Escribe observaciones opcionales">
+        </textarea>
+      </div>
+      </p-card>
+    }
+
+
+  </form>
+
+  <app-bottom-navigation
+    [actions]="bottomNavigationActions()"
+    dialogHeader="Más opciones"
+    (actionSelected)="onBottomNavigationAction($event)">
+  </app-bottom-navigation>
+</section>
+
+<p-dialog
+  header="Agregar servicio"
+  [(visible)]="showServicePicker"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="service-picker-dialog"
+  (onHide)="closeServicePicker()">
+  <div class="service-picker-list">
+    @if (servicePickerStep === 'list') {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <label for="service-search" class="u-text-sm-bold">Buscar servicio</label>
+        <input
+          id="service-search"
+          pInputText
+          type="search"
+          class="u-w-100"
+          [(ngModel)]="serviceSearchTerm"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Buscar por nombre">
+        @if (shouldShowServiceSearchHint()) {
+          <small class="dr-helper-text">El filtro inicia con 3 letras.</small>
+        }
+      </div>
+
+      @for (service of availableServices(); track service.id) {
+        <button
+          type="button"
+          class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
+          [disabled]="isLoading()"
+          (click)="addServiceFromList(service)">
+          <span class="service-picker-item__name u-text-base-bold">{{ service.name }}</span>
+          <span class="service-picker-item__meta u-text-xs-bold">{{ service.pricing_mode }}</span>
+        </button>
+      } @empty {
+        <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay servicios disponibles para agregar.</p>
+      }
+    } @else if (servicePickerStep === 'variants' && selectedServiceForPicker) {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <p class="dr-helper-text u-m-all-none">Servicio seleccionado</p>
+        <h3 class="u-text-lg-bold u-m-all-none">{{ selectedServiceForPicker.name }}</h3>
+        <p class="dr-helper-text u-m-all-none">Captura cantidad por opción de precio.</p>
+      </div>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        @for (variant of selectedServiceVariants; track variant.id) {
+          <article class="capture-card u-p-all-2">
+            <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <label class="u-text-sm-bold">{{ selectedServiceForPicker.name }}</label>
+                <span class="dr-helper-text">{{ variant.name }}</span>
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                <p-inputnumber
+                  [inputId]="'service-variant-' + variant.id"
+                  [ngModel]="serviceVariantQuantities[variant.id]"
+                  (ngModelChange)="updateServiceVariantQuantity(variant.id, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [min]="0"
+                  [showButtons]="true"
+                  styleClass="u-w-100">
+                </p-inputnumber>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else if (servicePickerStep === 'preview' && selectedServiceForPicker) {
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <p class="dr-helper-text u-m-all-none">Preview de captura</p>
+        <h3 class="u-text-lg-bold u-m-all-none">{{ selectedServiceForPicker.name }}</h3>
+        <p class="dr-helper-text u-m-all-none">Revisa si datos están correctos o vuelve a editar.</p>
+      </div>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+        @for (previewItem of servicePickerPreviewItems; track previewItem.variant.id) {
+          <article class="readonly-item u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+              <strong>{{ selectedServiceForPicker.name }}</strong>
+              <span class="dr-helper-text">{{ previewItem.variant.name }}</span>
+            </div>
+            <p-tag severity="secondary" [value]="'Cant. ' + previewItem.quantity"></p-tag>
+          </article>
+        }
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    @if (servicePickerStep === 'list') {
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [loading]="isLoading()"
+        [disabled]="isLoading()"
+        (onClick)="closeServicePicker()">
+      </p-button>
+    } @else if (servicePickerStep === 'variants') {
+      <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+        @if (canChangeSelectedService()) {
+          <p-button
+            type="button"
+            label="Cambiar servicio"
+            severity="secondary"
+            [text]="true"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="backToServiceList()">
+          </p-button>
+        }
+        <div class="service-picker-footer__actions u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+          <p-button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            severity="secondary"
+            styleClass="service-picker-action--compact-mobile"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="closeServicePicker()">
+          </p-button>
+          <p-button
+            type="button"
+            [label]="shouldSkipServicePreview() ? 'Confirmar' : 'Continuar'"
+            [icon]="shouldSkipServicePreview() ? 'pi pi-check' : 'pi pi-arrow-right'"
+            [iconPos]="shouldSkipServicePreview() ? 'left' : 'right'"
+            styleClass="service-picker-action--compact-mobile"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="submitVariantSelection()">
+          </p-button>
+        </div>
+      </div>
+    } @else {
+      <div class="service-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+        <p-button
+          type="button"
+          label="Editar"
+          severity="secondary"
+          [text]="true"
+          [loading]="isLoading()"
+          [disabled]="isLoading()"
+          (onClick)="editVariantSelection()">
+        </p-button>
+        <div class="service-picker-footer__actions u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+          <p-button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            severity="secondary"
+            styleClass="service-picker-action--compact-mobile"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="closeServicePicker()">
+          </p-button>
+          <p-button
+            type="button"
+            label="Confirmar"
+            icon="pi pi-check"
+            styleClass="service-picker-action--compact-mobile"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="confirmVariantSelection()">
+          </p-button>
+        </div>
+      </div>
+    }
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  header="Agregar extra"
+  [(visible)]="showExtraPicker"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="service-picker-dialog"
+  (onHide)="closeExtraPicker()">
+  <div class="service-picker-list">
+    <p class="dr-helper-text u-m-all-none">Selecciona un extra para agregarlo a la captura.</p>
+
+    @for (extra of availableExtras(); track extra.id) {
+      <button
+        type="button"
+        class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
+        [disabled]="isLoading()"
+        (click)="addExtraFromList(extra)">
+        <span class="service-picker-item__name u-text-base-bold">{{ extra.name }}</span>
+      </button>
+    } @empty {
+      <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay extras disponibles para agregar.</p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      type="button"
+      label="Cancelar"
+      severity="secondary"
+      [loading]="isLoading()"
+      [disabled]="isLoading()"
+      (onClick)="closeExtraPicker()">
+    </p-button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  header="Agregar prenda"
+  [(visible)]="showGarmentPicker"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="service-picker-dialog"
+  (onHide)="closeGarmentPicker()">
+  <div class="service-picker-list">
+    @if (!selectedGarmentType) {
+      <p class="dr-helper-text u-m-all-none">Busca y selecciona prenda para agregarla al desglose.</p>
+
+      <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+        <label for="garment-search" class="u-text-sm-bold">Buscar prenda</label>
+        <input
+          id="garment-search"
+          pInputText
+          type="search"
+          class="u-w-100"
+          [(ngModel)]="garmentSearchTerm"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Buscar por nombre">
+        @if (shouldShowGarmentSearchHint()) {
+          <small class="dr-helper-text">El filtro inicia con 3 letras.</small>
+        }
+      </div>
+
+      @for (garmentType of availableGarmentTypes(); track garmentType.id) {
+        <button
+          type="button"
+          class="service-picker-item u-card u-w-100 u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3 u-text-left"
+          [disabled]="isLoading()"
+          (click)="selectGarmentType(garmentType)">
+          <span class="service-picker-item__name u-text-base-bold">{{ garmentType.name }}</span>
+          @if (garmentType.category) {
+            <span class="service-picker-item__meta u-text-xs-bold">{{ garmentType.category }}</span>
+          }
+        </button>
+      } @empty {
+        <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">No hay prendas disponibles para agregar.</p>
+      }
+    } @else {
+      <div class="garment-picker-detail u-d-flex u-d-flex-column u-d-flex-gap-3">
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+          <p class="dr-helper-text u-m-all-none">Prenda seleccionada</p>
+          <h3 class="u-text-lg-bold u-m-all-none">{{ selectedGarmentType.name }}</h3>
+          @if (selectedGarmentType.category) {
+            <p class="dr-helper-text u-m-all-none">{{ selectedGarmentType.category }}</p>
+          }
+        </div>
+
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+          <label for="garment-quantity" class="u-text-sm-bold">Total de prendas</label>
+          <p-inputnumber
+            inputId="garment-quantity"
+            [(ngModel)]="garmentDraftQuantity"
+            [ngModelOptions]="{ standalone: true }"
+            [min]="1"
+            [showButtons]="true"
+            styleClass="u-w-100">
+          </p-inputnumber>
+        </div>
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    @if (selectedGarmentType) {
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+        <p-button
+          type="button"
+          label="Cambiar prenda"
+          severity="secondary"
+          [text]="true"
+          [loading]="isLoading()"
+          [disabled]="isLoading()"
+          (onClick)="changeSelectedGarment()">
+        </p-button>
+        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+          <p-button
+            type="button"
+            label="Cancelar"
+            severity="secondary"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="closeGarmentPicker()">
+          </p-button>
+          <p-button
+            type="button"
+            label="Aceptar"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
+            (onClick)="confirmGarmentSelection()">
+          </p-button>
+        </div>
+      </div>
+    } @else {
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [loading]="isLoading()"
+        [disabled]="isLoading()"
+        (onClick)="closeGarmentPicker()">
+      </p-button>
+    }
+  </ng-template>
+</p-dialog>

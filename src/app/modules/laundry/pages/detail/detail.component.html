@@ -1,0 +1,415 @@
+<p-toast></p-toast>
+<app-loader-dialog></app-loader-dialog>
+
+<section class="container u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
+  <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3 u-pt-4">
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+      <app-back-button [fallbackRoute]="backRoute()" label="Volver"></app-back-button>
+      <h1 class="u-text-2xl-bold u-leading-tight u-m-all-none">Servicio #{{ serviceId() }}</h1>
+
+      @if (summary(); as data) {
+        <p class="u-text-lg-bold u-m-all-none">{{ data.client.name }}</p>
+      } @else {
+        <p class="u-m-all-none text-color-secondary">Cargando detalle del servicio...</p>
+      }
+    </div>
+
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+      @if (summary(); as data) {
+        <div class="u-d-flex u-d-flex-justify-end u-d-flex-gap-2">
+          <p-tag [value]="statusLabel()" [severity]="statusSeverity(data.laundry_service.status)"></p-tag>
+          <p-tag [value]="serviceLabel()" [severity]="serviceLabelSeverity(data.laundry_service.service_label)"></p-tag>
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (summary(); as data) {
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+      <p-card>
+        <ng-template pTemplate="header">
+          <div class="u-p-all-2 border-bottom-1 surface-border">
+            <h2 class="u-text-lg-bold u-m-all-none">Cabecera operativa</h2>
+          </div>
+        </ng-template>
+
+        <form [formGroup]="headerForm" class="u-d-flex u-d-flex-column u-d-flex-gap-3" (ngSubmit)="saveHeader()">
+          <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="service_label">Tipo de servicio</label>
+              <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2">
+                <span class="text-color-secondary">Normal</span>
+                <p-toggleswitch
+                  inputId="service_label"
+                  formControlName="is_express">
+                </p-toggleswitch>
+                <span class="u-text-sm-bold">Exprés</span>
+              </div>
+            </div>
+
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+              <label class="u-text-sm-bold" for="fulfillment_type">Tipos de delivery</label>
+              <p-select
+                inputId="fulfillment_type"
+                class="w-full"
+                formControlName="fulfillment_type"
+                optionLabel="label"
+                optionValue="value"
+                [options]="fulfillmentOptions"
+                appendTo="body">
+              </p-select>
+            </div>
+          </div>
+
+          @if (deliveryControlsEnabled()) {
+            <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+                <label class="u-text-sm-bold" for="distance_km">Distancia (km)</label>
+                <p-inputNumber
+                  inputId="distance_km"
+                  formControlName="distance_km"
+                  mode="decimal"
+                  [min]="0"
+                  [minFractionDigits]="0"
+                  [maxFractionDigits]="2"
+                  [useGrouping]="false"
+                  styleClass="w-full"
+                  [disabled]="distanceControlDisabled()">
+                </p-inputNumber>
+              </div>
+
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-w-100">
+                <label class="u-text-sm-bold" for="manual_delivery_fee">Delivery manual</label>
+                <p-inputNumber
+                  inputId="manual_delivery_fee"
+                  formControlName="manual_delivery_fee"
+                  mode="currency"
+                  currency="USD"
+                  locale="en-US"
+                  [min]="0"
+                  [minFractionDigits]="2"
+                  [maxFractionDigits]="2"
+                  styleClass="w-full">
+                </p-inputNumber>
+              </div>
+            </div>
+          }
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+              <span class="u-text-sm-bold">Notas operativas</span>
+              <p class="u-m-all-none text-color-secondary">
+                {{ data.laundry_service.notes || 'Sin notas registradas.' }}
+              </p>
+            </div>
+
+            <div class="u-d-flex u-d-flex-justify-end">
+              <button
+                pButton
+                type="submit"
+                label="Guardar cabecera"
+                icon="pi pi-save"
+                [loading]="isLoading()"
+                [disabled]="isLoading()">
+              </button>
+            </div>
+          </div>
+        </form>
+      </p-card>
+      
+      
+      
+      
+            <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2">
+              <h2 class="u-text-lg-bold u-m-all-none">Resumen</h2>
+
+              <div class="u-d-flex u-d-flex-wrap u-d-flex-justify-end u-d-flex-gap-2">
+                @if (canRegisterTransaction()) {
+                  <button
+                    pButton
+                    type="button"
+                    [label]="hasTransaction() ? 'Ver/editar cobro' : 'Registrar cobro'"
+                    [icon]="hasTransaction() ? 'pi pi-credit-card' : 'pi pi-plus-circle'"
+                    severity="secondary"
+                    [outlined]="!hasTransaction()"
+                    (click)="openTransactionDialog()">
+                  </button>
+                }
+
+                <button
+                  pButton
+                  type="button"
+                  class="summary-copy-button"
+                  [class.summary-copy-button--copied]="isSummaryCopied()"
+                  [label]="isSummaryCopied() ? 'Copiado' : 'Copiar'"
+                  [icon]="isSummaryCopied() ? 'pi pi-check' : 'pi pi-copy'"
+                  [severity]="isSummaryCopied() ? 'success' : 'secondary'"
+                  [outlined]="!isSummaryCopied()"
+                  [text]="false"
+                  (click)="copySummaryForWhatsApp()"
+                  [disabled]="!summary()">
+                </button>
+
+                <button
+                  pButton
+                  type="button"
+                  label="Editar precios"
+                  icon="pi pi-pencil"
+                  [disabled]="isLoading() || !summary()"
+                  (click)="enablePriceEditing()">
+                </button>
+              </div>
+            </div>
+          </ng-template>
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+            @if (summaryCardRows().length) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                @for (row of summaryCardRows(); track row.id; let isOdd = $odd) {
+                  <div
+                    class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 u-p-all-2"
+                    [class.u-bg-grey-80]="isOdd"
+                    [class.u-bg-grey-90]="!isOdd">
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                      <div class="u-d-flex u-d-flex-align-center u-d-flex-gap-2 u-d-flex-wrap">
+                        <p class="u-m-all-none">{{ row.label }}</p>
+                        @if (row.showServiceTag) {
+                          <p-tag
+                            [value]="serviceLabel()"
+                            [severity]="serviceLabelSeverity(data.laundry_service.service_label)">
+                          </p-tag>
+                        }
+                        @if (row.badgeLabel) {
+                          <p-tag [value]="row.badgeLabel" severity="success"></p-tag>
+                        }
+                      </div>
+
+                      @if (row.secondaryDetail) {
+                        <p class="u-m-all-none u-text-grey-70">{{ row.secondaryDetail }}</p>
+                      }
+                    </div>
+
+                    <div class="u-d-flex u-d-flex-column u-d-flex-gap-1 u-text-right">
+                      <p class="u-m-all-none">{{ formatMoney(row.amount) }}</p>
+                      <p class="u-m-all-none u-text-grey-70">{{ row.detail }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="u-m-all-none text-color-secondary">No hay cobros registrados.</p>
+            }
+
+            <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+              <p class="u-text-lg-bold u-m-all-none">Total general</p>
+              <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(data.summary.grand_total) }}</p>
+            </div>
+
+          </div>
+        </p-card>
+      </div>
+      
+      
+
+      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-3">
+        <p-card class="u-w-100">
+          <ng-template pTemplate="header">
+            <div class="u-p-all-2 border-bottom-1 surface-border">
+              <h2 class="u-text-lg-bold u-m-all-none">Cliente</h2>
+            </div>
+          </ng-template>
+
+          <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Nombre</p>
+              <p class="u-m-all-none">{{ data.client.name }}</p>
+            </div>
+
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Teléfonos</p>
+              @if (clientPhones().length) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  @for (phone of clientPhones(); track phone) {
+                    <p class="u-m-all-none">{{ phone }}</p>
+                  }
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">Sin teléfonos registrados.</p>
+              }
+            </div>
+
+            <div>
+              <p class="u-text-sm-bold u-m-all-none">Dirección</p>
+              @if (data.client_address) {
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                  <p class="u-m-all-none">{{ data.client_address.address_text }}</p>
+
+                  <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                    @if (data.client_address.latitude && data.client_address.longitude) {
+                      <p-tag
+                        [value]="'Lat ' + data.client_address.latitude + ' · Lon ' + data.client_address.longitude"
+                        severity="secondary">
+                      </p-tag>
+                    }
+
+                    @if (data.client_address.is_primary) {
+                      <p-tag value="Principal" severity="contrast"></p-tag>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <p class="u-m-all-none text-color-secondary">Sin dirección registrada.</p>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        @if (showWeightServiceSummary()) {
+          <p-card class="u-w-100">
+            <ng-template pTemplate="header">
+              <div class="u-p-all-2 border-bottom-1 surface-border">
+                <h2 class="u-text-lg-bold u-m-all-none">Lavado por peso</h2>
+              </div>
+            </ng-template>
+
+            @if (weightService(); as weight) {
+              <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+                <div class="u-d-flex u-d-flex-wrap u-d-flex-gap-2">
+                  <p-tag [value]="'Peso ' + formatQuantity(weight.weight_lb) + ' lb'" severity="info"></p-tag>
+                  <p-tag [value]="'Subtotal ' + formatMoney(data.summary.weight_service_subtotal)" severity="contrast"></p-tag>
+                  @if (weight.has_other_services) {
+                    <p-tag value="Con otros servicios" severity="secondary"></p-tag>
+                  }
+                </div>
+
+                @if (weight.garments.length) {
+                  <div class="u-d-flex u-d-flex-column u-d-flex-gap-2">
+                    @for (garment of weight.garments; track garment.garment_type_id) {
+                      <article class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3">
+                        <div>
+                          <p class="u-text-base-bold u-m-all-none">{{ garment.garment_type_name || ('Prenda #' + garment.garment_type_id) }}</p>
+                          <p class="u-m-all-none text-color-secondary">{{ weightGarmentMeta(garment) }}</p>
+                        </div>
+
+                        <p class="u-text-base-bold u-m-all-none">{{ formatQuantity(garment.quantity) }}</p>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="u-m-all-none text-color-secondary">Sin desglose de prendas.</p>
+                }
+              </div>
+            }
+          </p-card>
+        }
+      </div>
+
+    </div>
+  } @else {
+    <p-card>
+      <p class="u-m-all-none text-color-secondary">No hay detalle disponible todavía.</p>
+    </p-card>
+  }
+</section>
+
+<app-laundry-transaction-dialog
+  [visible]="transactionDialogVisible()"
+  (visibleChange)="transactionDialogVisible.set($event)"
+  [serviceId]="serviceId()"
+  [client]="summary()?.client ?? null"
+  [prefill]="transactionPrefill()"
+  [transactionId]="summary()?.laundry_service?.transaction_id ?? null"
+  (transactionLinked)="onTransactionLinked($event)">
+</app-laundry-transaction-dialog>
+
+<p-dialog
+  header="Editar precios"
+  [visible]="showSummaryDialog()"
+  (visibleChange)="$event ? showSummaryDialog.set(true) : closeSummaryDialog()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="true"
+  [style]="{ width: 'min(96vw, 56rem)' }"
+  >
+  @if (summary(); as data) {
+    <div class="summary-dialog__content">
+      <div class="u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2 u-d-flex-wrap">
+        <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+          <p class="u-text-lg-bold u-m-all-none">Servicio #{{ serviceId() }}</p>
+          <p class="u-m-all-none text-color-secondary">{{ data.client.name }}</p>
+        </div>
+      </div>
+
+      @if (summaryDialogRows().length) {
+        <section class="summary-dialog__section">
+          @for (row of summaryDialogRows(); track row.id; let isOdd = $odd) {
+            <article class="summary-dialog__row" [class.summary-dialog__row--changed]="row.changed">
+              <div class="summary-dialog__row-header">
+                @if (row.changed) {
+                  <p-tag value="Modificado" severity="warn"></p-tag>
+                }
+              </div>
+
+              <div
+                class="summary-dialog__row-body"
+                [class.u-bg-grey-80]="isOdd"
+                [class.u-bg-grey-90]="!isOdd">
+                <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ row.label }}</p>
+                </div>
+
+                <div class="summary-dialog__row-right">
+                  <app-decimal-input
+                    [id]="row.inputId"
+                    inputClass="summary-dialog__row-input"
+                    [value]="row.value"
+                    [disabled]="row.disabled"
+                    (valueChange)="row.kind === 'extra' ? updateExtraRowPrice(row.extraRow!, $event) : updateOrderRowPrice(row.orderRow!, $event)">
+                  </app-decimal-input>
+                  <p class="u-text-base-bold u-m-all-none">{{ formatMoney(row.amount) }}</p>
+                  <small class="text-color-secondary">{{ row.detail }}</small>
+                  @if (row.helperText) {
+                    <small class="text-color-secondary">{{ row.helperText }}</small>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+
+      <div class="u-d-flex u-d-flex-justify-between u-d-flex-gap-3 border-top-1 surface-border u-pt-2">
+        <p class="u-text-lg-bold u-m-all-none">Total general actual</p>
+        <p class="u-text-lg-bold u-m-all-none">{{ formatMoney(editedGrandTotal()) }}</p>
+      </div>
+
+      @if (isPriceEditMode()) {
+        <div class="summary-dialog__footer">
+          <button
+            pButton
+            type="button"
+            label="Cancelar"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="isLoading()"
+            (click)="closeSummaryDialog()">
+          </button>
+
+          <button
+            pButton
+            type="button"
+            label="Guardar precios"
+            icon="pi pi-save"
+            [loading]="isLoading()"
+            [disabled]="isLoading() || !hasPriceChanges()"
+            (click)="saveSummaryPrices()">
+          </button>
+        </div>
+      }
+    </div>
+  }
+</p-dialog>

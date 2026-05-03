@@ -1,0 +1,16 @@
+.layout-container {
+  .sidebar {
+    width: 260px;
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .content {
+    min-height: 100vh;
+  }
+}
+
+
+::ng-deep .custom-panelmenu .p-menuitem-link {
+  touch-action: manipulation;
+}
