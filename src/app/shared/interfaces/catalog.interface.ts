@@ -1,10 +1,13 @@
 export type PricingMode = 'FIXED' | 'WEIGHT' | 'DELIVERY';
 
+export type GarmentTypeCategory = 'CLOTHING' | 'BEDDING' | 'FOOTWEAR' | 'PLUSH' | 'RUG' | 'HOUSEHOLD';
+
 export type CatalogResourceKind =
   | 'extras'
   | 'service-categories'
   | 'services'
-  | 'service-variants';
+  | 'service-variants'
+  | 'garment-types';
 
 export interface CatalogListItem {
   id: number;
@@ -15,6 +18,7 @@ export interface CatalogListItem {
   pricing_mode?: PricingMode;
   service_id?: number;
   price?: string;
+  category?: GarmentTypeCategory;
 }
 
 export interface ExtraCatalog extends CatalogListItem {
@@ -58,11 +62,17 @@ export interface CreateServiceVariantPayload {
   is_active?: boolean;
 }
 
+export interface CreateGarmentTypePayload {
+  name: string;
+  category?: GarmentTypeCategory | null;
+}
+
 export type CatalogMutationPayload =
   | CreateExtraPayload
   | CreateServiceCategoryPayload
   | CreateCatalogServicePayload
-  | CreateServiceVariantPayload;
+  | CreateServiceVariantPayload
+  | CreateGarmentTypePayload;
 
 export type CatalogUpdatePayload = Partial<CatalogMutationPayload>;
 
@@ -72,6 +82,7 @@ export interface CatalogMutationResponse {
   service_category?: ServiceCategoryCatalog;
   service?: CatalogService;
   service_variant?: ServiceVariantCatalog;
+  garment_type?: CatalogListItem;
 }
 
 export interface CatalogFilterParams {
@@ -79,4 +90,5 @@ export interface CatalogFilterParams {
   category_id?: number;
   pricing_mode?: PricingMode;
   service_id?: number;
+  category?: GarmentTypeCategory;
 }

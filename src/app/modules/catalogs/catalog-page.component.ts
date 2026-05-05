@@ -7,6 +7,7 @@ import {
   CatalogListItem,
   CatalogMutationPayload,
   CatalogResourceKind,
+  GarmentTypeCategory,
   PricingMode
 } from '@shared/interfaces/catalog.interface';
 import { DecimalInputComponent } from '@shared/components/decimal-input/decimal-input.component';
@@ -76,6 +77,15 @@ export class CatalogPageComponent {
     { label: 'Delivery', value: 'DELIVERY' }
   ];
 
+  readonly garmentCategoryOptions: SelectOption<GarmentTypeCategory>[] = [
+    { label: 'Ropa', value: 'CLOTHING' },
+    { label: 'Ropa de cama', value: 'BEDDING' },
+    { label: 'Calzado', value: 'FOOTWEAR' },
+    { label: 'Peluches', value: 'PLUSH' },
+    { label: 'Alfombras', value: 'RUG' },
+    { label: 'Hogar', value: 'HOUSEHOLD' }
+  ];
+
   kind: CatalogResourceKind = 'extras';
   title = '';
   subtitle = '';
@@ -91,6 +101,7 @@ export class CatalogPageComponent {
   activeFilter: 'all' | 'true' | 'false' = 'all';
   selectedCategoryFilter: number | null = null;
   selectedServiceFilter: number | null = null;
+  selectedGarmentCategoryFilter: GarmentTypeCategory | null = null;
   editingId: number | null = null;
 
   readonly form = this.fb.nonNullable.group({
@@ -100,7 +111,8 @@ export class CatalogPageComponent {
     category_id: [null as number | null],
     pricing_mode: ['FIXED' as PricingMode],
     service_id: [null as number | null],
-    price: ['0.00']
+    price: ['0.00'],
+    garment_category: [null as GarmentTypeCategory | null]
   });
 
   constructor() {
@@ -170,7 +182,8 @@ export class CatalogPageComponent {
       category_id: item.category_id ?? null,
       pricing_mode: item.pricing_mode ?? 'FIXED',
       service_id: item.service_id ?? null,
-      price: item.price ?? '0.00'
+      price: item.price ?? '0.00',
+      garment_category: item.category ?? null
     });
     this.dialogVisible = true;
   }
@@ -323,6 +336,10 @@ export class CatalogPageComponent {
     return this.services.find((service) => service.id === serviceId)?.name ?? `#${serviceId}`;
   }
 
+  getGarmentCategoryLabel(category: string | undefined): string {
+    return this.garmentCategoryOptions.find((c) => c.value === category)?.label ?? (category ?? '-');
+  }
+
   private applyRouteData(data: CatalogPageRouteData): void {
     this.kind = data.kind;
     this.title = data.title;
@@ -332,6 +349,7 @@ export class CatalogPageComponent {
     this.activeFilter = 'all';
     this.selectedCategoryFilter = null;
     this.selectedServiceFilter = null;
+    this.selectedGarmentCategoryFilter = null;
     this.resetForm();
     this.loadDependenciesAndData();
   }
@@ -417,6 +435,10 @@ export class CatalogPageComponent {
       filters.service_id = this.selectedServiceFilter;
     }
 
+    if (this.kind === 'garment-types' && this.selectedGarmentCategoryFilter) {
+      filters.category = this.selectedGarmentCategoryFilter;
+    }
+
     return filters;
   }
 
@@ -428,7 +450,8 @@ export class CatalogPageComponent {
       category_id: null,
       pricing_mode: 'FIXED',
       service_id: null,
-      price: '0.00'
+      price: '0.00',
+      garment_category: null
     });
     this.applyValidatorsForKind();
     this.form.markAsPristine();
@@ -442,6 +465,7 @@ export class CatalogPageComponent {
     const pricingModeControl = this.form.controls.pricing_mode;
     const serviceIdControl = this.form.controls.service_id;
     const priceControl = this.form.controls.price;
+    const garmentCategoryControl = this.form.controls.garment_category;
 
     nameControl.setValidators([Validators.required, Validators.maxLength(this.kind === 'service-variants' ? 50 : 100)]);
     defaultPriceControl.clearValidators();
@@ -449,6 +473,7 @@ export class CatalogPageComponent {
     pricingModeControl.clearValidators();
     serviceIdControl.clearValidators();
     priceControl.clearValidators();
+    garmentCategoryControl.clearValidators();
 
     if (this.kind === 'extras') {
       defaultPriceControl.setValidators([Validators.required]);
@@ -470,6 +495,7 @@ export class CatalogPageComponent {
     pricingModeControl.updateValueAndValidity({ emitEvent: false });
     serviceIdControl.updateValueAndValidity({ emitEvent: false });
     priceControl.updateValueAndValidity({ emitEvent: false });
+    garmentCategoryControl.updateValueAndValidity({ emitEvent: false });
   }
 
   private buildPayload(): CatalogMutationPayload {
@@ -499,11 +525,18 @@ export class CatalogPageComponent {
       };
     }
 
+    if (this.kind === 'service-variants') {
+      return {
+        service_id: Number(rawValue.service_id),
+        name: rawValue.name.trim(),
+        price: rawValue.price || '0.00',
+        is_active: rawValue.is_active
+      };
+    }
+
     return {
-      service_id: Number(rawValue.service_id),
       name: rawValue.name.trim(),
-      price: rawValue.price || '0.00',
-      is_active: rawValue.is_active
+      category: rawValue.garment_category ?? null
     };
   }
 

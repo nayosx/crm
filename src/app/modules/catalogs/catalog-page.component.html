@@ -32,19 +32,21 @@
 
   <div class="surface-card border-round shadow-1 p-3 flex flex-column gap-3">
     <div class="flex flex-column gap-3 lg:flex-row lg:align-items-end">
-      <div class="flex flex-column gap-2 w-full lg:w-16rem">
-        <label for="activeFilter" class="font-medium">Estado</label>
-        <p-select
-          inputId="activeFilter"
-          [options]="activeFilterOptions"
-          optionLabel="label"
-          optionValue="value"
-          [(ngModel)]="activeFilter"
-          placeholder="Filtrar por estado"
-          class="w-full"
-          (onChange)="onFiltersChange()"
-        />
-      </div>
+      @if (kind !== 'garment-types') {
+        <div class="flex flex-column gap-2 w-full lg:w-16rem">
+          <label for="activeFilter" class="font-medium">Estado</label>
+          <p-select
+            inputId="activeFilter"
+            [options]="activeFilterOptions"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="activeFilter"
+            placeholder="Filtrar por estado"
+            class="w-full"
+            (onChange)="onFiltersChange()"
+          />
+        </div>
+      }
 
       @if (kind === 'services') {
         <div class="flex flex-column gap-2 w-full lg:w-18rem">
@@ -74,6 +76,23 @@
             [(ngModel)]="selectedServiceFilter"
             [showClear]="true"
             placeholder="Todos"
+            class="w-full"
+            (onChange)="onFiltersChange()"
+          />
+        </div>
+      }
+
+      @if (kind === 'garment-types') {
+        <div class="flex flex-column gap-2 w-full lg:w-18rem">
+          <label for="garmentCategoryFilter" class="font-medium">Categoria</label>
+          <p-select
+            inputId="garmentCategoryFilter"
+            [options]="garmentCategoryOptions"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="selectedGarmentCategoryFilter"
+            [showClear]="true"
+            placeholder="Todas"
             class="w-full"
             (onChange)="onFiltersChange()"
           />
@@ -119,6 +138,9 @@
             <th>Servicio</th>
             <th>Precio</th>
           }
+          @if (kind === 'garment-types') {
+            <th>Categoria</th>
+          }
           <th>Estado</th>
           <th style="width: 10rem">Acciones</th>
         </tr>
@@ -142,6 +164,16 @@
           @if (kind === 'service-variants') {
             <td>{{ getServiceName(item.service_id) }}</td>
             <td>{{ item.price ?? '0.00' }}</td>
+          }
+
+          @if (kind === 'garment-types') {
+            <td>
+              @if (item.category) {
+                <p-tag [value]="getGarmentCategoryLabel(item.category)" severity="info" />
+              } @else {
+                -
+              }
+            </td>
           }
 
           <td>
@@ -192,6 +224,7 @@
   [draggable]="false"
   [resizable]="false"
   [style]="{ width: '36rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [contentStyle]="{ 'min-height': '14rem', 'overflow-y': 'auto' }"
   (onHide)="closeDialog()"
 >
   <form [formGroup]="form" class="flex flex-column gap-3" (ngSubmit)="save()">
@@ -281,14 +314,33 @@
       </div>
     }
 
-    <div class="flex align-items-center gap-2">
-      <p-checkbox
-        inputId="isActive"
-        [binary]="true"
-        formControlName="is_active"
-      />
-      <label for="isActive" class="m-0">Activo</label>
-    </div>
+    @if (kind === 'garment-types') {
+      <div class="flex flex-column gap-2">
+        <label for="garmentCategory" class="font-medium">Categoria</label>
+        <p-select
+          inputId="garmentCategory"
+          [options]="garmentCategoryOptions"
+          optionLabel="label"
+          optionValue="value"
+          formControlName="garment_category"
+          [showClear]="true"
+          placeholder="Sin categoria"
+          class="w-full"
+          appendTo="body"
+        />
+      </div>
+    }
+
+    @if (kind !== 'garment-types') {
+      <div class="flex align-items-center gap-2">
+        <p-checkbox
+          inputId="isActive"
+          [binary]="true"
+          formControlName="is_active"
+        />
+        <label for="isActive" class="m-0">Activo</label>
+      </div>
+    }
 
     <div class="flex justify-content-end gap-2 pt-2">
       <button

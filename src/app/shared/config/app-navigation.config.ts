@@ -62,6 +62,12 @@ export const APP_NAVIGATION_TREE: AppNavigationItem[] = [
         label: 'Variantes de servicio',
         icon: 'pi pi-list',
         routerLink: ['/catalogs', 'service-variants']
+      },
+      {
+        id: 'catalogs-garment-types',
+        label: 'Tipos de Prenda',
+        icon: 'pi pi-tag',
+        routerLink: ['/catalogs', 'garment-types']
       }
     ]
   },

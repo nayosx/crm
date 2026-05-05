@@ -171,6 +171,16 @@ export const routes: Routes = [
                         }
                     },
                     {
+                        path: 'garment-types',
+                        loadComponent: () =>
+                            import('./modules/catalogs/catalog-page.component').then(m => m.CatalogPageComponent),
+                        data: {
+                            kind: 'garment-types',
+                            title: 'Tipos de Prenda',
+                            subtitle: 'Administra tipos de prenda, categoria y precio por defecto.'
+                        }
+                    },
+                    {
                         path: '',
                         redirectTo: 'extras',
                         pathMatch: 'full'

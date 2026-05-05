@@ -172,6 +172,9 @@
                       @for (itemIndex of group.indexes; track itemIndex) {
                         <div class="o-grid o-grid--cols-1 o-grid--gap-2" [formGroupName]="itemIndex">
                           <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+                            <label class="u-text-sm-bold">{{ selectedVariantName(itemIndex) }}</label>
+                          </div>
+                          <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
                             <label class="u-text-sm-bold">Cantidad</label>
                             <p-inputnumber
                               formControlName="quantity"

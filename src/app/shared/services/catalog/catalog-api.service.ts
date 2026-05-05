@@ -8,6 +8,7 @@ import {
   CatalogMutationPayload,
   CatalogMutationResponse,
   CatalogResourceKind,
+  GarmentTypeCategory,
   PricingMode
 } from '@shared/interfaces/catalog.interface';
 
@@ -16,16 +17,23 @@ import {
 })
 export class CatalogApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.API}/catalog`;
+  private readonly baseUrlMap: Record<CatalogResourceKind, string> = {
+    extras: `${environment.API}/catalog`,
+    'service-categories': `${environment.API}/catalog`,
+    services: `${environment.API}/catalog`,
+    'service-variants': `${environment.API}/catalog`,
+    'garment-types': `${environment.API}/v2`
+  };
   private readonly resourcePath: Record<CatalogResourceKind, string> = {
     extras: 'extras',
     'service-categories': 'service-categories',
     services: 'services',
-    'service-variants': 'service-variants'
+    'service-variants': 'service-variants',
+    'garment-types': 'garment_types'
   };
 
   list(kind: CatalogResourceKind, filters: CatalogFilterParams = {}): Observable<CatalogListItem[]> {
-    return this.http.get<unknown>(`${this.baseUrl}/${this.resourcePath[kind]}`, {
+    return this.http.get<unknown>(`${this.baseUrlMap[kind]}/${this.resourcePath[kind]}`, {
       params: this.buildParams(filters)
     }).pipe(
       map((response) => this.normalizeList(kind, response))
@@ -33,7 +41,7 @@ export class CatalogApiService {
   }
 
   create(kind: CatalogResourceKind, payload: CatalogMutationPayload): Observable<CatalogMutationResponse> {
-    return this.http.post<CatalogMutationResponse>(`${this.baseUrl}/${this.resourcePath[kind]}`, payload);
+    return this.http.post<CatalogMutationResponse>(`${this.baseUrlMap[kind]}/${this.resourcePath[kind]}`, payload);
   }
 
   update(
@@ -41,11 +49,11 @@ export class CatalogApiService {
     id: number,
     payload: Partial<CatalogMutationPayload>
   ): Observable<CatalogMutationResponse> {
-    return this.http.put<CatalogMutationResponse>(`${this.baseUrl}/${this.resourcePath[kind]}/${id}`, payload);
+    return this.http.put<CatalogMutationResponse>(`${this.baseUrlMap[kind]}/${this.resourcePath[kind]}/${id}`, payload);
   }
 
   delete(kind: CatalogResourceKind, id: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.baseUrl}/${this.resourcePath[kind]}/${id}`);
+    return this.http.delete<{ message: string }>(`${this.baseUrlMap[kind]}/${this.resourcePath[kind]}/${id}`);
   }
 
   private buildParams(filters: CatalogFilterParams): HttpParams {
@@ -104,7 +112,24 @@ export class CatalogApiService {
       };
     }
 
+    if (kind === 'garment-types') {
+      return {
+        ...baseItem,
+        is_active: true,
+        category: this.toGarmentCategory(source['category'])
+      };
+    }
+
     return baseItem;
+  }
+
+  private toGarmentCategory(value: unknown): GarmentTypeCategory | undefined {
+    if (typeof value !== 'string' || !value.trim()) {
+      return undefined;
+    }
+    const upper = value.toUpperCase();
+    const valid: GarmentTypeCategory[] = ['CLOTHING', 'BEDDING', 'FOOTWEAR', 'PLUSH', 'RUG', 'HOUSEHOLD'];
+    return valid.includes(upper as GarmentTypeCategory) ? (upper as GarmentTypeCategory) : undefined;
   }
 
   private toMoneyString(value: unknown): string {
