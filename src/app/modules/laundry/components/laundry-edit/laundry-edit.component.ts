@@ -1,15 +1,11 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LaundryServiceResp, LaundryServiceLog, LaundryServiceSummaryResponse, LaundryServiceUpdatePayload } from '@shared/interfaces/laundry-service.interface';
+import { LaundryServiceResp, LaundryServiceSummaryResponse, LaundryServiceUpdatePayload } from '@shared/interfaces/laundry-service.interface';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
 import { LaundryFormComponent } from '../laundry-form/laundry-form.component';
 import { CardModule } from 'primeng/card';
-import { DialogModule } from 'primeng/dialog';
 import { CommonModule } from '@angular/common';
-import { LaundryNoteListComponent } from '../laundry-note-list/laundry-note-list.component';
-import { LaundryNoteComponent } from '../laundry-note/laundry-note.component';
-import { ButtonModule } from 'primeng/button';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { buildLaundryTransactionPrefill, LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
 
@@ -19,12 +15,8 @@ import { buildLaundryTransactionPrefill, LaundryTransactionPrefill } from '@shar
   imports: [
     CommonModule,
     CardModule,
-    DialogModule,
     LaundryFormComponent,
-    LaundryNoteListComponent,
-    LaundryNoteComponent,
     BackButtonComponent,
-    ButtonModule,
     LoaderDialogComponent,
   ],
   templateUrl: './laundry-edit.component.html',
@@ -34,9 +26,6 @@ export class LaundryEditComponent implements OnInit {
   initialData?: LaundryServiceResp;
   loading = true;
   transactionPrefill: LaundryTransactionPrefill | null = null;
-
-  notesDialogVisible = false;
-  latestNote: LaundryServiceLog | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -77,15 +66,6 @@ export class LaundryEditComponent implements OnInit {
     });
   }
 
-  onNoteCreated(log: LaundryServiceLog) {
-    this.latestNote = log;
-    this.notesDialogVisible = false;
-  }
-
-  onCancelNotes() {
-    this.notesDialogVisible = false;
-  }
-
   private loadTransactionPrefill(serviceId: number): void {
     this.laundryService.getSummary(serviceId).subscribe({
       next: (summary: LaundryServiceSummaryResponse) => {
@@ -100,10 +80,5 @@ export class LaundryEditComponent implements OnInit {
           : null;
       }
     });
-  }
-
-  // Opcional: reacción al eliminar una nota
-  onNoteDeleted(logId: number) {
-    // por ejemplo, mostrar notificación o actualizar contador
   }
 }

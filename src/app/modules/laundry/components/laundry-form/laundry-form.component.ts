@@ -3,8 +3,6 @@ import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } fro
 import { FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ClientListComponent } from '@shared/components/client-list/client-list.component';
 import {
-  LaundryServiceExtra,
-  LaundryServiceExtraType,
   LaundryServiceItem,
   LaundryServiceUpdatePayload,
   LaundryServiceResp,
@@ -27,7 +25,6 @@ import { ClientAddressListComponent } from '@modules/client/components/client-ad
 import { Transaction } from '@shared/interfaces/transaction.interface';
 import { combineDateAndTime, formatToSQLDateTime } from '@shared/utils/datetime.util';
 import { LaundryGarmentTypesService } from '@shared/services/laundry/laundry-garment-types.service';
-import { LaundryServiceExtraTypesService } from '@shared/services/laundry/laundry-service-extra-types.service';
 import { LaundryTransactionDialogComponent } from '../laundry-transaction-dialog/laundry-transaction-dialog.component';
 import { LaundryTransactionPrefill } from '@shared/utils/laundry-transaction.util';
 
@@ -74,7 +71,6 @@ export class LaundryFormComponent implements OnInit {
   addresses: ClientAddress[] = [];
   createdTransaction?: Transaction;
   garmentTypes: LaundryGarmentType[] = [];
-  extraTypes: LaundryServiceExtraType[] = [];
   readonly unitTypeOptions = [
     { label: 'Unidad', value: 'UNIT' as LaundryUnitType },
     { label: 'Par', value: 'PAIR' as LaundryUnitType }
@@ -85,8 +81,7 @@ export class LaundryFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private clientServ: ClientAddressService,
-    private garmentTypesService: LaundryGarmentTypesService,
-    private extraTypesService: LaundryServiceExtraTypesService
+    private garmentTypesService: LaundryGarmentTypesService
   ) {}
 
   ngOnInit(): void {
@@ -105,8 +100,7 @@ export class LaundryFormComponent implements OnInit {
       transaction_id: [this.initialData?.transaction?.id ?? null],
       weight_lb: [this.initialData?.weight_lb ?? null],
       notes: [this.initialData?.notes ?? null],
-      items: this.fb.array([]),
-      extras: this.fb.array([])
+      items: this.fb.array([])
     });
 
     this.setInitialCollections();
@@ -143,15 +137,6 @@ export class LaundryFormComponent implements OnInit {
         this.garmentTypes = [];
       }
     });
-
-    this.extraTypesService.getAll().subscribe({
-      next: (types) => {
-        this.extraTypes = types.filter((type) => type.active !== false);
-      },
-      error: () => {
-        this.extraTypes = [];
-      }
-    });
   }
 
   get isPending(): boolean {
@@ -167,10 +152,6 @@ export class LaundryFormComponent implements OnInit {
 
   get itemsArray(): FormArray {
     return this.form.get('items') as FormArray;
-  }
-
-  get extrasArray(): FormArray {
-    return this.form.get('extras') as FormArray;
   }
 
   submit(isRedirect: boolean = true): void {
@@ -198,7 +179,6 @@ export class LaundryFormComponent implements OnInit {
       formValue.fulfillment_type = this.initialData?.fulfillment_type ?? 'WALK_IN';
       delete formValue.weight_lb;
       delete formValue.items;
-      delete formValue.extras;
 
       this.formSubmit.emit(formValue);
     } else {
@@ -276,14 +256,6 @@ export class LaundryFormComponent implements OnInit {
     this.itemsArray.removeAt(index);
   }
 
-  addExtra(): void {
-    this.extrasArray.push(this.createExtraGroup());
-  }
-
-  removeExtra(index: number): void {
-    this.extrasArray.removeAt(index);
-  }
-
   onGarmentTypeChange(index: number): void {
     const group = this.itemsArray.at(index) as FormGroup;
     const garmentTypeId = Number(group.get('garment_type_id')?.value);
@@ -302,30 +274,11 @@ export class LaundryFormComponent implements OnInit {
     }
   }
 
-  onExtraTypeChange(index: number): void {
-    const group = this.extrasArray.at(index) as FormGroup;
-    const extraTypeId = Number(group.get('service_extra_type_id')?.value);
-    const selected = this.extraTypes.find((type) => type.id === extraTypeId);
-
-    if (!selected) {
-      return;
-    }
-
-    if (group.get('unit_price')?.value === null || group.get('unit_price')?.value === '') {
-      group.patchValue({ unit_price: selected.default_unit_price }, { emitEvent: false });
-    }
-  }
-
   private setInitialCollections(): void {
     const initialItems = this.initialData?.items ?? [];
-    const initialExtras = this.initialData?.extras ?? [];
 
     if (initialItems.length) {
       initialItems.forEach((item) => this.itemsArray.push(this.createItemGroup(item)));
-    }
-
-    if (initialExtras.length) {
-      initialExtras.forEach((extra) => this.extrasArray.push(this.createExtraGroup(extra)));
     }
   }
 
@@ -336,15 +289,6 @@ export class LaundryFormComponent implements OnInit {
       unit_type: [item?.unit_type ?? 'UNIT', Validators.required],
       unit_price: [item?.unit_price ?? null],
       notes: [item?.notes ?? null]
-    });
-  }
-
-  private createExtraGroup(extra?: Partial<LaundryServiceExtra>): FormGroup {
-    return this.fb.group({
-      service_extra_type_id: [extra?.service_extra_type_id ?? null, Validators.required],
-      quantity: [extra?.quantity ?? 1, [Validators.required, Validators.min(1)]],
-      unit_price: [extra?.unit_price ?? null],
-      notes: [extra?.notes ?? null]
     });
   }
 

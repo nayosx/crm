@@ -430,7 +430,7 @@
     <p class="u-m-all-none text-color-secondary">Cargando...</p>
   } @else if (lastTransactionNotFound()) {
     <p class="u-m-all-none text-color-secondary">No se ha encontrado última transacción</p>
-  } @else {
+  } @else if (lastTransaction()) {
     <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
       <div>
         <p class="u-text-sm-bold u-m-all-none">Detalle</p>
