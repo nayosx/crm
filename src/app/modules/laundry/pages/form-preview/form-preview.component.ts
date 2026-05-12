@@ -91,9 +91,6 @@ export class FormPreviewComponent implements OnInit {
   readonly showNotesCard = signal(false);
 
   serviceId!: number;
-  get backRoute(): string {
-    return `/laundry/service/${this.serviceId}`;
-  }
   summary: LaundryServiceSummaryResponse | null = null;
   garmentTypes: LaundryGarmentType[] = [];
   serviceCatalog: LaundryCommercialCatalogServiceItem[] = [];
