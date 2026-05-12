@@ -6,10 +6,11 @@
   styleClass="pending-save-toast">
 </p-toast>
 
+<app-back-button [path]="backRoute" label="Volver"></app-back-button>
 <section class="container form-preview-shell u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
   <header class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
     <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-      <p class="dr-helper-text u-m-all-none">Captura operativa comercial</p>
+
       <h1 class="u-text-2xl-bold u-leading-tight u-m-all-none">Servicio #{{ serviceId }}</h1>
       @if (summary?.client) {
         <p class="u-text-lg-bold u-m-all-none">{{ summary?.client?.name }}</p>
@@ -20,7 +21,6 @@
 
   <form [formGroup]="form" (ngSubmit)="save()" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
     <p-card styleClass="services-captured-card">
-      <ng-template pTemplate="title">Servicios capturados</ng-template>
 
       <p-accordion
         [multiple]="true"
@@ -47,7 +47,7 @@
                 </div>
 
                 <div formArrayName="garments" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
-                  <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-3">
+                    <div class="u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-3">
                     <div>
                       <h3 class="u-text-base-bold u-m-all-none">Desglose de prendas</h3>
                     </div>
@@ -66,16 +66,18 @@
                     <article class="capture-card u-p-all-2 u-bg-grey-80" [formGroupName]="$index">
                       <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
                         <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                          <label class="u-text-sm-bold">Tipo de prenda</label>
-                          <p-select
-                            class="u-w-100"
-                            formControlName="garment_type_id"
-                            [options]="garmentTypes"
-                            optionLabel="name"
-                            optionValue="id"
-                            appendTo="body"
-                            placeholder="Selecciona prenda">
-                          </p-select>
+                          <div class="u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-1">
+                            <p class="u-text-base-bold u-m-all-none">{{ getGarmentTypeName(garment.get('garment_type_id')?.value) | truncate:16 }}</p>
+                            <p-button
+                              type="button"
+                              icon="pi pi-times"
+                              severity="danger"
+                              [text]="true"
+                              [loading]="isLoading()"
+                              [disabled]="isLoading()"
+                              (onClick)="removeGarment($index)">
+                            </p-button>
+                          </div>
                         </div>
 
                         <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
@@ -88,26 +90,13 @@
                           </p-inputnumber>
                         </div>
                       </div>
-
-                      <div class="u-d-flex u-d-flex-justify-end u-mt-2">
-                        <p-button
-                          type="button"
-                          icon="pi pi-trash"
-                          label="Eliminar"
-                          severity="danger"
-                          [text]="true"
-                          [loading]="isLoading()"
-                          [disabled]="isLoading()"
-                          (onClick)="removeGarment($index)">
-                        </p-button>
-                      </div>
                     </article>
                   } @empty {
                     <p class="empty-text dr-helper-text u-p-all-2 u-m-all-none">Sin prendas agregadas.</p>
                   }
                 </div>
 
-                <div class="u-d-flex u-d-flex-justify-end">
+                <div class="u-d-flex u-d-flex-justify-start">
                   <p-button
                     type="button"
                     icon="pi pi-trash"
@@ -139,7 +128,18 @@
                           <article class="capture-card u-bg-grey-80 u-p-all-2" [formGroupName]="itemIndex">
                             <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
                               <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                                <label class="u-text-sm-bold">{{ selectedVariantName(itemIndex) }}</label>
+                                <div class="u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-1">
+                                  <p class="u-text-base-bold u-m-all-none">{{ selectedVariantName(itemIndex) | truncate:16 }}</p>
+                                  <p-button
+                                    type="button"
+                                    icon="pi pi-times"
+                                    severity="danger"
+                                    [text]="true"
+                                    [loading]="isLoading()"
+                                    [disabled]="isLoading()"
+                                    (onClick)="removeService(itemIndex)">
+                                  </p-button>
+                                </div>
                               </div>
 
                               <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
@@ -151,19 +151,6 @@
                                   styleClass="u-w-100">
                                 </p-inputnumber>
                               </div>
-                            </div>
-
-                            <div class="u-d-flex u-d-flex-justify-end u-mt-2">
-                              <p-button
-                                type="button"
-                                icon="pi pi-trash"
-                                label="Eliminar"
-                                severity="danger"
-                                [text]="true"
-                                [loading]="isLoading()"
-                                [disabled]="isLoading()"
-                                (onClick)="removeService(itemIndex)">
-                              </p-button>
                             </div>
                           </article>
                         }
@@ -227,26 +214,24 @@
     @if (extrasArray.length) {
       <p-card>
       <ng-template pTemplate="title">Extras</ng-template>
-      <ng-template pTemplate="subtitle">
-        <span class="dr-helper-text">Agrega ítems operativos. Sin cálculo local de totales.</span>
-      </ng-template>
 
       <div formArrayName="extras" class="u-d-flex u-d-flex-column u-d-flex-gap-3">
         @for (extra of extrasArray.controls; track $index) {
-          <article class="capture-card u-p-all-2" [formGroupName]="$index">
+          <article class="capture-card u-p-all-2 u-bg-grey-80" [formGroupName]="$index">
             <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--gap-2">
               <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
-                <label class="u-text-sm-bold">Extra</label>
-                <p-select
-                  class="u-w-100"
-                  formControlName="extra_id"
-                  [options]="extrasCatalog"
-                  optionLabel="name"
-                  optionValue="id"
-                  appendTo="body"
-                  placeholder="Selecciona extra"
-                  (onChange)="onExtraChange($index)">
-                </p-select>
+                <div class="u-d-flex u-d-flex-align-center u-d-flex-justify-between u-d-flex-gap-1">
+                  <p class="u-text-base-bold u-m-all-none">{{ getExtraName(extra.get('extra_id')?.value) | truncate:16 }}</p>
+                  <p-button
+                    type="button"
+                    icon="pi pi-times"
+                    severity="danger"
+                    [text]="true"
+                    [loading]="isLoading()"
+                    [disabled]="isLoading()"
+                    (onClick)="removeExtra($index)">
+                  </p-button>
+                </div>
               </div>
 
               <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
@@ -258,19 +243,6 @@
                   styleClass="u-w-100">
                 </p-inputnumber>
               </div>
-            </div>
-
-            <div class="u-d-flex u-d-flex-justify-end u-mt-2">
-              <p-button
-                type="button"
-                icon="pi pi-trash"
-                label="Eliminar"
-                severity="danger"
-                [text]="true"
-                [loading]="isLoading()"
-                [disabled]="isLoading()"
-                (onClick)="removeExtra($index)">
-              </p-button>
             </div>
           </article>
         } @empty {
@@ -587,7 +559,7 @@
 
   <ng-template pTemplate="footer">
     @if (selectedGarmentType) {
-      <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
+      <div class="garment-picker-footer u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-justify-between u-d-flex-gap-2 u-w-100">
         <p-button
           type="button"
           label="Cambiar prenda"
@@ -597,7 +569,7 @@
           [disabled]="isLoading()"
           (onClick)="changeSelectedGarment()">
         </p-button>
-        <div class="u-d-flex u-d-flex-row-responsive u-d-flex-row-responsive-start u-d-flex-gap-2">
+        <div class="garment-picker-footer__actions u-d-flex u-d-flex-gap-2">
           <p-button
             type="button"
             label="Cancelar"

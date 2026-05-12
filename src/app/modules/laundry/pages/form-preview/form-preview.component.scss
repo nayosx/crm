@@ -103,6 +103,18 @@
     width: auto;
   }
 
+  .garment-picker-footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .garment-picker-footer__actions {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+  }
+
   :host ::ng-deep .service-picker-action--compact-mobile.p-button {
     width: 2.75rem;
     min-width: 2.75rem;

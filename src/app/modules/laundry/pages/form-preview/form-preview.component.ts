@@ -32,6 +32,8 @@ import {
 } from '@shared/interfaces/laundry-service.interface';
 import { LaundryGarmentType } from '@shared/interfaces/laundry-garment-type.interface';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import {
   BottomNavigationAction,
   BottomNavigationComponent
@@ -65,6 +67,8 @@ import {
     AccordionModule,
     DialogModule,
     LoaderDialogComponent,
+    BackButtonComponent,
+    TruncatePipe,
     BottomNavigationComponent
   ],
   providers: [MessageService],
@@ -87,6 +91,9 @@ export class FormPreviewComponent implements OnInit {
   readonly showNotesCard = signal(false);
 
   serviceId!: number;
+  get backRoute(): string {
+    return `/laundry/service/${this.serviceId}`;
+  }
   summary: LaundryServiceSummaryResponse | null = null;
   garmentTypes: LaundryGarmentType[] = [];
   serviceCatalog: LaundryCommercialCatalogServiceItem[] = [];
@@ -148,7 +155,19 @@ export class FormPreviewComponent implements OnInit {
   }
 
   availableExtras(): LaundryCommercialCatalogExtraItem[] {
-    return this.extrasCatalog;
+    const addedIds = new Set(
+      this.extrasArray.controls.map((control) => Number(control.get('extra_id')?.value))
+    );
+
+    return this.extrasCatalog.filter((extra) => !addedIds.has(extra.id));
+  }
+
+  getExtraName(id: number | null): string {
+    if (id == null) {
+      return 'Extra';
+    }
+
+    return this.extrasCatalog.find((extra) => extra.id === id)?.name ?? 'Extra';
   }
 
   canAddNote(): boolean {
@@ -232,10 +251,25 @@ export class FormPreviewComponent implements OnInit {
 
   availableGarmentTypes(): LaundryGarmentType[] {
     const search = this.normalizedGarmentSearchTerm();
+    const addedIds = new Set(
+      this.garmentsArray.controls.map((control) => Number(control.get('garment_type_id')?.value))
+    );
 
     return this.garmentTypes.filter((garmentType) => {
+      if (addedIds.has(garmentType.id)) {
+        return false;
+      }
+
       return search.length < 3 || garmentType.name.toLowerCase().includes(search);
     });
+  }
+
+  getGarmentTypeName(id: number | null): string {
+    if (id == null) {
+      return 'Prenda';
+    }
+
+    return this.garmentTypes.find((garmentType) => garmentType.id === id)?.name ?? 'Prenda';
   }
 
   normalizedGarmentSearchTerm(): string {
@@ -405,6 +439,14 @@ export class FormPreviewComponent implements OnInit {
       return;
     }
 
+    const duplicate = this.garmentsArray.controls.some(
+      (control) => Number(control.get('garment_type_id')?.value) === this.selectedGarmentType!.id
+    );
+    if (duplicate) {
+      this.showError('Esta prenda ya está en el desglose.');
+      return;
+    }
+
     const quantity = Number(this.garmentDraftQuantity ?? 0);
     if (!Number.isFinite(quantity) || quantity < 1) {
       this.showError('La cantidad debe ser mayor o igual a 1.');
@@ -565,6 +607,14 @@ export class FormPreviewComponent implements OnInit {
     const selectedExtra = extra ?? this.extrasCatalog[0];
     if (!selectedExtra) {
       this.showError('No hay extras activos disponibles.');
+      return;
+    }
+
+    const duplicate = this.extrasArray.controls.some(
+      (control) => Number(control.get('extra_id')?.value) === selectedExtra.id
+    );
+    if (duplicate) {
+      this.showError('Este extra ya fue agregado.');
       return;
     }
 
