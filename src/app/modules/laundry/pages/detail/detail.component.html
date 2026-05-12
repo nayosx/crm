@@ -28,8 +28,12 @@
     <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
       <p-card>
         <ng-template pTemplate="header">
-          <div class="u-p-all-2 border-bottom-1 surface-border">
+          <div class="u-p-all-2 border-bottom-1 surface-border u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2">
             <h2 class="u-text-lg-bold u-m-all-none">Cabecera operativa</h2>
+            <button pButton type="button" label="Último cobro" icon="pi pi-history" size="small"
+                    [loading]="loadingLastTransaction()"
+                    (click)="openLastTransactionDialog()">
+            </button>
           </div>
         </ng-template>
 
@@ -410,6 +414,44 @@
           </button>
         </div>
       }
+    </div>
+  }
+</p-dialog>
+
+<p-dialog
+  header="Último cobro del cliente"
+  [visible]="showLastTransactionDialog()"
+  (visibleChange)="showLastTransactionDialog.set($event)"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: 'min(96vw, 32rem)' }">
+  @if (loadingLastTransaction()) {
+    <p class="u-m-all-none text-color-secondary">Cargando...</p>
+  } @else if (lastTransactionNotFound()) {
+    <p class="u-m-all-none text-color-secondary">No se ha encontrado última transacción</p>
+  } @else {
+    <div class="u-d-flex u-d-flex-column u-d-flex-gap-3">
+      <div>
+        <p class="u-text-sm-bold u-m-all-none">Detalle</p>
+        @if (sanitizedDetail()) {
+          <div class="html-content" [innerHTML]="sanitizedDetail()"></div>
+        } @else {
+          <p class="u-m-all-none text-color-secondary">Sin detalle</p>
+        }
+      </div>
+      <div>
+        <p class="u-text-sm-bold u-m-all-none">Monto</p>
+        <p class="u-m-all-none">{{ formatMoney(lastTransaction()!.amount) }}</p>
+      </div>
+      <div>
+        <p class="u-text-sm-bold u-m-all-none">Tipo de pago</p>
+        <p class="u-m-all-none">{{ lastTransaction()!.payment_type_name || '—' }}</p>
+      </div>
+      <div>
+        <p class="u-text-sm-bold u-m-all-none">Fecha</p>
+        <p class="u-m-all-none">{{ formatDate(lastTransaction()!.created_at) }}</p>
+      </div>
     </div>
   }
 </p-dialog>

@@ -70,6 +70,19 @@ body {
   flex-wrap: wrap;
 }
 
+.html-content ol,
+.html-content ul {
+  padding-left: 2rem;
+}
+
+.html-content ol {
+  list-style-type: decimal;
+}
+
+.html-content ul {
+  list-style-type: disc;
+}
+
 .u-card-group > div:not(:last-child) {
   border-bottom: 1px solid #007ad9;
 }

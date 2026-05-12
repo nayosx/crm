@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, SecurityContext, computed, inject, signal } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -28,6 +29,7 @@ import {
   LaundryServiceStatus
 } from '@shared/interfaces/laundry-service.interface';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
+import { TransactionService } from '@shared/services/transaction/transaction.service';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
 import { DialogLoadingService } from '@shared/services/dialog-loading.service';
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
@@ -210,8 +212,10 @@ export class DetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly laundryService = inject(LaundryService);
+  private readonly transactionService = inject(TransactionService);
   private readonly messageService = inject(MessageService);
   private readonly dialogLoadingService = inject(DialogLoadingService);
+  private readonly domSanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isLoading = signal(false);
@@ -221,6 +225,10 @@ export class DetailComponent implements OnInit {
   readonly showSummaryDialog = signal(false);
   readonly isPriceEditMode = signal(false);
   readonly priceDrafts = signal<Record<string, string>>({});
+  readonly lastTransaction = signal<Transaction | null>(null);
+  readonly lastTransactionNotFound = signal(false);
+  readonly showLastTransactionDialog = signal(false);
+  readonly loadingLastTransaction = signal(false);
 
   readonly headerForm = this.fb.group({
     is_express: this.fb.control(false, { nonNullable: true }),
@@ -316,6 +324,15 @@ export class DetailComponent implements OnInit {
     return orderTotal + extrasTotal;
   });
 
+  readonly sanitizedDetail = computed(() => {
+    const detail = this.lastTransaction()?.detail;
+    if (!detail) {
+      return null;
+    }
+
+    return this.domSanitizer.sanitize(SecurityContext.HTML, detail);
+  });
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.serviceId.set(id);
@@ -338,6 +355,10 @@ export class DetailComponent implements OnInit {
       });
 
     this.loadSummary();
+    this.destroyRef.onDestroy(() => {
+      this.lastTransaction.set(null);
+      this.lastTransactionNotFound.set(false);
+    });
   }
 
   clientPhones(): string[] {
@@ -460,6 +481,44 @@ export class DetailComponent implements OnInit {
     }
 
     this.transactionDialogVisible.set(true);
+  }
+
+  openLastTransactionDialog(): void {
+    if (this.lastTransaction() || this.lastTransactionNotFound()) {
+      this.showLastTransactionDialog.set(true);
+      return;
+    }
+
+    const clientId = this.summary()?.client.id;
+    if (!clientId) {
+      this.showError('No se encontró el cliente.');
+      return;
+    }
+
+    this.loadingLastTransaction.set(true);
+    this.dialogLoadingService.show('Consultando última transacción...');
+
+    this.transactionService.getLastClientTransaction(clientId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => {
+        this.loadingLastTransaction.set(false);
+        this.dialogLoadingService.hide();
+      })
+    ).subscribe({
+      next: (transaction) => {
+        this.lastTransaction.set(transaction);
+        this.lastTransactionNotFound.set(false);
+        this.showLastTransactionDialog.set(true);
+      },
+      error: (error) => {
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.lastTransactionNotFound.set(true);
+          this.showLastTransactionDialog.set(true);
+        } else {
+          this.showError(this.extractErrorMessage(error, 'No se pudo consultar la última transacción.'));
+        }
+      }
+    });
   }
 
   onTransactionLinked(transaction: Transaction): void {

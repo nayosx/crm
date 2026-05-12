@@ -40,6 +40,10 @@ export class TransactionService {
         return this.http.get<Transaction>(`${this.apiUrl}/${id}`);
     }
 
+    getLastClientTransaction(clientId: number): Observable<Transaction> {
+        return this.http.get<Transaction>(`${environment.API}/clients/${clientId}/last-transaction`);
+    }
+
     createTransaction(transaction: Partial<Transaction>): Observable<TransactionResponse> {
         return this.http.post<TransactionResponse>(this.apiUrl, transaction);
     }
