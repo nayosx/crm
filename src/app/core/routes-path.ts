@@ -23,5 +23,7 @@ export const ROUTE_PATH = {
     SETTINGS_MENU_ROLES: 'configuraciones/roles-menus',
     SETTINGS_MENU_ROLES_LEGACY: 'settings/menu-roles',
     LAUNDRY: 'laundry',
-    CATALOGS: 'catalogs'
+    CATALOGS: 'catalogs',
+    DELIVERY_MANAGER: 'delivery/manager',
+    DELIVERY_WORKING: 'delivery/working'
 }

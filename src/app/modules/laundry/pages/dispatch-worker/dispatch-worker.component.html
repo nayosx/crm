@@ -1,0 +1,291 @@
+<p-toast />
+<p-confirmDialog />
+
+<section class="dispatch-worker-page p-3 lg:p-4">
+  <div class="flex align-items-center justify-content-between gap-2 mb-3">
+    <div class="flex align-items-center gap-2">
+      <app-back-button [fallbackRoute]="'/home'" />
+      <div>
+        <h2 class="m-0">Mis Entregas</h2>
+        <p class="m-0 text-color-secondary">Hoy: {{ todayLabel() }}</p>
+      </div>
+    </div>
+    <button
+      pButton
+      type="button"
+      icon="pi pi-refresh"
+      [rounded]="true"
+      [text]="true"
+      [loading]="loading()"
+      (click)="loadAll()"
+      pTooltip="Refrescar"
+      tooltipPosition="left"
+    ></button>
+  </div>
+
+  @if (error()) {
+    <p-message severity="error" [text]="error()!" styleClass="mb-3" />
+  }
+
+  @if (loading()) {
+    <div class="flex flex-column gap-3">
+      @for (i of [1,2,3]; track i) {
+        <p-card styleClass="shadow-2">
+          <p-skeleton width="12rem" height="1.5rem" styleClass="mb-2" />
+          <p-skeleton width="100%" height="4rem" />
+        </p-card>
+      }
+    </div>
+  } @else {
+    <p-accordion [activeIndex]="activeAccordionIndex()" (activeIndexChange)="activeAccordionIndex.set($event)">
+      <!-- Pendientes -->
+      <p-accordionTab>
+        <ng-template pTemplate="header">
+          <div class="flex align-items-center gap-2 w-full">
+            <span class="font-bold">Pendientes</span>
+            <p-tag [value]="assigned().length.toString()" severity="warn"></p-tag>
+          </div>
+        </ng-template>
+
+        @if (!assigned().length) {
+          <p-message severity="info" text="No tienes entregas pendientes." />
+        }
+
+        <div class="flex flex-column gap-3">
+          @for (dispatch of assigned(); track dispatch.id) {
+            <p-card styleClass="shadow-2">
+              <div class="flex flex-column gap-2">
+                <div class="flex justify-content-between align-items-start">
+                  <div>
+                    <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
+                    <p class="m-0 text-color-secondary">
+                      Salida programada: {{ dispatch.scheduled_departure_time | date:'shortTime' }}
+                    </p>
+                  </div>
+                  <p-tag [severity]="'warn'" [value]="'Asignado'"></p-tag>
+                </div>
+
+                <p-divider />
+
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <div class="metric-card">
+                      <span class="metric-label">Cliente espera</span>
+                      <strong>{{ dispatch.customer_expected_time | date:'shortTime' }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    pButton
+                    type="button"
+                    icon="pi pi-map"
+                    label="Ver ruta"
+                    severity="secondary"
+                    outlined
+                    [disabled]="!getClientAddress(dispatch)"
+                    (click)="openMap(getClientAddress(dispatch))"
+                  ></button>
+                  <button
+                    pButton
+                    type="button"
+                    icon="pi pi-car"
+                    label="Aceptar"
+                    [disabled]="hasEnRoute()"
+                    (click)="accept(dispatch)"
+                  ></button>
+                  <button
+                    pButton
+                    type="button"
+                    icon="pi pi-times"
+                    label="Rechazar"
+                    severity="danger"
+                    outlined
+                    (click)="openReject(dispatch)"
+                  ></button>
+                </div>
+              </div>
+            </p-card>
+          }
+        </div>
+      </p-accordionTab>
+
+      <!-- En camino -->
+      <p-accordionTab>
+        <ng-template pTemplate="header">
+          <div class="flex align-items-center gap-2 w-full">
+            <span class="font-bold">En camino</span>
+            <p-tag [value]="enRoute().length.toString()" severity="info"></p-tag>
+          </div>
+        </ng-template>
+
+        @if (!enRoute().length) {
+          <p-message severity="info" text="No tienes entregas en camino." />
+        }
+
+        <div class="flex flex-column gap-3">
+          @for (dispatch of enRoute(); track dispatch.id) {
+            <p-card styleClass="shadow-2">
+              <div class="flex flex-column gap-2">
+                <div class="flex justify-content-between align-items-start">
+                  <div>
+                    <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
+                    <p class="m-0 text-color-secondary">
+                      Salió: {{ dispatch.actual_departure_time | date:'shortTime' }}
+                    </p>
+                  </div>
+                  <p-tag [severity]="'info'" [value]="'En ruta'"></p-tag>
+                </div>
+
+                <p-divider />
+
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <div class="metric-card">
+                      <span class="metric-label">Cliente espera</span>
+                      <strong>{{ dispatch.customer_expected_time | date:'shortTime' }}</strong>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="metric-card">
+                      <span class="metric-label">Reacción</span>
+                      <strong>{{ getReactionMinutes(dispatch) ?? '--' }} min</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    pButton
+                    type="button"
+                    icon="pi pi-map"
+                    label="Ver ruta"
+                    severity="secondary"
+                    outlined
+                    [disabled]="!getClientAddress(dispatch)"
+                    (click)="openMap(getClientAddress(dispatch))"
+                  ></button>
+                  <button
+                    pButton
+                    type="button"
+                    icon="pi pi-check-circle"
+                    label="Marcar entregado"
+                    severity="success"
+                    (click)="markDelivered(dispatch)"
+                  ></button>
+                </div>
+              </div>
+            </p-card>
+          }
+        </div>
+      </p-accordionTab>
+
+      <!-- Completadas -->
+      <p-accordionTab>
+        <ng-template pTemplate="header">
+          <div class="flex align-items-center gap-2 w-full">
+            <span class="font-bold">Completadas</span>
+            <p-tag [value]="delivered().length.toString()" severity="success"></p-tag>
+          </div>
+        </ng-template>
+
+        @if (!delivered().length) {
+          <p-message severity="info" text="No has completado entregas hoy." />
+        }
+
+        <div class="flex flex-column gap-3">
+          @for (dispatch of delivered(); track dispatch.id) {
+            <p-card styleClass="shadow-2">
+              <div class="flex flex-column gap-2">
+                <div class="flex justify-content-between align-items-start">
+                  <div>
+                    <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
+                    <p class="m-0 text-color-secondary">
+                      Entregado: {{ dispatch.actual_delivery_time | date:'shortTime' }}
+                    </p>
+                  </div>
+                  <p-tag [severity]="'success'" [value]="'Entregado'"></p-tag>
+                </div>
+
+                <p-divider />
+
+                <div class="grid">
+                  <div class="col-12 md:col-4">
+                    <div class="metric-card">
+                      <span class="metric-label">Reacción</span>
+                      <strong>{{ getReactionMinutes(dispatch) ?? '--' }} min</strong>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="metric-card">
+                      <span class="metric-label">Delay cliente</span>
+                      <strong [class]="(getDelayMinutes(dispatch) ?? 0) > 0 ? 'text-red-500' : 'text-green-500'">
+                        {{ getDelayMinutes(dispatch) ?? '--' }} min
+                      </strong>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="metric-card">
+                      <span class="metric-label">Tiempo en ruta</span>
+                      <strong>{{ getRoadMinutes(dispatch) ?? '--' }} min</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-card>
+          }
+        </div>
+      </p-accordionTab>
+    </p-accordion>
+  }
+</section>
+
+<!-- Dialog: Rechazar con nota -->
+<p-dialog
+  header="Rechazar despacho"
+  [visible]="rejectDialogVisible()"
+  [modal]="true"
+  [style]="{ width: 'min(95vw, 30rem)' }"
+  [closable]="true"
+  (visibleChange)="rejectDialogVisible.set($event)"
+>
+  <form [formGroup]="rejectForm" class="flex flex-column gap-3">
+    <p-message severity="warn" text="Indica el motivo del rechazo. Esto será visible para el manager." />
+    <div>
+      <label class="filter-label">Motivo del rechazo *</label>
+      <textarea
+        pTextarea
+        formControlName="notes"
+        rows="4"
+        class="w-full"
+        placeholder="Ej: Cliente no está en casa, dirección incorrecta..."
+      ></textarea>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      <button
+        pButton
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        outlined
+        (click)="rejectDialogVisible.set(false)"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Confirmar rechazo"
+        icon="pi pi-times"
+        severity="danger"
+        [loading]="rejectLoading()"
+        [disabled]="rejectForm.invalid"
+        (click)="submitReject()"
+      ></button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<app-loader-dialog />

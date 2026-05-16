@@ -249,6 +249,16 @@ export const routes: Routes = [
                 ]
             },
             {
+                path: ROUTE_PATH.DELIVERY_MANAGER,
+                loadComponent: () =>
+                    import('./modules/laundry/pages/dispatch-manager/dispatch-manager.component').then(m => m.ManagerDispatchComponent)
+            },
+            {
+                path: ROUTE_PATH.DELIVERY_WORKING,
+                loadComponent: () =>
+                    import('./modules/laundry/pages/dispatch-worker/dispatch-worker.component').then(m => m.WorkerDispatchComponent)
+            },
+            {
                 path: '',
                 redirectTo: ROUTE_PATH.HOME,
                 pathMatch: 'full'
