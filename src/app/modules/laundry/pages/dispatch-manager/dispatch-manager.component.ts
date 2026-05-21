@@ -1,16 +1,20 @@
 import { Component, OnInit, ViewChild, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CalendarOptions, DatesSetArg, EventClickArg, EventInput } from '@fullcalendar/core';
+import { CalendarOptions, DatesSetArg, EventClickArg, EventDropArg, EventInput } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { FullCalendarModule } from '@fullcalendar/angular';
+import esLocale from '@fullcalendar/core/locales/es';
 import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 import { finalize } from 'rxjs';
 
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
+import { BottomNavigationComponent, BottomNavigationAction } from '@shared/components/bottom-navigation/bottom-navigation.component';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { AmPmTimePipe } from '@shared/pipes/am-pm-time.pipe';
 import { LaundryDeliveryService } from '@shared/services/laundry/laundry-delivery.service';
 import { LaundryService } from '@shared/services/laundry/laundry.service';
 import { UserService } from '@shared/services/user/user.service';
@@ -46,7 +50,9 @@ import { ConfirmationService, MessageService } from 'primeng/api';
     ReactiveFormsModule,
     FullCalendarModule,
     BackButtonComponent,
+    BottomNavigationComponent,
     LoaderDialogComponent,
+    AmPmTimePipe,
     ButtonModule,
     CardModule,
     ChipModule,
@@ -66,6 +72,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './dispatch-manager.component.html',
+  styleUrl: './dispatch-manager.component.scss',
   encapsulation: ViewEncapsulation.None
 })
 export class ManagerDispatchComponent implements OnInit {
@@ -88,9 +95,16 @@ export class ManagerDispatchComponent implements OnInit {
   readonly createDialogVisible = signal<boolean>(false);
   readonly detailPanelVisible = signal<boolean>(false);
   readonly createLoading = signal<boolean>(false);
+  readonly serviceType = signal<'PENDING' | 'READY_FOR_DELIVERY'>('READY_FOR_DELIVERY');
+  readonly currentStep = signal<1 | 2>(1);
+
+  readonly dialogHeader = computed(() => this.serviceType() === 'PENDING' ? 'Agendar nueva recolecta' : 'Agendar nueva entrega');
+  readonly serviceTypeLabel = computed(() => this.serviceType() === 'PENDING' ? 'Servicio pendiente de recolecta' : 'Servicio listo para entrega');
 
   readonly calendarOptions = signal<CalendarOptions>(this.buildCalendarOptions());
   readonly calendarCoverage = signal<{ start: string; end: string } | null>(null);
+
+  private fetchInProgress = false;
 
   readonly assignedCount = computed(() => this.dispatches().filter(d => d.status === 'ASSIGNED').length);
   readonly enRouteCount = computed(() => this.dispatches().filter(d => d.status === 'EN_ROUTE').length);
@@ -122,6 +136,9 @@ export class ManagerDispatchComponent implements OnInit {
     return {
       plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
       initialView: 'timeGridWeek',
+      hiddenDays: [6],
+      locale: esLocale,
+      dayHeaderFormat: { weekday: 'short', day: 'numeric' },
       headerToolbar: {
         left: 'prev,next today',
         center: 'title',
@@ -130,9 +147,23 @@ export class ManagerDispatchComponent implements OnInit {
       height: 'auto',
       allDaySlot: false,
       slotMinTime: '07:00:00',
-      slotMaxTime: '21:00:00',
+      slotMaxTime: '23:00:00',
+      slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      editable: true,
+      snapDuration: '00:05:00',
+      eventDragMinDistance: 10,
+      eventAllow: (dropInfo, draggedEvent) => {
+        if (!draggedEvent) return false;
+        const dispatch = draggedEvent.extendedProps['dispatch'] as LaundryDelivery;
+        if (dispatch?.status !== 'ASSIGNED') return false;
+        const today = dayjs().startOf('day');
+        const newStart = dayjs(dropInfo.start);
+        return newStart.valueOf() >= today.valueOf();
+      },
       events: [],
       eventClick: (event) => this.onEventClick(event),
+      eventDrop: (info) => this.onEventDrop(info),
+      eventResize: (info) => this.onEventResize(info),
       datesSet: (event) => this.onDatesSet(event)
     };
   }
@@ -153,6 +184,11 @@ export class ManagerDispatchComponent implements OnInit {
   }
 
   fetchDispatches(start: string, end: string): void {
+    if (this.fetchInProgress) {
+      return;
+    }
+
+    this.fetchInProgress = true;
     this.calendarLoading.set(true);
     this.calendarError.set(null);
 
@@ -161,14 +197,18 @@ export class ManagerDispatchComponent implements OnInit {
       to_date: end,
       per_page: 500
     }).pipe(
-      finalize(() => this.calendarLoading.set(false))
+      finalize(() => {
+        this.calendarLoading.set(false);
+        this.fetchInProgress = false;
+      })
     ).subscribe({
       next: (res) => {
         this.dispatches.set(res.items);
         this.calendarCoverage.set({ start, end });
         this.syncCalendarEvents();
       },
-      error: () => {
+      error: (err) => {
+        console.error('[dispatch-manager] API error:', err);
         this.calendarError.set('No se pudieron cargar los despachos.');
         this.syncCalendarEvents();
       }
@@ -197,9 +237,11 @@ export class ManagerDispatchComponent implements OnInit {
 
       return {
         id: String(item.id),
-        title: `#${item.id} - ${item.status}`,
+        title: `#${item.id} - ${this.getStatusLabel(item.status)}`,
         start: item.scheduled_departure_time,
         end: item.customer_expected_time,
+        allDay: false,
+        editable: item.status === 'ASSIGNED',
         backgroundColor: colorMap[item.status] ?? '#94a3b8',
         borderColor: borderMap[item.status] ?? '#64748b',
         textColor: '#ffffff',
@@ -231,15 +273,36 @@ export class ManagerDispatchComponent implements OnInit {
 
   openCreateDialog(): void {
     this.createForm.reset();
-    this.loadReadyServices();
+    this.serviceType.set('READY_FOR_DELIVERY');
+    this.currentStep.set(1);
     this.createDialogVisible.set(true);
   }
 
-  loadReadyServices(): void {
-    this.laundryService.getCompact({ status: 'READY_FOR_DELIVERY' }).subscribe({
+  loadServicesForType(status: string): void {
+    this.laundryService.getCompact({ status: status as any }).subscribe({
       next: (res) => this.readyServices.set(res.items),
       error: () => this.readyServices.set([])
     });
+  }
+
+  onServiceTypeChange(status: 'PENDING' | 'READY_FOR_DELIVERY'): void {
+    this.serviceType.set(status);
+    this.createForm.get('laundry_service_id')?.reset();
+    this.loadServicesForType(status);
+    this.currentStep.set(2);
+  }
+
+  goBackToStep1(): void {
+    this.currentStep.set(1);
+    this.serviceType.set('READY_FOR_DELIVERY');
+    this.createForm.get('laundry_service_id')?.reset();
+  }
+
+  onDialogVisibilityChange(visible: boolean): void {
+    this.createDialogVisible.set(visible);
+    if (!visible) {
+      this.currentStep.set(1);
+    }
   }
 
   loadDrivers(): void {
@@ -262,8 +325,8 @@ export class ManagerDispatchComponent implements OnInit {
       laundry_service_id: formValue.laundry_service_id,
       manager_id: this.getCurrentUserId(),
       driver_id: formValue.driver_id,
-      scheduled_departure_time: this.toUtcIsoString(formValue.scheduled_departure_time),
-      customer_expected_time: this.toUtcIsoString(formValue.customer_expected_time),
+      scheduled_departure_time: dayjs(this.snapTo5Minutes(formValue.scheduled_departure_time)).format('YYYY-MM-DDTHH:mm:ss'),
+      customer_expected_time: dayjs(this.snapTo5Minutes(formValue.customer_expected_time)).format('YYYY-MM-DDTHH:mm:ss'),
       notes: formValue.notes
     }).pipe(
       finalize(() => this.createLoading.set(false))
@@ -326,11 +389,6 @@ export class ManagerDispatchComponent implements OnInit {
     return 1;
   }
 
-  toUtcIsoString(date: Date | string | null): string {
-    if (!date) return '';
-    return new Date(date).toISOString().slice(0, 19);
-  }
-
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       ASSIGNED: 'Asignado',
@@ -349,5 +407,130 @@ export class ManagerDispatchComponent implements OnInit {
       REJECTED: 'danger'
     };
     return map[status] ?? 'secondary';
+  }
+
+  getCalendarEventCount(): number {
+    const ev = this.calendarOptions().events;
+    return Array.isArray(ev) ? ev.length : 0;
+  }
+
+  snapTo5Minutes(date: Date): Date {
+    const d = dayjs(date);
+    const minutes = d.minute();
+    const snapped = Math.round(minutes / 5) * 5;
+    return d.minute(snapped).second(0).millisecond(0).toDate();
+  }
+
+  onDateTimeSelect(controlName: string, date: Date): void {
+    const snapped = this.snapTo5Minutes(date);
+    this.createForm.get(controlName)?.setValue(snapped);
+  }
+
+  formatTime(date: Date): string {
+    return dayjs(date).locale('es').format('ddd D MMM, h:mm A');
+  }
+
+  bottomNavigationActions(): BottomNavigationAction[] {
+    return [
+      {
+        id: 'create-dispatch',
+        label: 'Nuevo despacho',
+        icon: 'pi pi-plus',
+        mobileMode: 'primary'
+      }
+    ];
+  }
+
+  onBottomNavigationAction(actionId: string): void {
+    if (actionId === 'create-dispatch') {
+      this.openCreateDialog();
+    }
+  }
+
+  onEventDrop(info: EventDropArg): void {
+    const dispatch = info.event.extendedProps['dispatch'] as LaundryDelivery;
+    if (!dispatch) {
+      info.revert();
+      return;
+    }
+
+    const newStart = this.snapTo5Minutes(info.event.start!);
+    const newEnd = this.snapTo5Minutes(info.event.end ?? info.event.start!);
+    const oldStart = info.oldEvent.start!;
+    const oldEnd = info.oldEvent.end ?? info.oldEvent.start!;
+
+    const driver = this.drivers().find(d => d.id === dispatch.driver_id);
+    const driverName = driver?.name ?? `#${dispatch.driver_id}`;
+
+    this.confirmationService.confirm({
+      header: 'Reagendar despacho',
+      message: `<b>Despacho #${dispatch.id}</b><br><br>Repartidor: ${driverName}<br>Hora anterior: ${this.formatTime(oldStart)}<br>Nueva hora de entrega: <b>${this.formatTime(newStart)}</b>`,
+      icon: 'pi pi-calendar-clock',
+      acceptLabel: 'Reagendar',
+      rejectLabel: 'Cancelar',
+      acceptButtonProps: { severity: 'success' },
+      rejectButtonProps: { severity: 'secondary', outlined: true },
+      accept: () => {
+        this.doReschedule(
+          dispatch.id,
+          dayjs(newStart).format('YYYY-MM-DDTHH:mm:ss'),
+          dayjs(newEnd).format('YYYY-MM-DDTHH:mm:ss')
+        );
+      },
+      reject: () => { info.revert(); }
+    });
+  }
+
+  onEventResize(info: any): void {
+    const dispatch = info.event.extendedProps['dispatch'] as LaundryDelivery;
+    if (!dispatch) {
+      info.revert();
+      return;
+    }
+
+    const newStart = this.snapTo5Minutes(info.event.start!);
+    const newEnd = this.snapTo5Minutes(info.event.end!);
+    const oldStart = info.oldEvent.start!;
+    const oldEnd = info.oldEvent.end!;
+
+    const driver = this.drivers().find(d => d.id === dispatch.driver_id);
+    const driverName = driver?.name ?? `#${dispatch.driver_id}`;
+
+    this.confirmationService.confirm({
+      header: 'Reagendar despacho',
+      message: `<b>Despacho #${dispatch.id}</b><br><br>Repartidor: ${driverName}<br>Hora anterior: ${this.formatTime(oldStart)} - ${this.formatTime(oldEnd)}<br>Nueva hora de entrega: <b>${this.formatTime(newStart)} - ${this.formatTime(newEnd)}</b>`,
+      icon: 'pi pi-calendar-clock',
+      acceptLabel: 'Reagendar',
+      rejectLabel: 'Cancelar',
+      acceptButtonProps: { severity: 'success' },
+      rejectButtonProps: { severity: 'secondary', outlined: true },
+      accept: () => {
+        this.doReschedule(
+          dispatch.id,
+          dayjs(newStart).format('YYYY-MM-DDTHH:mm:ss'),
+          dayjs(newEnd).format('YYYY-MM-DDTHH:mm:ss')
+        );
+      },
+      reject: () => { info.revert(); }
+    });
+  }
+
+  private doReschedule(dispatchId: number, newStart: string, newEnd: string): void {
+    this.loader?.open('Reagendando...');
+    this.deliveryService.update(dispatchId, {
+      scheduled_departure_time: newStart,
+      customer_expected_time: newEnd
+    }).pipe(
+      finalize(() => this.loader?.close())
+    ).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Reagendado', detail: 'Despacho reagendado correctamente.' });
+        this.refreshCalendar();
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo reagendar el despacho.' });
+        this.refreshCalendar();
+      }
+    });
   }
 }

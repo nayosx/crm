@@ -5,12 +5,12 @@ import { finalize } from 'rxjs';
 
 import { BackButtonComponent } from '@shared/components/back/back-button.component';
 import { LoaderDialogComponent } from '@shared/components/loader-dialog/loader-dialog.component';
+import { AmPmTimePipe } from '@shared/pipes/am-pm-time.pipe';
 import { LaundryDeliveryService } from '@shared/services/laundry/laundry-delivery.service';
 
 import {
   DispatchStatus,
-  LaundryDelivery,
-  LaundryDeliveryDetail
+  LaundryDeliveryEnriched
 } from '@shared/interfaces/delivery-dispatch.interface';
 
 import { AccordionModule } from 'primeng/accordion';
@@ -35,6 +35,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
     ReactiveFormsModule,
     BackButtonComponent,
     LoaderDialogComponent,
+    AmPmTimePipe,
     AccordionModule,
     ButtonModule,
     CardModule,
@@ -49,6 +50,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './dispatch-worker.component.html',
+  styleUrl: './dispatch-worker.component.scss',
   encapsulation: ViewEncapsulation.None
 })
 export class WorkerDispatchComponent implements OnInit {
@@ -59,9 +61,9 @@ export class WorkerDispatchComponent implements OnInit {
 
   @ViewChild(LoaderDialogComponent) loader?: LoaderDialogComponent;
 
-  readonly assigned = signal<LaundryDelivery[]>([]);
-  readonly enRoute = signal<LaundryDelivery[]>([]);
-  readonly delivered = signal<LaundryDelivery[]>([]);
+  readonly assigned = signal<LaundryDeliveryEnriched[]>([]);
+  readonly enRoute = signal<LaundryDeliveryEnriched[]>([]);
+  readonly delivered = signal<LaundryDeliveryEnriched[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
   readonly currentDriverId = signal<number>(this.readCurrentUserId());
@@ -97,18 +99,27 @@ export class WorkerDispatchComponent implements OnInit {
       driver_id: driverId,
       status: 'ASSIGNED',
       from_date: today,
-      per_page: 500
+      to_date: today,
+      per_page: 500,
+      format: 'detailed'
     }).subscribe({
-      next: (res) => this.assigned.set(res.items),
+      next: (res) => this.assigned.set([...(res.items as LaundryDeliveryEnriched[])].sort((a, b) =>
+        new Date(a.scheduled_departure_time).getTime() - new Date(b.scheduled_departure_time).getTime()
+      )),
       error: () => this.assigned.set([])
     });
 
     this.deliveryService.getAll({
       driver_id: driverId,
       status: 'EN_ROUTE',
-      per_page: 500
+      per_page: 500,
+      format: 'detailed'
     }).subscribe({
-      next: (res) => this.enRoute.set(res.items),
+      next: (res) => this.enRoute.set([...(res.items as LaundryDeliveryEnriched[])].sort((a, b) => {
+        const aTime = a.actual_departure_time ? new Date(a.actual_departure_time).getTime() : Infinity;
+        const bTime = b.actual_departure_time ? new Date(b.actual_departure_time).getTime() : Infinity;
+        return aTime - bTime;
+      })),
       error: () => this.enRoute.set([])
     });
 
@@ -116,10 +127,15 @@ export class WorkerDispatchComponent implements OnInit {
       driver_id: driverId,
       status: 'DELIVERED',
       from_date: today,
-      per_page: 500
+      per_page: 500,
+      format: 'detailed'
     }).subscribe({
       next: (res) => {
-        this.delivered.set(res.items);
+        this.delivered.set([...(res.items as LaundryDeliveryEnriched[])].sort((a, b) => {
+          const aTime = a.actual_delivery_time ? new Date(a.actual_delivery_time).getTime() : Infinity;
+          const bTime = b.actual_delivery_time ? new Date(b.actual_delivery_time).getTime() : Infinity;
+          return aTime - bTime;
+        }));
         this.loading.set(false);
       },
       error: () => {
@@ -129,7 +145,7 @@ export class WorkerDispatchComponent implements OnInit {
     });
   }
 
-  accept(dispatch: LaundryDelivery): void {
+  accept(dispatch: LaundryDeliveryEnriched): void {
     if (this.hasEnRoute()) {
       this.messageService.add({
         severity: 'warn',
@@ -145,22 +161,26 @@ export class WorkerDispatchComponent implements OnInit {
       icon: 'pi pi-car',
       acceptLabel: 'Sí, aceptar',
       rejectLabel: 'Cancelar',
+      acceptButtonProps: { severity: 'success' },
+      rejectButtonProps: { severity: 'secondary', outlined: true },
       accept: () => this.doUpdateStatus(dispatch.id, 'EN_ROUTE')
     });
   }
 
-  markDelivered(dispatch: LaundryDelivery): void {
+  markDelivered(dispatch: LaundryDeliveryEnriched): void {
     this.confirmationService.confirm({
       header: 'Marcar como entregado',
       message: `¿Confirmar entrega del despacho #${dispatch.id}?`,
       icon: 'pi pi-check-circle',
       acceptLabel: 'Sí, entregado',
       rejectLabel: 'Cancelar',
+      acceptButtonProps: { severity: 'success' },
+      rejectButtonProps: { severity: 'secondary', outlined: true },
       accept: () => this.doUpdateStatus(dispatch.id, 'DELIVERED')
     });
   }
 
-  openReject(dispatch: LaundryDelivery): void {
+  openReject(dispatch: LaundryDeliveryEnriched): void {
     this.rejectTargetId.set(dispatch.id);
     this.rejectForm.reset({ notes: '' });
     this.rejectDialogVisible.set(true);
@@ -219,10 +239,16 @@ export class WorkerDispatchComponent implements OnInit {
     window.open(url, '_blank');
   }
 
-  getClientAddress(dispatch: LaundryDelivery): string | undefined {
-    // The backend detail response includes nested client_address, but the list response does not.
-    // For now, return undefined; the component can load detail if needed.
-    return undefined;
+  getClientAddress(dispatch: LaundryDeliveryEnriched): string | undefined {
+    return dispatch.client?.addresses?.[0]?.address_text;
+  }
+
+  getDispatchTypeLabel(dispatch: LaundryDeliveryEnriched): string {
+    return dispatch.service?.status === 'PENDING' ? 'Recolecta' : 'Entrega';
+  }
+
+  getDispatchTypeSeverity(dispatch: LaundryDeliveryEnriched): 'info' | 'success' {
+    return dispatch.service?.status === 'PENDING' ? 'info' : 'success';
   }
 
   getStatusLabel(status: string): string {
@@ -245,22 +271,53 @@ export class WorkerDispatchComponent implements OnInit {
     return map[status] ?? 'secondary';
   }
 
-  getReactionMinutes(dispatch: LaundryDelivery): number | null {
+  getReactionMinutes(dispatch: LaundryDeliveryEnriched): number | null {
     if (!dispatch.actual_departure_time || !dispatch.scheduled_departure_time) return null;
     const diff = new Date(dispatch.actual_departure_time).getTime() - new Date(dispatch.scheduled_departure_time).getTime();
     return Math.round(diff / 60000);
   }
 
-  getDelayMinutes(dispatch: LaundryDelivery): number | null {
+  getDelayMinutes(dispatch: LaundryDeliveryEnriched): number | null {
     if (!dispatch.actual_delivery_time || !dispatch.customer_expected_time) return null;
     const diff = new Date(dispatch.actual_delivery_time).getTime() - new Date(dispatch.customer_expected_time).getTime();
     return Math.round(diff / 60000);
   }
 
-  getRoadMinutes(dispatch: LaundryDelivery): number | null {
+  getRoadMinutes(dispatch: LaundryDeliveryEnriched): number | null {
     if (!dispatch.actual_delivery_time || !dispatch.actual_departure_time) return null;
     const diff = new Date(dispatch.actual_delivery_time).getTime() - new Date(dispatch.actual_departure_time).getTime();
     return Math.round(diff / 60000);
+  }
+
+  getTimelinessLabel(dispatch: LaundryDeliveryEnriched): string | null {
+    const minutes = this.getTimelinessMinutes(dispatch);
+    if (minutes === null) return null;
+    if (minutes >= 30) return 'Muy tarde';
+    if (minutes >= 20) return 'Tarde';
+    return 'A tiempo';
+  }
+
+  getTimelinessSeverity(dispatch: LaundryDeliveryEnriched): 'success' | 'warn' | 'danger' {
+    const minutes = this.getTimelinessMinutes(dispatch) ?? 0;
+    if (minutes >= 30) return 'danger';
+    if (minutes >= 20) return 'warn';
+    return 'success';
+  }
+
+  getTimelinessClass(dispatch: LaundryDeliveryEnriched): string {
+    const minutes = this.getTimelinessMinutes(dispatch) ?? 0;
+    if (minutes >= 30) return 'card-timeline-very-late';
+    if (minutes >= 20) return 'card-timeline-late';
+    return 'card-timeline-on-time';
+  }
+
+  private getTimelinessMinutes(dispatch: LaundryDeliveryEnriched): number | null {
+    if (dispatch.status === 'DELIVERED') return null;
+    const targetTime = dispatch.status === 'ASSIGNED'
+      ? dispatch.scheduled_departure_time
+      : dispatch.customer_expected_time;
+    if (!targetTime) return null;
+    return Math.round((Date.now() - new Date(targetTime).getTime()) / 60000);
   }
 
   private readCurrentUserId(): number {

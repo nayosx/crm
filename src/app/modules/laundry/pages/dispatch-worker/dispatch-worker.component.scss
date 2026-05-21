@@ -1,0 +1,30 @@
+.p-card.card-zebra-even {
+  background-color: #454545;
+}
+
+.p-card.card-zebra-odd {
+  background-color: #141414;
+}
+
+.to-card-info {
+  flex-direction: row;
+}
+
+@media (max-width: 576px) {
+  .to-card-info {
+    flex-direction: column-reverse;
+    gap: 1rem;
+  }
+}
+
+.p-card.card-timeline-on-time {
+  border-left: 4px solid #16a34a;
+}
+
+.p-card.card-timeline-late {
+  border-left: 4px solid #f59e0b;
+}
+
+.p-card.card-timeline-very-late {
+  border-left: 4px solid #dc2626;
+}

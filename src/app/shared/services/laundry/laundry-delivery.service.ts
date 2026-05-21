@@ -30,6 +30,7 @@ export class LaundryDeliveryService {
     status?: string;
     from_date?: string;
     to_date?: string;
+    format?: string;
   }): Observable<DeliveryPagination> {
     let httpParams = new HttpParams();
 

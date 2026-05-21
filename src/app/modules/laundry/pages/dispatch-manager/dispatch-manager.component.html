@@ -18,10 +18,23 @@
       </div>
     </ng-template>
     <ng-template pTemplate="end">
-      <div class="flex gap-2 flex-wrap justify-content-end">
-        <p-chip label="Asignados" icon="pi pi-clock" />
-        <p-chip label="En ruta" icon="pi pi-car" />
-        <p-chip label="Entregados" icon="pi pi-check-circle" />
+      <div class="flex gap-3 flex-wrap justify-content-end align-items-center">
+        <span class="toolbar-stat">
+          <span class="toolbar-stat-label">Asignados</span>
+          <strong>{{ assignedCount() }}</strong>
+        </span>
+        <span class="toolbar-stat">
+          <span class="toolbar-stat-label">En ruta</span>
+          <strong>{{ enRouteCount() }}</strong>
+        </span>
+        <span class="toolbar-stat">
+          <span class="toolbar-stat-label">Entregados</span>
+          <strong>{{ deliveredCount() }}</strong>
+        </span>
+        <span class="toolbar-stat">
+          <span class="toolbar-stat-label">Rechazados</span>
+          <strong>{{ rejectedCount() }}</strong>
+        </span>
       </div>
     </ng-template>
   </p-toolbar>
@@ -34,142 +47,155 @@
     @if (calendarLoading()) {
       <p-skeleton width="100%" height="24rem" />
     } @else {
+      <div class="text-xs text-color-secondary mb-2">
+        Eventos en calendario: {{ getCalendarEventCount() }}
+      </div>
       <full-calendar [options]="calendarOptions()"></full-calendar>
     }
   </p-card>
 
-  <div class="grid mb-3">
-    <div class="col-12 sm:col-6 md:col-3">
-      <p-card styleClass="summary-card h-full">
-        <span class="summary-eyebrow">Asignados</span>
-        <h3 class="m-0">{{ assignedCount() }}</h3>
-      </p-card>
-    </div>
-    <div class="col-12 sm:col-6 md:col-3">
-      <p-card styleClass="summary-card h-full">
-        <span class="summary-eyebrow">En ruta</span>
-        <h3 class="m-0">{{ enRouteCount() }}</h3>
-      </p-card>
-    </div>
-    <div class="col-12 sm:col-6 md:col-3">
-      <p-card styleClass="summary-card h-full">
-        <span class="summary-eyebrow">Entregados</span>
-        <h3 class="m-0">{{ deliveredCount() }}</h3>
-      </p-card>
-    </div>
-    <div class="col-12 sm:col-6 md:col-3">
-      <p-card styleClass="summary-card h-full">
-        <span class="summary-eyebrow">Rechazados</span>
-        <h3 class="m-0">{{ rejectedCount() }}</h3>
-      </p-card>
-    </div>
-  </div>
 
-  <button
-    pButton
-    type="button"
-    icon="pi pi-plus"
-    class="fab-button"
-    [rounded]="true"
-    [raised]="true"
-    (click)="openCreateDialog()"
-    pTooltip="Nueva entrega"
-    tooltipPosition="left"
-  ></button>
+
+  <app-bottom-navigation
+    [actions]="bottomNavigationActions()"
+    [mobileUseOverflow]="false"
+    (actionSelected)="onBottomNavigationAction($event)">
+  </app-bottom-navigation>
 </section>
 
 <!-- Dialog: Crear despacho -->
 <p-dialog
-  header="Agendar nueva entrega"
+  [header]="currentStep() === 1 ? 'Nuevo despacho' : dialogHeader()"
   [visible]="createDialogVisible()"
   [modal]="true"
   [style]="{ width: 'min(95vw, 42rem)' }"
   [closable]="true"
-  (visibleChange)="createDialogVisible.set($event)"
+  (visibleChange)="onDialogVisibilityChange($event)"
 >
   <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="flex flex-column gap-3">
-    <div>
-      <label class="filter-label">Servicio listo para entrega</label>
-      <p-select
-        [options]="readyServices()"
-        optionLabel="client.name"
-        optionValue="id"
-        formControlName="laundry_service_id"
-        placeholder="Selecciona un servicio"
-        appendTo="body"
-        class="w-full"
-      ></p-select>
-    </div>
-
-    <div>
-      <label class="filter-label">Repartidor</label>
-      <p-select
-        [options]="drivers()"
-        optionLabel="name"
-        optionValue="id"
-        formControlName="driver_id"
-        placeholder="Selecciona un repartidor"
-        appendTo="body"
-        class="w-full"
-      ></p-select>
-    </div>
-
-    <div class="grid">
-      <div class="col-12 md:col-6">
-        <label class="filter-label">Hora de salida programada</label>
-        <p-datepicker
-          formControlName="scheduled_departure_time"
-          [showTime]="true"
-          [showIcon]="true"
-          appendTo="body"
-          dateFormat="yy-mm-dd"
-          class="w-full"
-        ></p-datepicker>
+    @if (currentStep() === 1) {
+      <div>
+        <label class="filter-label">Tipo de despacho</label>
+        <div class="flex gap-3">
+          <div class="service-type-card"
+               [class.active]="serviceType() === 'PENDING'"
+               (click)="onServiceTypeChange('PENDING')"
+               tabindex="0"
+               role="button">
+            <i class="pi pi-box"></i>
+            <span class="font-semibold">Recolecta</span>
+          </div>
+          <div class="service-type-card"
+               [class.active]="serviceType() === 'READY_FOR_DELIVERY'"
+               (click)="onServiceTypeChange('READY_FOR_DELIVERY')"
+               tabindex="0"
+               role="button">
+            <i class="pi pi-truck"></i>
+            <span class="font-semibold">Entrega</span>
+          </div>
+        </div>
       </div>
-      <div class="col-12 md:col-6">
-        <label class="filter-label">Hora esperada por el cliente</label>
-        <p-datepicker
-          formControlName="customer_expected_time"
-          [showTime]="true"
-          [showIcon]="true"
+    } @else {
+      <div>
+        <label class="filter-label">{{ serviceTypeLabel() }}</label>
+        <p-select
+          [options]="readyServices()"
+          optionLabel="client.name"
+          optionValue="id"
+          formControlName="laundry_service_id"
+          placeholder="Selecciona un servicio"
           appendTo="body"
-          dateFormat="yy-mm-dd"
           class="w-full"
-        ></p-datepicker>
+        ></p-select>
       </div>
-    </div>
 
-    <div>
-      <label class="filter-label">Notas</label>
-      <textarea
-        pTextarea
-        formControlName="notes"
-        rows="3"
-        class="w-full"
-        placeholder="Instrucciones especiales..."
-      ></textarea>
-    </div>
+      <div>
+        <label class="filter-label">Repartidor</label>
+        <p-select
+          [options]="drivers()"
+          optionLabel="name"
+          optionValue="id"
+          formControlName="driver_id"
+          placeholder="Selecciona un repartidor"
+          appendTo="body"
+          class="w-full"
+        ></p-select>
+      </div>
+
+      <div class="grid">
+        <div class="col-12 md:col-6">
+          <label class="filter-label">Hora de salida programada</label>
+          <p-datepicker
+            formControlName="scheduled_departure_time"
+            [showTime]="true"
+            [showIcon]="true"
+            appendTo="body"
+            dateFormat="yy-mm-dd"
+            hourFormat="12"
+            [stepMinute]="5"
+            (onSelect)="onDateTimeSelect('scheduled_departure_time', $event)"
+            class="w-full"
+          ></p-datepicker>
+        </div>
+        <div class="col-12 md:col-6">
+          <label class="filter-label">Hora esperada por el cliente</label>
+          <p-datepicker
+            formControlName="customer_expected_time"
+            [showTime]="true"
+            [showIcon]="true"
+            appendTo="body"
+            dateFormat="yy-mm-dd"
+            hourFormat="12"
+            [stepMinute]="5"
+            (onSelect)="onDateTimeSelect('customer_expected_time', $event)"
+            class="w-full"
+          ></p-datepicker>
+        </div>
+      </div>
+
+      <div>
+        <label class="filter-label">Notas</label>
+        <textarea
+          pTextarea
+          formControlName="notes"
+          rows="3"
+          class="w-full"
+          placeholder="Instrucciones especiales..."
+        ></textarea>
+      </div>
+    }
   </form>
 
   <ng-template pTemplate="footer">
     <div class="flex justify-content-end gap-2">
-      <button
-        pButton
-        type="button"
-        label="Cancelar"
-        severity="secondary"
-        outlined
-        (click)="createDialogVisible.set(false)"
-      ></button>
-      <button
-        pButton
-        type="button"
-        label="Agendar"
-        icon="pi pi-calendar-plus"
-        [loading]="createLoading()"
-        [disabled]="createForm.invalid"
-        (click)="submitCreate()"
-      ></button>
+      @if (currentStep() === 1) {
+        <button
+          pButton
+          type="button"
+          label="Cancelar"
+          severity="secondary"
+          outlined
+          (click)="createDialogVisible.set(false)"
+        ></button>
+      } @else {
+        <button
+          pButton
+          type="button"
+          label="Volver"
+          severity="secondary"
+          outlined
+          (click)="goBackToStep1()"
+        ></button>
+        <button
+          pButton
+          type="button"
+          label="Agendar"
+          icon="pi pi-calendar-plus"
+          [loading]="createLoading()"
+          [disabled]="createForm.invalid"
+          (click)="submitCreate()"
+        ></button>
+      }
     </div>
   </ng-template>
 </p-dialog>
@@ -194,32 +220,40 @@
 
       <p-divider />
 
-      <div class="grid">
-        <div class="col-6">
+      <div class="row" style="gap: 0">
+        <div class="col-12 col-md-6">
           <div class="metric-card">
             <span class="metric-label">Cliente</span>
             <strong>{{ dispatch.client?.name ?? '—' }}</strong>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-12 col-md-6">
           <div class="metric-card">
             <span class="metric-label">Repartidor</span>
             <strong>{{ dispatch.driver?.name ?? '—' }}</strong>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-12 col-md-6">
           <div class="metric-card">
             <span class="metric-label">Salida programada</span>
-            <strong>{{ dispatch.scheduled_departure_time | date:'short' }}</strong>
+            <strong>{{ dispatch.scheduled_departure_time | amPmTime }}</strong>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-12 col-md-6">
           <div class="metric-card">
             <span class="metric-label">Entrega esperada</span>
-            <strong>{{ dispatch.customer_expected_time | date:'short' }}</strong>
+            <strong>{{ dispatch.customer_expected_time | amPmTime }}</strong>
           </div>
         </div>
       </div>
+
+      @if (dispatch.notes) {
+        <p-divider />
+        <div class="metric-card">
+          <span class="metric-label">Notas</span>
+          <p class="m-0 text-color-secondary">{{ dispatch.notes }}</p>
+        </div>
+      }
 
       @if (dispatch.status_logs.length) {
         <p-divider />
@@ -228,7 +262,7 @@
           @for (log of dispatch.status_logs; track log.id) {
             <div class="timeline-item">
               <div class="timeline-hour">
-                <strong>{{ log.logged_at | date:'short' }}</strong>
+                <strong>{{ log.logged_at | amPmTime }}</strong>
               </div>
               <div class="timeline-detail">
                 <p-tag [value]="getStatusLabel(log.status)" [severity]="getStatusSeverity(log.status)"></p-tag>
@@ -241,6 +275,15 @@
 
     <ng-template pTemplate="footer">
       <div class="flex justify-content-end gap-2">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          outlined
+          label="Cerrar"
+          icon="pi pi-arrow-left"
+          (click)="detailPanelVisible.set(false)"
+        ></button>
         <button
           pButton
           type="button"

@@ -37,7 +37,8 @@
       }
     </div>
   } @else {
-    <p-accordion [activeIndex]="activeAccordionIndex()" (activeIndexChange)="activeAccordionIndex.set($event)">
+    <div style="max-width: 768px">
+      <p-accordion [activeIndex]="activeAccordionIndex()" (activeIndexChange)="activeAccordionIndex.set($event)">
       <!-- Pendientes -->
       <p-accordionTab>
         <ng-template pTemplate="header">
@@ -52,17 +53,49 @@
         }
 
         <div class="flex flex-column gap-3">
-          @for (dispatch of assigned(); track dispatch.id) {
-            <p-card styleClass="shadow-2">
+          @for (dispatch of assigned(); track dispatch.id; let i = $index) {
+            <p-card [styleClass]="'shadow-2 ' + (i % 2 === 0 ? 'card-zebra-even' : 'card-zebra-odd') + ' ' + getTimelinessClass(dispatch)">
               <div class="flex flex-column gap-2">
-                <div class="flex justify-content-between align-items-start">
+                <div class="flex justify-content-between align-items-start to-card-info">
                   <div>
                     <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
                     <p class="m-0 text-color-secondary">
-                      Salida programada: {{ dispatch.scheduled_departure_time | date:'shortTime' }}
+                      Salida programada: {{ dispatch.scheduled_departure_time | amPmTime }}
                     </p>
                   </div>
-                  <p-tag [severity]="'warn'" [value]="'Asignado'"></p-tag>
+                  <div class="u-d-flex u-d-flex-gap-1">
+                    @if (dispatch.service?.status) {
+                      <p-tag [value]="getDispatchTypeLabel(dispatch)" [severity]="getDispatchTypeSeverity(dispatch)" styleClass="text-xs"></p-tag>
+                    }
+                    @if (dispatch.service?.service_label) {
+                      <p-tag [value]="$any(dispatch.service).service_label" severity="secondary" styleClass="text-xs"></p-tag>
+                    }
+                    <p-tag [severity]="'warn'" [value]="'Asignado'"></p-tag>
+                  </div>
+                </div>
+
+                <div class="flex flex-column gap-1">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-user text-sm text-color-secondary"></i>
+                    <span class="font-semibold">{{ dispatch.client?.name ?? '—' }}</span>
+                  </div>
+                  @if (dispatch.client?.phones?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-phone text-sm"></i>
+                      <span>{{ $any(dispatch.client).phones[0].phone_number }}</span>
+                    </div>
+                  }
+                  @if (dispatch.client?.addresses?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-map-marker text-sm"></i>
+                      <span>{{ $any(dispatch.client).addresses[0].address_text }}</span>
+                    </div>
+                  }
+                  @if (getTimelinessLabel(dispatch)) {
+                    <div>
+                      <p-tag [value]="getTimelinessLabel(dispatch)!" [severity]="getTimelinessSeverity(dispatch)" styleClass="text-xs mt-1"></p-tag>
+                    </div>
+                  }
                 </div>
 
                 <p-divider />
@@ -71,22 +104,20 @@
                   <div class="col-12 md:col-6">
                     <div class="metric-card">
                       <span class="metric-label">Cliente espera</span>
-                      <strong>{{ dispatch.customer_expected_time | date:'shortTime' }}</strong>
+                      <strong>{{ dispatch.customer_expected_time | amPmTime }}</strong>
                     </div>
                   </div>
                 </div>
 
+                @if (dispatch.notes) {
+                  <p-divider />
+                  <div class="flex align-items-start gap-2 text-color-secondary text-sm mb-3">
+                    <i class="pi pi-info-circle"></i>
+                    <span>{{ dispatch.notes }}</span>
+                  </div>
+                }
+
                 <div class="flex flex-wrap gap-2">
-                  <button
-                    pButton
-                    type="button"
-                    icon="pi pi-map"
-                    label="Ver ruta"
-                    severity="secondary"
-                    outlined
-                    [disabled]="!getClientAddress(dispatch)"
-                    (click)="openMap(getClientAddress(dispatch))"
-                  ></button>
                   <button
                     pButton
                     type="button"
@@ -101,7 +132,6 @@
                     icon="pi pi-times"
                     label="Rechazar"
                     severity="danger"
-                    outlined
                     (click)="openReject(dispatch)"
                   ></button>
                 </div>
@@ -125,17 +155,47 @@
         }
 
         <div class="flex flex-column gap-3">
-          @for (dispatch of enRoute(); track dispatch.id) {
-            <p-card styleClass="shadow-2">
+          @for (dispatch of enRoute(); track dispatch.id; let i = $index) {
+            <p-card [styleClass]="'shadow-2 ' + (i % 2 === 0 ? 'card-zebra-even' : 'card-zebra-odd') + ' ' + getTimelinessClass(dispatch)">
               <div class="flex flex-column gap-2">
-                <div class="flex justify-content-between align-items-start">
+                <div class="flex justify-content-between align-items-start to-card-info">
                   <div>
                     <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
                     <p class="m-0 text-color-secondary">
-                      Salió: {{ dispatch.actual_departure_time | date:'shortTime' }}
+                      Salió: {{ dispatch.actual_departure_time | amPmTime }}
                     </p>
                   </div>
-                  <p-tag [severity]="'info'" [value]="'En ruta'"></p-tag>
+                  <div class="u-d-flex u-d-flex-gap-1">
+                    @if (dispatch.service?.status) {
+                      <p-tag [value]="getDispatchTypeLabel(dispatch)" [severity]="getDispatchTypeSeverity(dispatch)" styleClass="text-xs"></p-tag>
+                    }
+                    @if (dispatch.service?.service_label) {
+                      <p-tag [value]="$any(dispatch.service).service_label" severity="secondary" styleClass="text-xs"></p-tag>
+                    }
+                    <p-tag [severity]="'info'" [value]="'En ruta'"></p-tag>
+                  </div>
+                </div>
+
+                <div class="flex flex-column gap-1">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-user text-sm text-color-secondary"></i>
+                    <span class="font-semibold">{{ dispatch.client?.name ?? '—' }}</span>
+                  </div>
+                  @if (dispatch.client?.phones?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-phone text-sm"></i>
+                      <span>{{ $any(dispatch.client).phones[0].phone_number }}</span>
+                    </div>
+                  }
+                  @if (dispatch.client?.addresses?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-map-marker text-sm"></i>
+                      <span>{{ $any(dispatch.client).addresses[0].address_text }}</span>
+                    </div>
+                  }
+                  @if (getTimelinessLabel(dispatch)) {
+                    <p-tag [value]="getTimelinessLabel(dispatch)!" [severity]="getTimelinessSeverity(dispatch)" styleClass="text-xs mt-1"></p-tag>
+                  }
                 </div>
 
                 <p-divider />
@@ -144,7 +204,7 @@
                   <div class="col-12 md:col-6">
                     <div class="metric-card">
                       <span class="metric-label">Cliente espera</span>
-                      <strong>{{ dispatch.customer_expected_time | date:'shortTime' }}</strong>
+                      <strong>{{ dispatch.customer_expected_time | amPmTime }}</strong>
                     </div>
                   </div>
                   <div class="col-12 md:col-6">
@@ -154,6 +214,14 @@
                     </div>
                   </div>
                 </div>
+
+                @if (dispatch.notes) {
+                  <p-divider />
+                  <div class="flex align-items-start gap-2 text-color-secondary text-sm mb-3">
+                    <i class="pi pi-info-circle"></i>
+                    <span>{{ dispatch.notes }}</span>
+                  </div>
+                }
 
                 <div class="flex flex-wrap gap-2">
                   <button
@@ -195,17 +263,39 @@
         }
 
         <div class="flex flex-column gap-3">
-          @for (dispatch of delivered(); track dispatch.id) {
-            <p-card styleClass="shadow-2">
+          @for (dispatch of delivered(); track dispatch.id; let i = $index) {
+            <p-card [styleClass]="'shadow-2 ' + (i % 2 === 0 ? 'card-zebra-even' : 'card-zebra-odd')">
               <div class="flex flex-column gap-2">
                 <div class="flex justify-content-between align-items-start">
                   <div>
                     <h3 class="m-0">Despacho #{{ dispatch.id }}</h3>
                     <p class="m-0 text-color-secondary">
-                      Entregado: {{ dispatch.actual_delivery_time | date:'shortTime' }}
+                      Entregado: {{ dispatch.actual_delivery_time | amPmTime }}
                     </p>
                   </div>
                   <p-tag [severity]="'success'" [value]="'Entregado'"></p-tag>
+                </div>
+
+                <div class="flex flex-column gap-1">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-user text-sm text-color-secondary"></i>
+                    <span class="font-semibold">{{ dispatch.client?.name ?? '—' }}</span>
+                  </div>
+                  @if (dispatch.client?.phones?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-phone text-sm"></i>
+                      <span>{{ $any(dispatch.client).phones[0].phone_number }}</span>
+                    </div>
+                  }
+                  @if (dispatch.client?.addresses?.length) {
+                    <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+                      <i class="pi pi-map-marker text-sm"></i>
+                      <span>{{ $any(dispatch.client).addresses[0].address_text }}</span>
+                    </div>
+                  }
+                  @if (dispatch.service?.service_label) {
+                    <p-tag [value]="$any(dispatch.service).service_label" severity="secondary" styleClass="text-xs mt-1"></p-tag>
+                  }
                 </div>
 
                 <p-divider />
@@ -232,12 +322,21 @@
                     </div>
                   </div>
                 </div>
+
+                @if (dispatch.notes) {
+                  <p-divider />
+                  <div class="flex align-items-start gap-2 text-color-secondary text-sm mb-3">
+                    <i class="pi pi-info-circle"></i>
+                    <span>{{ dispatch.notes }}</span>
+                  </div>
+                }
               </div>
             </p-card>
           }
         </div>
       </p-accordionTab>
     </p-accordion>
+    </div>
   }
 </section>
 
