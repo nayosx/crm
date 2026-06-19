@@ -1,0 +1,166 @@
+<p-toast></p-toast>
+
+<section class="dashboard-page p-4">
+  <div class="dashboard-header surface-card shadow-1 border-round-xl p-4 mb-4">
+    <div class="flex flex-column gap-2 md:flex-row md:align-items-center md:justify-content-between">
+      <div>
+        <p class="dashboard-kicker m-0">Finanzas</p>
+        <h1 class="m-0">Dashboard de entradas y salidas</h1>
+        <p class="mt-2 mb-0 dashboard-copy">
+          Resumen quincenal de movimientos de dinero para DrClin.
+        </p>
+      </div>
+
+      <a
+        pButton
+        routerLink="/transactions"
+        label="Ver transacciones"
+        icon="pi pi-list"
+        class="p-button-secondary p-button-outlined"
+      ></a>
+    </div>
+  </div>
+
+  <div class="surface-card shadow-1 border-round-xl p-4 mb-4">
+    <div class="flex flex-column gap-3 lg:flex-row lg:align-items-end">
+      <div class="flex-1">
+        <label class="dashboard-label mb-2 block" for="dashboard-start-date">Fecha inicio</label>
+        <p-datepicker
+          inputId="dashboard-start-date"
+          [(ngModel)]="startDate"
+          dateFormat="dd-mm-yy"
+          [showIcon]="true"
+          placeholder="Selecciona fecha inicio"
+          [disabled]="isLoading"
+          styleClass="w-full"
+        ></p-datepicker>
+      </div>
+
+      <div class="flex-1">
+        <label class="dashboard-label mb-2 block" for="dashboard-end-date">Fecha fin</label>
+        <p-datepicker
+          inputId="dashboard-end-date"
+          [(ngModel)]="endDate"
+          dateFormat="dd-mm-yy"
+          [showIcon]="true"
+          placeholder="Selecciona fecha fin"
+          [disabled]="isLoading"
+          styleClass="w-full"
+        ></p-datepicker>
+      </div>
+
+      <div class="flex gap-2 flex-wrap">
+        <button
+          pButton
+          type="button"
+          label="Aplicar"
+          icon="pi pi-filter"
+          (click)="onApplyFilters()"
+          [disabled]="isLoading"
+        ></button>
+        <button
+          pButton
+          type="button"
+          label="Limpiar"
+          icon="pi pi-refresh"
+          class="p-button-secondary"
+          (click)="onResetFilters()"
+          [disabled]="isLoading"
+        ></button>
+      </div>
+    </div>
+
+    @if (appliedRange) {
+      <p class="mb-0 mt-3 dashboard-range">
+        Rango aplicado: {{ appliedRange.start_date }} al {{ appliedRange.end_date }}
+      </p>
+    }
+
+    @if (loadError) {
+      <p-message severity="error" [text]="loadError" styleClass="mt-3 block"></p-message>
+    }
+  </div>
+
+  <div class="o-grid o-grid--cols-1 o-grid--md-cols-2 o-grid--xl-cols-4 o-grid--gap-3 mb-4">
+    @for (metric of metrics; track metric.label) {
+      <article [class]="getMetricClass(metric)">
+        <p class="dashboard-metric__label m-0">{{ metric.label }}</p>
+        <h2 class="dashboard-metric__value m-0">
+          @if (metric.label === 'Quincenas analizadas') {
+            {{ metric.amount }}
+          } @else {
+            {{ metric.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
+          }
+        </h2>
+      </article>
+    }
+  </div>
+
+  <div class="o-grid o-grid--cols-1 o-grid--xl-cols-12 o-grid--gap-3">
+    <div class="o-grid__item o-grid__item--xl-span-8">
+      <div class="surface-card shadow-1 border-round-xl p-4 dashboard-chart-card">
+        <div class="flex flex-column gap-1 mb-4">
+          <h2 class="m-0">Comparativo por quincena</h2>
+          <p class="m-0 dashboard-copy">Entradas vs salidas agrupadas por periodo.</p>
+        </div>
+
+        @if (summaryItems.length > 0) {
+          <div class="dashboard-chart-wrapper">
+            <canvas
+              baseChart
+              [type]="chartType"
+              [data]="chartData"
+              [options]="chartOptions"
+            ></canvas>
+          </div>
+        } @else {
+          <div class="dashboard-empty-state">
+            <i class="pi pi-chart-bar"></i>
+            <p class="m-0">No hay datos para mostrar en la gráfica.</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="o-grid__item o-grid__item--xl-span-4">
+      <div class="surface-card shadow-1 border-round-xl p-4 dashboard-summary-card">
+        <div class="flex flex-column gap-1 mb-4">
+          <h2 class="m-0">Detalle por quincena</h2>
+          <p class="m-0 dashboard-copy">Resumen útil para revisar cada bloque.</p>
+        </div>
+
+        @if (summaryItems.length > 0) {
+          <div class="dashboard-summary-list">
+            @for (item of summaryItems; track item.year + '-' + item.month + '-' + item.fortnight) {
+              <article class="dashboard-summary-item">
+                <p class="dashboard-summary-item__label m-0">{{ item.label }}</p>
+                <div class="dashboard-summary-item__row">
+                  <span>Entradas</span>
+                  <strong>{{ item.in_total | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+                </div>
+                <div class="dashboard-summary-item__row">
+                  <span>Salidas</span>
+                  <strong>{{ item.out_total | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+                </div>
+                <div class="dashboard-summary-item__row">
+                  <span>Balance</span>
+                  <strong
+                    [class.dashboard-balance-positive]="getBalance(item) > 0"
+                    [class.dashboard-balance-negative]="getBalance(item) < 0"
+                  >
+                    {{ getBalance(item) | currency: 'USD' : 'symbol' : '1.2-2' }}
+                  </strong>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="dashboard-empty-state">
+            <i class="pi pi-wallet"></i>
+            <p class="m-0">No se encontraron movimientos en el rango seleccionado.</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>

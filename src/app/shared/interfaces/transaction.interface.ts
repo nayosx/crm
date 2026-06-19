@@ -11,7 +11,6 @@ export interface Transaction {
   amount: string;
   created_at: string;
   updated_at: string;
-
   payment_type_name?: string;
   payment_type_code?: string;
   payment_surcharge_type?: PaymentSurchargeType | null;
@@ -63,8 +62,33 @@ export interface PaginatedTransactions {
   per_page: number;
 }
 
-
 export interface TransactionResponse {
   message: string;
   transaction: Transaction;
+}
+
+export interface TransactionFortnightSummaryRange {
+  start_date: string;
+  end_date: string;
+}
+
+export interface TransactionFortnightSummaryFilters {
+  user_id: number | null;
+}
+
+export interface TransactionFortnightSummaryItem {
+  year: number;
+  month: number;
+  fortnight: 1 | 2;
+  label: string;
+  bucket_start_date: string;
+  bucket_end_date: string;
+  in_total: string;
+  out_total: string;
+}
+
+export interface TransactionFortnightSummaryResponse {
+  range: TransactionFortnightSummaryRange;
+  filters: TransactionFortnightSummaryFilters;
+  items: TransactionFortnightSummaryItem[];
 }
