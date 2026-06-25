@@ -1,4 +1,5 @@
 <p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
 <app-loader-dialog></app-loader-dialog>
 
 <section class="container u-w-100 u-pb-6 u-d-flex u-d-flex-column u-d-flex-gap-3">
@@ -29,11 +30,29 @@
       <p-card>
         <ng-template pTemplate="header">
           <div class="u-p-all-2 border-bottom-1 surface-border u-d-flex u-d-flex-justify-between u-d-flex-align-center u-d-flex-gap-2">
-            <h2 class="u-text-lg-bold u-m-all-none">Cabecera operativa</h2>
-            <button pButton type="button" label="Último cobro" icon="pi pi-history" size="small"
-                    [loading]="loadingLastTransaction()"
-                    (click)="openLastTransactionDialog()">
-            </button>
+            <div class="u-d-flex u-d-flex-column u-d-flex-gap-1">
+              <h2 class="u-text-lg-bold u-m-all-none">Cabecera operativa</h2>
+              <small class="text-color-secondary">Actualizado: {{ formatDate(data.laundry_service.updated_at) }}</small>
+            </div>
+            <div class="u-d-flex u-d-flex-gap-2">
+              @if (data.laundry_service.status === 'READY_FOR_DELIVERY') {
+                <button
+                  pButton
+                  type="button"
+                  label="Finalizar"
+                  icon="pi pi-check-circle"
+                  severity="success"
+                  size="small"
+                  [loading]="isFinalizingDelivery()"
+                  [disabled]="isFinalizingDelivery()"
+                  (click)="openFinalizeDialog()">
+                </button>
+              }
+              <button pButton type="button" label="Último cobro" icon="pi pi-history" size="small"
+                      [loading]="loadingLastTransaction()"
+                      (click)="openLastTransactionDialog()">
+              </button>
+            </div>
           </div>
         </ng-template>
 
@@ -77,8 +96,7 @@
                   [minFractionDigits]="0"
                   [maxFractionDigits]="2"
                   [useGrouping]="false"
-                  styleClass="w-full"
-                  [disabled]="distanceControlDisabled()">
+                  styleClass="w-full">
                 </p-inputNumber>
               </div>
 

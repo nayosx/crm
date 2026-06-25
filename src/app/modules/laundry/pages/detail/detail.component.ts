@@ -16,7 +16,8 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import {
   LaundryServiceFulfillmentType,
   LaundryServiceHeaderPayload,
@@ -114,9 +115,10 @@ type SummaryDialogRow = {
     LoaderDialogComponent,
     BackButtonComponent,
     DecimalInputComponent,
-    LaundryTransactionDialogComponent
+    LaundryTransactionDialogComponent,
+    ConfirmDialogModule
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './detail.component.html',
   styles: [`
     .summary-copy-button {
@@ -216,9 +218,11 @@ export class DetailComponent implements OnInit {
   private readonly messageService = inject(MessageService);
   private readonly dialogLoadingService = inject(DialogLoadingService);
   private readonly domSanitizer = inject(DomSanitizer);
+  private readonly confirmationService = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isLoading = signal(false);
+  readonly isFinalizingDelivery = signal(false);
   readonly summary = signal<LaundryServiceSummaryResponse | null>(null);
   readonly serviceId = signal<number>(0);
   readonly isSummaryCopied = signal(false);
@@ -525,6 +529,55 @@ export class DetailComponent implements OnInit {
     this.showSuccess(`Cobro registrado con transacción #${transaction.id}.`);
     this.transactionDialogVisible.set(false);
     this.loadSummary();
+  }
+
+  openFinalizeDialog(): void {
+    const currentSummary = this.summary();
+    if (!currentSummary) {
+      return;
+    }
+
+    if (!currentSummary.laundry_service.transaction_id) {
+      this.showError('No se puede finalizar hasta que se realice el cobro.');
+      return;
+    }
+
+    const clientName = currentSummary.client.name || 'cliente';
+    this.confirmationService.confirm({
+      header: 'Confirmar entrega',
+      message: `Vas a finalizar servicio #${this.serviceId()} de ${clientName}. El estado cambiará a ENTREGADO.`,
+      closable: true,
+      closeOnEscape: true,
+      icon: 'pi pi-check-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        outlined: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, finalizar',
+        severity: 'success',
+      },
+      accept: () => this.finalizeDelivery()
+    });
+  }
+
+  private finalizeDelivery(): void {
+    this.isFinalizingDelivery.set(true);
+    this.dialogLoadingService.show('Finalizando entrega...');
+
+    this.laundryService.updateStatus(this.serviceId(), 'DELIVERED').pipe(
+      finalize(() => {
+        this.isFinalizingDelivery.set(false);
+        this.dialogLoadingService.hide();
+      })
+    ).subscribe({
+      next: () => {
+        this.showSuccess(`Servicio #${this.serviceId()} marcado como entregado.`);
+        this.loadSummary();
+      },
+      error: () => this.showError('No se pudo finalizar la entrega.')
+    });
   }
 
   openSummaryDialog(): void {
